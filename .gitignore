@@ -1,3 +1,4 @@
 PyQt-env
 PyQt-env/*
 .vscode
+*.mm

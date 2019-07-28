@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import QLabel, QHBoxLayout, QVBoxLayout, QGridLayout, QTabW
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
 #from PyQt5.QtNfc import QNearFieldManager #NFC wtf ?
-
+import PyQt5.QtCore  
 #Widget exotiques
 
 from PyQt5.QtGui import QMovie
@@ -52,6 +52,7 @@ class QCardObserver(CardObserver, QObject):
     def __init__(self,CardReader):
         print("Surcharge constructeur")
         QObject.__init__(self)
+        CardObserver.__init__(self)
         self.CardReader=CardReader
     def update(self, observable, actions):
         (addedcards, removedcards) = actions
@@ -77,6 +78,7 @@ def GetReaders():
             raise NFC_Reader_Error("Lecteur NFC introuvable, essayez de le rebrancher.")
         return readers
     except NFC_Reader_Error:
+        print("Lecteur NFC introuvable, essayez de le rebrancher.")
         exit()
 
 
@@ -224,13 +226,13 @@ class QNFCDialog(QWidget):
 
         self.CardMonitor=CardMonitor()
         self.CardObserver=QCardObserver(self.NFCReader)
-        #self.CardMonitor.addObserver(self.CardObserver)
 
         self.CardObserver.CardInserted.connect(self.Payement)        
 
 
+
+
     def initObserver(self):
-        #self.CardObserver=QCardObserver(self.NFCReader)
         self.CardMonitor.addObserver(self.CardObserver)
 
     def Cancel(self):
@@ -239,12 +241,11 @@ class QNFCDialog(QWidget):
         self.close()
 
     def Payement(self):
-        print("Carte détectée, paiement effectué")
-        self.CardMonitor.deleteObserver(self.CardObserver)
+        print("Carte détectée")
+        if(self.CardMonitor.countObservers() > 0):
+            self.CardMonitor.deleteObserver(self.CardObserver)
         self.close()
 
-    def Detect():
-        print("Card detected")
         
 
 class QFakeCard(QWidget):
@@ -256,23 +257,46 @@ class QFakeCard(QWidget):
         
         self.Card = QLabel()
         self.Card.setPixmap(QPixmap(PWD+"ressources/logoCarte.png"))
+
+        self.GroupBoxFCEdit=QGroupBox()
+        self.GroupBoxFCEdit.setTitle("UID en hexadécimal")
+        hbox=QHBoxLayout()
+        self.FCEdit=QLineEdit()
+        self.FCEdit.setAlignment(PyQt5.QtCore.Qt.AlignCenter)
+        self.FCEdit.resize(400,50)
+        hbox.addWidget(self.FCEdit)
+        self.GroupBoxFCEdit.setLayout(hbox)
+        
+
         self.Button= QPushButton()
         self.Button.setText("Présenter une carte sur le lecteur")    
-        self.Button.clicked.connect(self.OpenNFCDialog)
+        self.Button.clicked.connect(self.CloseNFCDialog)
         
         self.Layout.addWidget(self.Card)
+        self.Layout.addWidget(self.GroupBoxFCEdit)
         self.Layout.addWidget(self.Button)
         self.setLayout(self.Layout)
         self.setWindowTitle("Simulation")
-        self.show()
 
         self.NFCDialog=None
 
-    def OpenNFCDialog(self):
-        self.NFCDialog=QNFCDialog()
-        self.NFCDialog.show()
-        center(self.NFCDialog)
+    def LinkWidget(self,Widget):
+        self.LinkedWidget=Widget
 
+    def CloseNFCDialog(self):
+        self.LinkedWidget.Payement()
+
+class QMainMenu(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("Gala.Manager.Core")
+        self.resize(800,600)
+        self.setWindowIcon(QIcon(PWD+"ressources/logo.png"))
+        center(self)
+
+        self.MainTab=QMainTab()
+
+        self.setCentralWidget(self.MainTab)
 
 if (__name__ == '__main__'):
     # Première étape : création d'une application Qt avec QApplication
@@ -283,44 +307,14 @@ if (__name__ == '__main__'):
         app = QApplication(sys.argv)
 
 
-    MainWindow=QMainWindow()
-    MainWindow.setWindowTitle("Gala.Manager.Core")
-    MainWindow.resize(800,600)
-    MainWindow.setWindowIcon(QIcon(PWD+"ressources/logo.png"))
-    center(MainWindow)
-
-    MainTab= QMainTab()
-
-    MainWindow.setCentralWidget(MainTab)
-
-    
-    # création d'une fenêtre avec QWidget dont on place la référence dans fen
-
-
-    #edit = QLineEdit()
-    #Completer=QCompleter()
-    #edit.setCompleter(Completer)
-    #model=QStringListModel()
-    #Completer.setModel(model)
-    #get_data(model)
-
-    #edit2=QAutoLineEdit()
-    #edit2.Model.setStringList(["Coca", "Chocolat", "Ice Tea", "Café", "Thé"])
-
-
+    MainWindow=QMainMenu()
     FakeCard= QFakeCard()
+    FakeCard.LinkWidget(MainWindow.MainTab.TabCounter.NFCDialog)
 
 
 
     # la fenêtre est rendue visible
-    #edit.show()
-    #edit2.show()
     MainWindow.show()
-
-
-
-
-
-
+    FakeCard.show()
     # exécution de l'application, l'exécution permet de gérer les événements
     app.exec_()
