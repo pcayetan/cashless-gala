@@ -1,22 +1,96 @@
 # importations à faire pour la réalisation d'une interface graphique
 #Application simple
 import sys
+import os
 from PyQt5.QtWidgets import QApplication, QWidget, QDesktopWidget, QMainWindow
 from PyQt5.QtGui import QIcon
 
+import numpy as np
 
 #Pour les auto-complete
 from PyQt5.QtWidgets import QLineEdit, QCompleter
 from PyQt5.QtCore import QStringListModel
 
+
 #Widgets usuel
 
 from PyQt5.QtWidgets import QLabel, QHBoxLayout, QVBoxLayout, QGridLayout, QTabWidget, QPushButton, QListWidget, QGroupBox
 from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import pyqtSignal, pyqtSlot, QObject
+#from PyQt5.QtNfc import QNearFieldManager #NFC wtf ?
 
 #Widget exotiques
 
 from PyQt5.QtGui import QMovie
+
+
+#Modules NFC
+
+from smartcard.scard import SCardConnect
+from smartcard.scard import SCardTransmit
+from smartcard.scard import SCardListReaders
+from smartcard.scard import SCardEstablishContext
+from smartcard.scard import SCARD_SHARE_SHARED
+from smartcard.scard import SCARD_PROTOCOL_T0
+from smartcard.scard import SCARD_PROTOCOL_T1
+from smartcard.scard import SCARD_SCOPE_USER
+
+from smartcard.CardMonitoring import CardMonitor, CardObserver
+from smartcard.util import toHexString
+
+
+# a simple card observer that prints inserted/removed cards
+class QCardObserver(CardObserver, QObject):
+    """A simple card observer that is notified
+    when cards are inserted/removed from the system and
+    prints the list of cards
+    """
+
+    CardInserted=pyqtSignal()
+    CardRemoved= pyqtSignal()   
+
+    def __init__(self,CardReader):
+        print("Surcharge constructeur")
+        QObject.__init__(self)
+        self.CardReader=CardReader
+    def update(self, observable, actions):
+        (addedcards, removedcards) = actions
+        for card in addedcards:
+            hresult,hcontext=SCardEstablishContext(SCARD_SCOPE_USER)
+            hresult, hcard, dwActiveProtocol = SCardConnect(hcontext,self.CardReader, SCARD_SHARE_SHARED,SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
+            hresult, response = SCardTransmit(hcard,dwActiveProtocol,[0xFF,0xCA,0x00,0x00,0x00])
+            self.CardInserted.emit()
+            print("+Inserted: ", toHexString(card.atr))
+            print(toHexString(response))
+        for card in removedcards:
+            print("-Removed: ", toHexString(card.atr))
+            self.CardRemoved.emit()
+
+class NFC_Reader_Error(Exception):
+    pass
+
+def GetReaders():
+    try:
+        hresult,hcontext=SCardEstablishContext(SCARD_SCOPE_USER)
+        hresult, readers= SCardListReaders(hcontext,[])
+        if(len(readers)==0):
+            raise NFC_Reader_Error("Lecteur NFC introuvable, essayez de le rebrancher.")
+        return readers
+    except NFC_Reader_Error:
+        exit()
+
+
+
+
+PWD=os.getcwd()+"/"
+
+print(PWD)
+
+
+
+
+def ParseFile(File,separator=";", Header=True, Headers=[]):
+    """Parse a file"""
 
 def center(self):
     """Centerize the window"""
@@ -24,6 +98,7 @@ def center(self):
     cp = QDesktopWidget().availableGeometry().center()
     qr.moveCenter(cp)
     self.move(qr.topLeft())
+
 
 class QAutoLineEdit(QLineEdit):
     def __init__(self,Parent=None):
@@ -106,10 +181,10 @@ class QNFCDialog(QWidget):
     def __init__(self,Parent=None):
         super().__init__(Parent)
 
-        self.setWindowIcon(QIcon("ressources/logoCarte.png"))
+        self.setWindowIcon(QIcon(PWD+"ressources/logoCarte.png"))
         self.Layout=QVBoxLayout()
 
-        Movie=QMovie("ressources/Animation2.gif")
+        Movie=QMovie(PWD+"ressources/Animation2.gif")
 
         self.Card = QLabel()
         self.Card.setMovie(Movie)
@@ -131,7 +206,15 @@ class QNFCDialog(QWidget):
         self.setWindowTitle("Paiement")
 
         self.Button.clicked.connect(self.Cancel)
-        
+
+        #NFC
+        self.NFCReader=GetReaders()[0]
+
+        self.CardMonitor=CardMonitor()
+        self.CardObserver=QCardObserver(self.NFCReader)
+        self.CardMonitor.addObserver(self.CardObserver)
+
+        self.CardObserver.CardInserted.connect(self.Payement)        
 
         self.show()
 
@@ -140,17 +223,23 @@ class QNFCDialog(QWidget):
         print("Annuler")
         self.close()
 
+    def Payement(self):
+        print("Carte détectée, paiement effectué")
+        self.close()
+
+    def Detect():
+        print("Card detected")
         
 
 class QFakeCard(QWidget):
     def __init__(self,Parent=None):
         super().__init__(Parent)
 
-        self.setWindowIcon(QIcon("ressources/logoCarte.png"))
+        self.setWindowIcon(QIcon(PWD+"ressources/logoCarte.png"))
         self.Layout=QVBoxLayout()
         
         self.Card = QLabel()
-        self.Card.setPixmap(QPixmap("ressources/logoCarte.png"))
+        self.Card.setPixmap(QPixmap(PWD+"ressources/logoCarte.png"))
         self.Button= QPushButton()
         self.Button.setText("Présenter une carte sur le lecteur")    
         self.Button.clicked.connect(self.OpenNFCDialog)
@@ -181,7 +270,7 @@ if (__name__ == '__main__'):
     MainWindow=QMainWindow()
     MainWindow.setWindowTitle("Gala.Manager.Core")
     MainWindow.resize(800,600)
-    MainWindow.setWindowIcon(QIcon("ressources/logo.png"))
+    MainWindow.setWindowIcon(QIcon(PWD+"ressources/logo.png"))
     center(MainWindow)
 
     MainTab= QMainTab()
