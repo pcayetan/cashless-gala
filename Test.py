@@ -151,12 +151,24 @@ class QCounter(QWidget):
         self.Layout.addWidget(self.GroupBoxUser,0,1)
 
 
+        self.NFCDialog=QNFCDialog()
+        self.ButtonValidateOrder=QPushButton()
+        self.ButtonValidateOrder.setText("Valider et payer")
+        self.ButtonValidateOrder.setFixedHeight(50)
+        self.Layout.addWidget(self.ButtonValidateOrder,0,2)
+        self.ButtonValidateOrder.clicked.connect(self.OpenNFCDialog)
+        
+        
         self.setLayout(self.Layout)
-        
 
-        #Pa
-        
-
+    def OpenNFCDialog(self):
+        if (self.NFCDialog.isVisible()==False):
+            #self.NFCDialog=QNFCDialog()
+            self.NFCDialog.initObserver()
+            center(self.NFCDialog)
+            self.NFCDialog.show()
+        else:
+            print("Widget déjà ouvert")
 
 class QMainTab(QTabWidget):
     def __init__(self,Parent=None):
@@ -212,11 +224,14 @@ class QNFCDialog(QWidget):
 
         self.CardMonitor=CardMonitor()
         self.CardObserver=QCardObserver(self.NFCReader)
-        self.CardMonitor.addObserver(self.CardObserver)
+        #self.CardMonitor.addObserver(self.CardObserver)
 
         self.CardObserver.CardInserted.connect(self.Payement)        
 
-        self.show()
+
+    def initObserver(self):
+        #self.CardObserver=QCardObserver(self.NFCReader)
+        self.CardMonitor.addObserver(self.CardObserver)
 
     def Cancel(self):
         #Do stuff...
@@ -225,6 +240,7 @@ class QNFCDialog(QWidget):
 
     def Payement(self):
         print("Carte détectée, paiement effectué")
+        self.CardMonitor.deleteObserver(self.CardObserver)
         self.close()
 
     def Detect():
@@ -288,8 +304,8 @@ if (__name__ == '__main__'):
     #Completer.setModel(model)
     #get_data(model)
 
-    edit2=QAutoLineEdit()
-    edit2.Model.setStringList(["Coca", "Chocolat", "Ice Tea", "Café", "Thé"])
+    #edit2=QAutoLineEdit()
+    #edit2.Model.setStringList(["Coca", "Chocolat", "Ice Tea", "Café", "Thé"])
 
 
     FakeCard= QFakeCard()
@@ -298,7 +314,7 @@ if (__name__ == '__main__'):
 
     # la fenêtre est rendue visible
     #edit.show()
-    edit2.show()
+    #edit2.show()
     MainWindow.show()
 
 
