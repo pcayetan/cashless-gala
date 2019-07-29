@@ -22,7 +22,8 @@ import PyQt5.QtCore
 #Widget exotiques
 
 from PyQt5.QtGui import QMovie
-
+from PyQt5.QtWidgets import QGraphicsOpacityEffect
+from PyQt5.QtCore import QPropertyAnimation, QEasingCurve, QByteArray
 
 #Modules NFC
 
@@ -311,6 +312,23 @@ if (__name__ == '__main__'):
     FakeCard= QFakeCard()
     FakeCard.LinkWidget(MainWindow.MainTab.TabCounter.NFCDialog)
 
+    #Test Fading-In / Out widget
+
+    FadingIn=QWidget()
+    FadingIn.resize(300,300)
+
+    eff=QGraphicsOpacityEffect(app)
+    FadingIn.setGraphicsEffect(eff)
+    b=bytes("opacity","UTF-8")
+    c=QByteArray(b)
+    a=QPropertyAnimation(eff,c,FadingIn)
+    a.setDuration(2000)
+    a.setStartValue(0)
+    a.setEndValue(1)
+    a.setEasingCurve(QEasingCurve.InBack)
+    a.start(QPropertyAnimation.DeleteWhenStopped)
+     
+    FadingIn.show()
 
 
     # la fenêtre est rendue visible
