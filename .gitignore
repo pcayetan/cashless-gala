@@ -5,3 +5,7 @@ PyQt-Env/*
 .vscode
 *.mm
 __pycache__
+build/
+dist/
+*.spec
+*.csv
