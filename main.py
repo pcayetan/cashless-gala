@@ -21,6 +21,9 @@ if (__name__ == '__main__'):
         app = QApplication(sys.argv)
 
     MainWindow=QMainMenu()
+    font=QFont()
+    font.setPointSize(12)
+    setFont(MainWindow,font)
     FakeCard= QFakeCard()
     FakeCard.LinkWidget(MainWindow.MainTab.TabCounter.NFCDialog)
 

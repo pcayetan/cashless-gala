@@ -29,12 +29,27 @@ def center(self):
     self.move(qr.topLeft())
 
 
+def setFont(Widget,Font):
+    
+    for child in Widget.children():
+        try:
+            child.setFont(Font)
+            setFont(child,Font)
+        except:
+            pass
+        #TODO: Find a better way to do this 
+        if (type(child) == type(QTreeView())): #Dirty hack to correct oversizing 
+            child.resizeColumnToContents(0)
+
+def setFonts(Widget,Font):
+    if (Widget.children()):
+        pass
 
 with open("ItemModel.json",'r') as file:
     Dico=json.load(file)
 
 CURRENT_KEY="root"
-ITEM_LIST=[]
+ITEM_LIST=[] #Used for auto completer in search bar
 
 def parseDict(Dict):
     global CURRENT_KEY
@@ -82,6 +97,9 @@ class TreeItem():
     def columnCount(self):
         return len(self.dataItem)
 
+    def getData(self):
+        return self.dataItem
+
     def data(self, column):
         try:
             return self.dataItem[column]
@@ -123,6 +141,7 @@ class QTreeModel(QAbstractItemModel):
 
         item =index.internalPointer()
         return item.data(index.column())
+
 
     def rowCount(self,parent):
         
@@ -222,6 +241,14 @@ class QTree(QWidget):
         #Link
         self.mainVBoxLayout.addWidget(self.TreeView)
         self.setLayout(self.mainVBoxLayout)
+
+        self.TreeView.doubleClicked[QModelIndex].connect(self.itemSelector)
+
+    def itemSelector(self,item):
+        data=item.internalPointer().getData()
+        if len(data)>1:
+            if data[1]!="":
+                print("ITEM SELECTED",item.internalPointer().data(0))
 
 class QAutoLineEdit(QLineEdit):
     def __init__(self,parent=None):
@@ -404,11 +431,13 @@ class QCounter(QWidget):
         
 
     def OpenNFCDialog(self):
-        if (self.NFCDialog.isVisible() == False):
-            #self.NFCDialog=QNFCDialog()
-            #self.NFCDialog.initObserver()
-            center(self.NFCDialog)
-            self.NFCDialog.show()
+        cardHandler=QCardObserver()
+        if (self.NFCDialog.isVisible() == False ):
+            if (cardHandler.hasCard() == False):
+                center(self.NFCDialog)
+                self.NFCDialog.show()
+            else:
+                print("Carte déjà présente sur le lecteur")
         else:
             print("Widget déjà ouvert")
 
@@ -460,6 +489,9 @@ class QNFCDialog(QWidget):
         self.setWindowTitle("Paiement")
 
         self.button.clicked.connect(self.Cancel)
+        
+        cardObserver=QCardObserver()
+        cardObserver.cardInserted.connect(self.Payement)
 
 
 
@@ -526,7 +558,7 @@ class QMainMenu(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Gala.Manager.Core")
-        self.resize(800,600)
+        self.resize(1200,800)
         self.setWindowIcon(QIcon(PWD+"ressources/logo.png"))
         center(self)
         self.MainTab=QMainTab()

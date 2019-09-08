@@ -53,7 +53,7 @@ class QCardObserver(QObject, CardObserver, metaclass=QSingleton):
     """
     cardInserted=pyqtSignal()
     cardRemoved= pyqtSignal()   
-    hasCard=False
+    __hasCard=False
     cardUID=[]
     errorCode=[]
     cardBalance=None
@@ -62,7 +62,9 @@ class QCardObserver(QObject, CardObserver, metaclass=QSingleton):
         QObject.__init__(self)
         CardObserver.__init__(self)
         self.cardReader=getReader()
-
+    
+    def hasCard(self):
+        return self.__hasCard
 
     def update(self, observable, actions):
         (addedcards, removedcards) = actions
@@ -72,7 +74,7 @@ class QCardObserver(QObject, CardObserver, metaclass=QSingleton):
                 hresult, hcard, dwActiveProtocol = SCardConnect(hcontext,self.cardReader, SCARD_SHARE_SHARED,SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1)
                 hresult,response = SCardTransmit(hcard,dwActiveProtocol,[0xFF,0xCA,0x00,0x00,0x00])
                 
-                self.hasCard=True
+                self.__hasCard=True
                 self.errorCode=response[-2:]
                 
                 if self.errorCode != [0x63,0x00]:
@@ -90,7 +92,7 @@ class QCardObserver(QObject, CardObserver, metaclass=QSingleton):
             
         for card in removedcards:
 
-            hasCard=False
+            self.__hasCard=False
             self.cardUID=[0,0,0,0]
 
 #            print("-Removed: ", toHexString(card.atr))
@@ -99,11 +101,11 @@ class QCardObserver(QObject, CardObserver, metaclass=QSingleton):
 
     def virtualCardInsert(self):
         self.cardUID=[0x1,0x2,0x3,0x4]
-        self.hasCard=True
+        self.__hasCard=True
         self.cardInserted.emit()
 
     def virtualCardRemove(self):
         self.cardUID=[0,0,0,0]
-        self.hasCard=False
+        self.__hasCard=False
         self.cardRemoved.emit()
 
