@@ -67,6 +67,19 @@ def parseDict(Dict):
 parseDict(Dico)
 
 
+class QErrorDialog(QMessageBox):
+    def __init__(self,Message="Erreur",parent=None):
+        super().__init__(parent)
+
+        self.setText(Message)
+        self.setInformativeText("Essayez de relancer l'application ou de contacter l'équipe informatique")
+        self.setStandardButtons(QMessageBox.Ok)
+        self.setIcon(QMessageBox.Critical)
+
+        
+#        self.setWindowIcon()
+        self.setWindowTitle("Erreur")
+
 class TreeItem():
     
 
@@ -136,6 +149,13 @@ class QTreeModel(QAbstractItemModel):
         if not index.isValid():
             return None
         
+        if (role == Qt.DecorationRole):
+            if (index.column()==0):
+                try:
+                    return QPixmap("ressources/icones/"+index.internalPointer().data(0)+".png")
+                except:
+                    pass #No picture found
+
         if (role != Qt.DisplayRole):
             return None
 
@@ -248,6 +268,9 @@ class QTree(QWidget):
         data=item.internalPointer().getData()
         if len(data)>1:
             if data[1]!="":
+                errorDialog=QErrorDialog("WTF ?")
+                center(errorDialog)
+                errorDialog.exec()
                 print("ITEM SELECTED",item.internalPointer().data(0))
 
 class QAutoLineEdit(QLineEdit):
@@ -571,6 +594,12 @@ class QMainMenu(QMainWindow):
         self.CardMonitor=CardMonitor()
         self.CardObserver=QCardObserver()
         self.CardMonitor.addObserver(self.CardObserver)
+
+
+
+        font=QFont() #TODO: Dirty trick to set the whole app font size 
+        font.setPointSize(12)
+        setFont(self,font)
 
         #self.CardObserver.cardInserted.connect(self.addCard)
         #self.CardObserver.cardRemoved.connect(self.removeCard)
