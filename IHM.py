@@ -41,30 +41,6 @@ def setFont(Widget,Font):
         if (type(child) == type(QTreeView())): #Dirty hack to correct oversizing 
             child.resizeColumnToContents(0)
 
-def setFonts(Widget,Font):
-    if (Widget.children()):
-        pass
-
-with open("ItemModel.json",'r') as file:
-    Dico=json.load(file)
-
-CURRENT_KEY="root"
-ITEM_LIST=[] #Used for auto completer in search bar
-
-def parseDict(Dict):
-    global CURRENT_KEY
-    global ITEM_LIST
-    if type(Dict) == type({}):
-        """Bla"""
-      #  print(CURRENT_KEY, list(Dict.keys()))
-        for i in Dict:
-            CURRENT_KEY=i
-            parseDict(Dict[i])
-    else:
-        ITEM_LIST.append(CURRENT_KEY)
-       # print(CURRENT_KEY,str(Dict)+"€")
-
-parseDict(Dico)
 
 
 class QErrorDialog(QMessageBox):
@@ -91,6 +67,9 @@ class TreeItem():
             self.dataItem=[data]
 
         self.childItems=[]
+
+        self.uid=None
+        self.icon=""
 
     def appendChild(self,child):
         self.childItems.append(child)
@@ -132,15 +111,13 @@ class TreeItem():
 
 class QTreeModel(QAbstractItemModel):
     
-    def __init__(self,data,parent=None):
+    def __init__(self,data,headers,parent=None):
 
         super(QTreeModel,self).__init__(parent)
 
-        self.rootItem=TreeItem(["Article","Prix"])
+        self.rootItem=TreeItem(headers)
         
         self.__itemList=[]
-        self.__currentKey="root"
-        
         self.setupModelData(data,self.rootItem)
 
     
@@ -226,33 +203,34 @@ class QTreeModel(QAbstractItemModel):
 
         return self.createIndex(parentItem.row(),0,parentItem)
 
-   #TODO: FIND THE CORRECT WAY TO DISPLAY THE PRICE 
     def setupModelData(self,data,parent):
 
         if(type(data) == type({})):
-            print(self.__currentKey,list(data.keys()))
+#            print(self.__currentKey,list(data.keys()))
             for i in data:
                 self.__currentKey=i
-                item=TreeItem([i,""],parent) # /!\ THIS HACK SEEMS VERY DIRTY BUT IT WOKS WELL
+                if(type(data[i]) == type({})):
+                    item=len(self.rootItem.getData())*[""]
+                    item[0]=i
+                    item=TreeItem(item,parent) 
+                else:
+                    self.__itemList.append(i)
+                    item=TreeItem([i]+data[i],parent)
+                
                 parent.appendChild(item)
                 self.setupModelData(data[i],item)
-        else:
-            self.__itemList.append(self.__currentKey)
-            #parent.appendData(str(data)+"€")
-            parent.setData(1,str(data)+"€") # /!\ THIS HACK SEEMS VERY DIRTY BUT IT WOKS WELL
-
         
 
 
 class QTree(QWidget):
     
-    def __init__(self,parent=None):
+    def __init__(self,data,headers,parent=None):
 
         super().__init__(parent)
         #Definitions
         self.mainVBoxLayout=QVBoxLayout()
 
-        self.TreeModel=QTreeModel(Dico,parent)
+        self.TreeModel=QTreeModel(data,headers)
         self.TreeView=QTreeView()
         self.TreeView.setModel(self.TreeModel)
         self.TreeView.expandAll()
@@ -385,7 +363,9 @@ class QCounter(QWidget):
     global ITEM_LIST
     def __init__(self,parent=None):
         super().__init__(parent)
-        
+        ###TOOLS###
+        self.jsonFileName="ItemModel.json"
+
         ###Definition###
 
         self.mainGridLayout=QGridLayout()
@@ -399,7 +379,7 @@ class QCounter(QWidget):
         self.productSelectionVBoxLayout=QVBoxLayout()
         self.productSelectionGroupBox=QGroupBox()
         self.searchBar=QSearchBar()
-        self.productTree=QTree()
+        self.productTree=QTree(self.__getItemDictionary(self.jsonFileName),["Articles","Prix"])
 
         #infoNFC definition (right pannel)
         
@@ -440,7 +420,7 @@ class QCounter(QWidget):
 
         #Product Selection pannel
         self.productSelectionGroupBox.setTitle("Sélection des articles")
-        self.searchBar.inputLine.model.setStringList(ITEM_LIST)
+        self.searchBar.inputLine.model.setStringList(self.__getItemList())
 
 
 
@@ -450,7 +430,29 @@ class QCounter(QWidget):
 
         self.ButtonValidateOrder.setText("Valider et payer")
         self.ButtonValidateOrder.setFixedHeight(50)
-        
+
+
+    def __getItemDictionary(self,jsonFileName):
+        try:
+            with open(jsonFileName,'r') as file:
+                return json.load(file)
+        except:
+            #rise some error:
+            print("ERREUR: Impossible de lire le fichier",jsonFileName)
+
+    def __getItemList(self):
+        itemList=[]
+        self.__parseDictionary(self.__getItemDictionary(self.jsonFileName),itemList)
+        return itemList
+
+    def __parseDictionary(self,data,itemList):
+
+        if(type(data) == type({})):
+            for i in data:
+                if(type(data[i]) == type({})):
+                    self.__parseDictionary(data[i],itemList)
+                else:
+                    itemList.append(i)
         
 
     def OpenNFCDialog(self):
