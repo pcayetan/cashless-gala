@@ -74,11 +74,6 @@ class TreeItem():
     def appendChild(self,child):
         self.childItems.append(child)
 
-    def appendData(self,data):
-        self.dataItem.append(data)
-    
-    def setData(self,column,data):
-        self.dataItem[column]=data
 
     def child(self,row):
         return self.childItems[row]
@@ -98,7 +93,7 @@ class TreeItem():
         except IndexError:
             return None
 
-    def row(self):
+    def row(self): #ChildNumber in the Qt5 exemple
         if self.parentItem:
             return self.parentItem.childItems.index(self)
 
@@ -107,18 +102,65 @@ class TreeItem():
     def parent(self):
         return self.parentItem
 
+    #Usefull method for dynamic Tree
+
+    def insertChildren(self,position,count,columns):
+        
+        if (position<0 or position > len(self.childItems)):
+            return False
+
+        for i in range(0,count):
+            data=[QVariant()]*columns
+            item=TreeItem(data,self)
+            self.childItems.insert(position,item)
+        
+        return True
+
+    def insertColumns(self,position,columns):
+        if (position <0 or position > len(self.dataItem)):
+            return False
+
+        for i in range(0,columns): # /!\ check Qt5 exemple
+            self.dataItem.insert(position,QVariant())
+
+        for child in self.childItems:
+            child.insertColumns(position,columns)
+
+        return True
+
+    def removeChildren(self,position,count):
+        if (position < 0  or position > len(self.childItems)):
+            return False
+
+        for i in range(0,count): #I think this may create a segfault if count is incorrect
+            self.childItems.pop(position) 
+
+        return True
+
+
+    def removeColumns(self,position,columns):
+        pass
+
+    def childNumber(self): #Pointless but use the same name as the Qt5 exemple
+        return self.row()
+
+
+    def setData(self,column,data):
+        self.dataItem[column]=data
+
 
 
 class QTreeModel(QAbstractItemModel):
     
-    def __init__(self,data,headers,parent=None):
+    def __init__(self,headers,data=None,parent=None):
 
         super(QTreeModel,self).__init__(parent)
 
         self.rootItem=TreeItem(headers)
         
         self.__itemList=[]
-        self.setupModelData(data,self.rootItem)
+        if (data!=None):
+            self.setupModelData(data,self.rootItem)
 
     
     def data(self,index,role):
@@ -126,7 +168,7 @@ class QTreeModel(QAbstractItemModel):
         if not index.isValid():
             return None
         
-        if (role == Qt.DecorationRole):
+        if (role == Qt.DecorationRole): #Should be moved into the future derivated class
             if (index.column()==0):
                 try:
                     return QPixmap("ressources/icones/"+index.internalPointer().data(0)+".png")
@@ -173,7 +215,7 @@ class QTreeModel(QAbstractItemModel):
 
         return None
 
-    def index(self,row,column,parent):
+    def index(self,row,column,parent=QModelIndex()):
         
         if (not self.hasIndex(row,column,parent)):
             return QModelIndex()
@@ -203,7 +245,7 @@ class QTreeModel(QAbstractItemModel):
 
         return self.createIndex(parentItem.row(),0,parentItem)
 
-    def setupModelData(self,data,parent):
+    def setupModelData(self,data,parent): #TODO: Pseudo-Generic (Only the final nodes can have data) implementation should be overridden 
 
         if(type(data) == type({})):
 #            print(self.__currentKey,list(data.keys()))
@@ -219,18 +261,69 @@ class QTreeModel(QAbstractItemModel):
                 
                 parent.appendChild(item)
                 self.setupModelData(data[i],item)
-        
+
+    #Mandatory functions for editable tree
+
+    def insertRows(self,position,rows,parent=QModelIndex()):
+        parentItem=self.getItem(parent)
+        if (not parentItem):
+            return False
+        self.beginInsertRows(parent,position,position + rows -1)
+        sucess=parentItem.insertChildren(position,rows,self.rootItem.columnCount())
+        self.endInsertRows()
+        return sucess
+
+    def insertColumns(self,position,columns,parent=QModelIndex()):
+        pass
+
+    def removeRows(self,position,rows,parent):
+        pass
+
+    def removeColumns(self,position,columns,parent):
+        pass
+
+    def setHeaderData(self,section,orientation,value,role):
+        if role != QtCore.Qt.EditRole or orientation != QtCore.Qt.Horizontal:
+            return False
+
+        result = self.rootItem.setData(section, value)
+        if result:
+            self.headerDataChanged.emit(orientation, section, section)
+
+        return result
+    
+    def setData(self,index,value,role):
+        if (role != Qt.EditRole):
+            return False
+
+        item = self.getItem(index)
+        result=item.setData(index.column(),value)
+
+        if (result == True):
+            self.dataChanged.emit(index,index,[Qt.DisplayRole,Qt.EditRole])
+
+        return result
+
+    #Tool
+    
+    def getItem(self,index):
+        if (index.isValid()):
+            item=index.internalPointer()
+            if (item):
+                return item
+                
+        return self.rootItem
 
 
 class QTree(QWidget):
     
-    def __init__(self,data,headers,parent=None):
+    def __init__(self,headers,data=None,parent=None):
 
         super().__init__(parent)
         #Definitions
         self.mainVBoxLayout=QVBoxLayout()
 
-        self.TreeModel=QTreeModel(data,headers)
+        self.TreeModel=QTreeModel(headers,data)
         self.TreeView=QTreeView()
         self.TreeView.setModel(self.TreeModel)
         self.TreeView.expandAll()
@@ -240,16 +333,81 @@ class QTree(QWidget):
         self.mainVBoxLayout.addWidget(self.TreeView)
         self.setLayout(self.mainVBoxLayout)
 
-        self.TreeView.doubleClicked[QModelIndex].connect(self.itemSelector)
 
-    def itemSelector(self,item):
+
+
+class QItemSelector(QTree):
+
+    def __init__(self,headers,data=None,parent=None):
+        super().__init__(headers,data,parent)
+        self.TreeView.doubleClicked[QModelIndex].connect(self.selectItem)
+        self.basketTree=None
+
+    def setBasket(self,basketTree):
+        self.basketTree=basketTree
+
+    def selectItem(self,item):
         data=item.internalPointer().getData()
         if len(data)>1:
             if data[1]!="":
-                errorDialog=QErrorDialog("WTF ?")
-                center(errorDialog)
-                errorDialog.exec()
-                print("ITEM SELECTED",item.internalPointer().data(0))
+              #  errorDialog=QErrorDialog("WTF ?")
+              #  center(errorDialog)
+              #  errorDialog.exec()
+                print("ITEM SELECTED",item.internalPointer().data(0),item)
+                #self.basketTree.TreeModel.insertRow(1,item.parent())
+
+                index = self.basketTree.TreeView.selectionModel().currentIndex()
+                model = self.basketTree.TreeView.model()
+
+                if not model.insertRow(index.row()+1, index.parent()):
+                    return
+
+                #self.updateActions()
+
+                for column in range(model.columnCount(index.parent())):
+
+                    child = model.index(index.row()+1, column, index.parent())
+                    model.setData(child, "[NO DATA]", Qt.EditRole)
+
+                btn=QQuantity()
+                child=model.index(index.row()+1,1,index.parent())
+                model.setData(child,"",Qt.EditRole)
+                self.basketTree.TreeView.setIndexWidget(child,btn)
+                self.basketTree.TreeView.resizeColumnToContents(1) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
+                self.basketTree.TreeView.resizeColumnToContents(0)
+
+class QQuantity(QWidget):
+
+    def __init__(self,parent=None):
+        super().__init__(parent)
+        
+        #Definition
+        self.mainHBoxLayout=QHBoxLayout()
+        self.minusButton=QToolButton()
+        self.quantityEditLine=QLineEdit()
+        self.plusButton=QToolButton()
+
+        #Settings
+        self.minusButton.setText("-")
+        #self.minusButton.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Minimum)
+
+        self.quantityEditLine.setText("1")
+        self.quantityEditLine.setAlignment(Qt.AlignHCenter)
+        self.quantityEditLine.setFixedWidth(50)
+        #self.quantityEditLine.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Minimum)
+
+        self.plusButton.setText("+")
+        #self.plusButton.setSizePolicy(QSizePolicy.MinimumExpanding ,QSizePolicy.Minimum)
+
+        self.setSizePolicy(QSizePolicy.Minimum,QSizePolicy.Minimum)        
+        #Link
+
+        self.mainHBoxLayout.addWidget(self.minusButton)
+        self.mainHBoxLayout.addWidget(self.quantityEditLine)
+        self.mainHBoxLayout.addWidget(self.plusButton)
+        self.setLayout(self.mainHBoxLayout)
+
+
 
 class QAutoLineEdit(QLineEdit):
     def __init__(self,parent=None):
@@ -373,13 +531,13 @@ class QCounter(QWidget):
         self.orderVBoxLayout=QVBoxLayout()
         self.orderGroupBox=QGroupBox() 
         self.orderRemovePushButton=QPushButton()
-        self.orderListWidget= QListWidget()
+        self.orderListWidget= QTree(["Articles","Quantité","Prix total"])
 
         #ProductSelection definition (middle pannel)
         self.productSelectionVBoxLayout=QVBoxLayout()
         self.productSelectionGroupBox=QGroupBox()
         self.searchBar=QSearchBar()
-        self.productTree=QTree(self.__getItemDictionary(self.jsonFileName),["Articles","Prix"])
+        self.productTree=QItemSelector(["Articles","Prix"],self.__getItemDictionary(self.jsonFileName))
 
         #infoNFC definition (right pannel)
         
@@ -404,6 +562,8 @@ class QCounter(QWidget):
         self.productSelectionVBoxLayout.addWidget(self.productTree)
         self.productSelectionGroupBox.setLayout(self.productSelectionVBoxLayout)
         self.mainGridLayout.addWidget(self.productSelectionGroupBox,0,1,2,1)
+        
+        self.productTree.setBasket(self.orderListWidget)
 
         #Payment pannel
         self.paymentVBoxLayout.addWidget(self.infoNFC)
