@@ -435,6 +435,19 @@ class QItemSelector(QWidget):
         for i in reversed(range(model.columnCount(index.parent()))):
             self.basketTree.treeView.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
 
+    def hasProductUID(self,uid):
+
+        index = self.basketTree.treeModel.index(-1,-1,QModelIndex())
+        model = self.basketTree.treeModel
+        n_child=model.rootItem.childCount()
+        n_column=model.columnCount(index)
+
+        for i in range(0,n_child):
+            if (model.index(i,0).internalPointer().uid == uid):
+                return i
+        
+        return -1
+
     def selectItem(self,item):
         data=item.internalPointer().getData()
         if len(data)>1:
@@ -448,33 +461,36 @@ class QItemSelector(QWidget):
                 n_child=model.rootItem.childCount()
                 n_column=model.columnCount(index)
 
-                for i in range(0,n_child):
-                    pass
+                if (self.hasProductUID(item.internalPointer().uid) == -1):
+                    if not model.insertRow(index.row()+1, index.parent()):
+                        return
 
-                if not model.insertRow(index.row()+1, index.parent()):
-                    return
+                    btn=QQuantity()
+                    #btn.quantityEditLine.editingFinished.connect(self.update)
+                    self.buttonList.insert(0,btn)
+                    btn.quantityChanged.connect(self.updatePrices)
 
-                btn=QQuantity()
-                #btn.quantityEditLine.editingFinished.connect(self.update)
-                self.buttonList.insert(0,btn)
-                btn.quantityChanged.connect(self.updatePrices)
+                    child=model.index(index.row()+1,1,index.parent())
+                    child.internalPointer().price=item.internalPointer().price
+                    child.internalPointer().uid=item.internalPointer().uid
 
-                child=model.index(index.row()+1,1,index.parent())
-                child.internalPointer().price=item.internalPointer().price
+                    self.basketTree.treeView.setIndexWidget(child,btn)
 
-                self.basketTree.treeView.setIndexWidget(child,btn)
+                    for column in range(model.columnCount(index.parent())): #TODO: This part a quiet DIRTY
 
-                for column in range(model.columnCount(index.parent())): #TODO: This part a quiet DIRTY
+                        child = model.index(index.row()+1, column, index.parent())
+                        if (column == 0):
+                            model.setData(child,item.internalPointer().data(0), Qt.EditRole)
+                        if (column == 2):
+                            model.setData(child,str(float(btn.quantityEditLine.text())*item.internalPointer().price)+" €" , Qt.EditRole)
+                    
 
-                    child = model.index(index.row()+1, column, index.parent())
-                    if (column == 0):
-                        model.setData(child,item.internalPointer().data(0), Qt.EditRole)
-                    if (column == 2):
-                        model.setData(child,str(float(btn.quantityEditLine.text())*item.internalPointer().price)+" €" , Qt.EditRole)
-                
-
-                for i in reversed(range(model.columnCount(index.parent()))):
-                    self.basketTree.treeView.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
+                    for i in reversed(range(model.columnCount(index.parent()))):
+                        self.basketTree.treeView.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
+                else:
+                    row=self.hasProductUID(item.internalPointer().uid)
+#                    index=model.index(row,0)
+                    self.buttonList[row].incQuantity()
 
 
 class QBasket(QWidget):
@@ -791,7 +807,7 @@ class QMainTab(QTabWidget):
         self.addTab(self.TabStock,"Stocks")
         self.addTab(self.TabStat,"Stats")
 
-        self.resize(600,400)
+        self.resize(800,600)
 
 
 
@@ -911,7 +927,7 @@ class QMainMenu(QMainWindow):
 
 
         font=QFont() #TODO: Dirty trick to set the whole app font size 
-        font.setPointSize(12)
+        font.setPointSize(16)
         setFont(self,font)
 
         #self.CardObserver.cardInserted.connect(self.addCard)
