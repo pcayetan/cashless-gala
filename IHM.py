@@ -14,6 +14,8 @@ from QNFC import *
 import numpy as np
 import json
 
+import copy
+
 #Pour fixer l'erreur de PyInstaller
 import numpy.random.common
 import numpy.random.bounded_integers
@@ -44,17 +46,18 @@ def setFont(Widget,Font):
 
 
 class QErrorDialog(QMessageBox):
-    def __init__(self,Message="Erreur",parent=None):
+    def __init__(self,title="Erreur",message="Erreur",info="Une erreur est survenue",icon=QMessageBox.Warning,parent=None):
         super().__init__(parent)
 
-        self.setText(Message)
-        self.setInformativeText("Essayez de relancer l'application ou de contacter l'équipe informatique")
+        self.setText(message)
+        self.setInformativeText(info)
         self.setStandardButtons(QMessageBox.Ok)
-        self.setIcon(QMessageBox.Critical)
+        self.setIcon(icon)
 
         
 #        self.setWindowIcon()
-        self.setWindowTitle("Erreur")
+        self.setWindowTitle(title)
+        self.setBaseSize(QSize(800,600))
 
 class TreeItem():
     
@@ -68,8 +71,6 @@ class TreeItem():
 
         self.childItems=[]
 
-        self.uid=None
-        self.icon=""
 
     def appendChild(self,child):
         self.childItems.append(child)
@@ -149,6 +150,25 @@ class TreeItem():
         self.dataItem[column]=data
 
 
+class Item(TreeItem):
+    
+    def __init__(self,data,parent=None):
+        super().__init__(data,parent)
+        self.price=0
+        self.uid=None
+        self.icon=""
+
+    def insertChildren(self,position,count,columns):
+        if (position<0 or position > len(self.childItems)):
+            return False
+
+        for i in range(0,count):
+            data=[QVariant()]*columns
+            item=Item(data,self)
+            self.childItems.insert(position,item)
+        
+        return True
+
 
 class QTreeModel(QAbstractItemModel):
     
@@ -158,7 +178,7 @@ class QTreeModel(QAbstractItemModel):
 
         self.rootItem=TreeItem(headers)
         
-        self.__itemList=[]
+        self.itemList=[]
         if (data!=None):
             self.setupModelData(data,self.rootItem)
 
@@ -256,7 +276,7 @@ class QTreeModel(QAbstractItemModel):
                     item[0]=i
                     item=TreeItem(item,parent) 
                 else:
-                    self.__itemList.append(i)
+                    self.itemList.append(i)
                     item=TreeItem([i]+data[i],parent)
                 
                 parent.appendChild(item)
@@ -323,28 +343,97 @@ class QTree(QWidget):
         #Definitions
         self.mainVBoxLayout=QVBoxLayout()
 
-        self.TreeModel=QTreeModel(headers,data)
-        self.TreeView=QTreeView()
-        self.TreeView.setModel(self.TreeModel)
-        self.TreeView.expandAll()
-        self.TreeView.resizeColumnToContents(0)
+        self.treeModel=QTreeModel(headers,data)
+        self.treeView=QTreeView()
+        self.treeView.setModel(self.treeModel)
+        self.treeView.expandAll()
+        self.treeView.resizeColumnToContents(0)
 
         #Link
-        self.mainVBoxLayout.addWidget(self.TreeView)
+        self.mainVBoxLayout.addWidget(self.treeView)
         self.setLayout(self.mainVBoxLayout)
 
 
+class QItemSelectorModel(QTreeModel):
+    def __init__(self,headers,data=None,parent=None):
+        #super(QTreeModel,self).__init__(parent) #Weird but seems ok
+        super().__init__(headers) #Weird but seems ok
+        
+        self.rootItem=Item(headers)
+        self.itemList=[]
+        if (data!=None):
+            self.setupModelData(data,self.rootItem)
+
+    def setupModelData(self,data,parent):
+
+        if(type(data) == type({})):
+#            print(self.__currentKey,list(data.keys()))
+            for i in data:
+                self.__currentKey=i
+                if(type(data[i]) == type({})):
+                    item=len(self.rootItem.getData())*[""]
+                    item[0]=i
+                    item=Item(item,parent) 
+                else:
+                    self.itemList.append(i)
+                    uid=data[i][0]
+                    price=data[i][1]
+                    
+
+                    #parent.icon=str(uid)
+                    item=Item([i,str(price)+" €"],parent)
+                    item.uid=uid
+                    item.price=price
+                
+                parent.appendChild(item)
+                self.setupModelData(data[i],item)
 
 
-class QItemSelector(QTree):
+class QItemSelector(QWidget):
 
     def __init__(self,headers,data=None,parent=None):
-        super().__init__(headers,data,parent)
-        self.TreeView.doubleClicked[QModelIndex].connect(self.selectItem)
+        super().__init__(parent)
+
+        #Definitions
+        self.mainVBoxLayout=QVBoxLayout()
+
+        self.treeModel=QItemSelectorModel(headers,data)
+        self.treeView=QTreeView()
+        self.treeView.setModel(self.treeModel)
+        self.treeView.expandAll()
+        self.treeView.resizeColumnToContents(0)
+        
         self.basketTree=None
+
+        self.indexPriceList=[]
+        self.buttonList=[]
+
+        #Link
+        self.mainVBoxLayout.addWidget(self.treeView)
+        self.setLayout(self.mainVBoxLayout)
+
+        self.treeView.doubleClicked[QModelIndex].connect(self.selectItem)
+        
+        
 
     def setBasket(self,basketTree):
         self.basketTree=basketTree
+
+    def getIndex(self,row,column):
+        model=self.treeModel
+        model.index(row,column)
+
+
+    def updatePrices(self):
+        for row in range(self.basketTree.treeModel.rootItem.childCount()):
+            index=self.basketTree.treeModel.index(row,2)
+            value=self.basketTree.treeModel.index(row,2).internalPointer().price
+            qte=int(self.buttonList[row].quantityEditLine.text())
+            self.basketTree.treeModel.setData(index,str(value*qte)+" €",Qt.EditRole)
+
+        model = self.basketTree.treeModel
+        for i in reversed(range(model.columnCount(index.parent()))):
+            self.basketTree.treeView.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
 
     def selectItem(self,item):
         data=item.internalPointer().getData()
@@ -353,30 +442,63 @@ class QItemSelector(QTree):
               #  errorDialog=QErrorDialog("WTF ?")
               #  center(errorDialog)
               #  errorDialog.exec()
-                print("ITEM SELECTED",item.internalPointer().data(0),item)
-                #self.basketTree.TreeModel.insertRow(1,item.parent())
+              #  index = self.basketTree.treeView.selectionModel().currentIndex()
+                index = self.basketTree.treeModel.index(-1,-1,QModelIndex())
+                model = self.basketTree.treeModel
+                n_child=model.rootItem.childCount()
+                n_column=model.columnCount(index)
 
-                index = self.basketTree.TreeView.selectionModel().currentIndex()
-                model = self.basketTree.TreeView.model()
+                for i in range(0,n_child):
+                    pass
 
                 if not model.insertRow(index.row()+1, index.parent()):
                     return
 
-                #self.updateActions()
+                btn=QQuantity()
+                #btn.quantityEditLine.editingFinished.connect(self.update)
+                self.buttonList.insert(0,btn)
+                btn.quantityChanged.connect(self.updatePrices)
 
-                for column in range(model.columnCount(index.parent())):
+                child=model.index(index.row()+1,1,index.parent())
+                child.internalPointer().price=item.internalPointer().price
+
+                self.basketTree.treeView.setIndexWidget(child,btn)
+
+                for column in range(model.columnCount(index.parent())): #TODO: This part a quiet DIRTY
 
                     child = model.index(index.row()+1, column, index.parent())
-                    model.setData(child, "[NO DATA]", Qt.EditRole)
+                    if (column == 0):
+                        model.setData(child,item.internalPointer().data(0), Qt.EditRole)
+                    if (column == 2):
+                        model.setData(child,str(float(btn.quantityEditLine.text())*item.internalPointer().price)+" €" , Qt.EditRole)
+                
 
-                btn=QQuantity()
-                child=model.index(index.row()+1,1,index.parent())
-                model.setData(child,"",Qt.EditRole)
-                self.basketTree.TreeView.setIndexWidget(child,btn)
-                self.basketTree.TreeView.resizeColumnToContents(1) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
-                self.basketTree.TreeView.resizeColumnToContents(0)
+                for i in reversed(range(model.columnCount(index.parent()))):
+                    self.basketTree.treeView.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
+
+
+class QBasket(QWidget):
+
+    def __init__(self,headers,data=None,parent=None):
+        super().__init__(parent)
+
+        #Definitions
+        self.mainVBoxLayout=QVBoxLayout()
+
+        self.treeModel=QItemSelectorModel(headers,data)
+        self.treeView=QTreeView()
+        self.treeView.setModel(self.treeModel)
+        self.treeView.expandAll()
+        self.treeView.resizeColumnToContents(0)
+        
+
+        #Link
+        self.mainVBoxLayout.addWidget(self.treeView)
+        self.setLayout(self.mainVBoxLayout)
 
 class QQuantity(QWidget):
+
+    quantityChanged=pyqtSignal()
 
     def __init__(self,parent=None):
         super().__init__(parent)
@@ -406,6 +528,35 @@ class QQuantity(QWidget):
         self.mainHBoxLayout.addWidget(self.quantityEditLine)
         self.mainHBoxLayout.addWidget(self.plusButton)
         self.setLayout(self.mainHBoxLayout)
+
+        self.plusButton.clicked.connect(self.incQuantity)
+        self.minusButton.clicked.connect(self.decQuantity)
+        self.quantityEditLine.editingFinished.connect(self.editingFinished)
+
+    def incQuantity(self):
+        value=int(self.quantityEditLine.text())
+        self.quantityEditLine.setText(str(value+1))
+        self.quantityEditLine.editingFinished.emit()
+        self.quantityChanged.emit()
+        
+
+    def decQuantity(self):
+        value=int(self.quantityEditLine.text())
+        if (value > 0):
+            self.quantityEditLine.setText(str(value-1))
+            self.quantityEditLine.editingFinished.emit()
+            self.quantityChanged.emit()
+            
+    def editingFinished(self):
+        value=int(self.quantityEditLine.text())
+        if (value >= 0):
+            self.quantityChanged.emit()
+        else:
+            self.quantityEditLine.setText("0")
+            popUp=QErrorDialog("Erreur de saisie","Quantité invalide","Veuillez saisir un nombre entier positif")
+            #center(popUp)
+            popUp.exec()
+
 
 
 
@@ -531,7 +682,7 @@ class QCounter(QWidget):
         self.orderVBoxLayout=QVBoxLayout()
         self.orderGroupBox=QGroupBox() 
         self.orderRemovePushButton=QPushButton()
-        self.orderListWidget= QTree(["Articles","Quantité","Prix total"])
+        self.orderListWidget= QBasket(["Articles","Quantité","Prix total"])
 
         #ProductSelection definition (middle pannel)
         self.productSelectionVBoxLayout=QVBoxLayout()

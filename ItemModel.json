@@ -2,15 +2,15 @@
   "Boisson": 
   {
     "Chaudes":
-    {"Café":[1.5],"Thé":[1.5]},
+    {"Café":[1,1.5],"Thé":[2,1.5]},
     "Alcools":
-    {"Bières":[1.00],"Champagne":[2.00]},
+    {"Bières":[3,1.00],"Champagne":[4,2.00]},
     "Softs":
-    {"Coca":[1.00],"Ice Tea":[1.50]}
+    {"Coca":[5,1.00],"Ice Tea":[6,1.50]}
   },
   "Snacks":
   {
-    "Frites":[1.00],
-    "Hot-Dog":[2.00]
+    "Frites":[7,1.00],
+    "Hot-Dog":[8,2.00]
   }
 }
