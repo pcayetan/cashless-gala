@@ -15,6 +15,7 @@ import numpy as np
 import json
 
 import copy
+from babel.numbers import format_currency
 
 #Pour fixer l'erreur de PyInstaller
 import numpy.random.common
@@ -22,6 +23,9 @@ import numpy.random.bounded_integers
 import numpy.random.entropy
 
 PWD=os.getcwd()+"/"
+
+def euro(price):
+    return format_currency(price,'EUR',locale='fr_FR')
 
 def center(self):
     """Centerize the window"""
@@ -147,7 +151,12 @@ class TreeItem():
 
 
     def setData(self,column,data):
-        self.dataItem[column]=data
+        if column < 0 or column >= len(self.dataItem):
+            return False
+
+        self.dataItem[column] = data
+
+        return True
 
 
 class Item(TreeItem):
@@ -293,14 +302,31 @@ class QTreeModel(QAbstractItemModel):
         self.endInsertRows()
         return sucess
 
-    def insertColumns(self,position,columns,parent=QModelIndex()):
-        pass
+    def insertColumns(self, position, columns, parent=QModelIndex()):
+        self.beginInsertColumns(parent, position, position + columns - 1)
+        success = self.rootItem.insertColumns(position, columns)
+        self.endInsertColumns()
 
-    def removeRows(self,position,rows,parent):
-        pass
+        return success
 
-    def removeColumns(self,position,columns,parent):
-        pass
+    def removeRows(self, position, rows, parent=QModelIndex()):
+        parentItem = self.getItem(parent)
+
+        self.beginRemoveRows(parent, position, position + rows - 1)
+        success = parentItem.removeChildren(position, rows)
+        self.endRemoveRows()
+
+        return success
+
+    def removeColumns(self, position, columns, parent=QModelIndex()):
+        self.beginRemoveColumns(parent, position, position + columns - 1)
+        success = self.rootItem.removeColumns(position, columns)
+        self.endRemoveColumns()
+
+        if self.rootItem.columnCount() == 0:
+            self.removeRows(0, rowCount())
+
+        return success
 
     def setHeaderData(self,section,orientation,value,role):
         if role != QtCore.Qt.EditRole or orientation != QtCore.Qt.Horizontal:
@@ -312,7 +338,7 @@ class QTreeModel(QAbstractItemModel):
 
         return result
     
-    def setData(self,index,value,role):
+    def setData(self,index,value,role=Qt.EditRole):
         if (role != Qt.EditRole):
             return False
 
@@ -381,7 +407,7 @@ class QItemSelectorModel(QTreeModel):
                     
 
                     #parent.icon=str(uid)
-                    item=Item([i,str(price)+" €"],parent)
+                    item=Item([i,euro(str(price))],parent)
                     item.uid=uid
                     item.price=price
                 
@@ -406,7 +432,8 @@ class QItemSelector(QWidget):
         self.basketTree=None
 
         self.indexPriceList=[]
-        self.buttonList=[]
+        self.quantityButtonList=[]
+        self.delButtonList=[]
 
         #Link
         self.mainVBoxLayout.addWidget(self.treeView)
@@ -423,17 +450,39 @@ class QItemSelector(QWidget):
         model=self.treeModel
         model.index(row,column)
 
+    def resizeEvent(self,event):
+        view=self.basketTree.treeView
+
+        view.setColumnWidth(3,48)
+
+    def forceRefresh(self):
+
+        model=self.basketTree.treeModel
+        view= self.basketTree.treeView
+        view.setColumnWidth(0,100) #Ultimate force resizing.. it seems that whithout this, resizeColumnToContents does not work every time
+        for i in reversed(range(model.columnCount(QModelIndex()))):
+            view.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
+                                                    #UPDATE: ACCORDING TO THIS LINK https://stackoverflow.com/questions/8364061/how-do-you-set-the-column-width-on-a-qtreeview
+                                                    #THE SIZE OF THE TREEVIEW MAYBE UPDATED WITH setModel FUNCTION, NOT TRIED YET
+#            view.update(model.index(i,1,QModelIndex()))
+
 
     def updatePrices(self):
+        totalPrice=0
         for row in range(self.basketTree.treeModel.rootItem.childCount()):
             index=self.basketTree.treeModel.index(row,2)
             value=self.basketTree.treeModel.index(row,2).internalPointer().price
-            qte=int(self.buttonList[row].quantityEditLine.text())
-            self.basketTree.treeModel.setData(index,str(value*qte)+" €",Qt.EditRole)
+            qte=int(self.quantityButtonList[row].quantityEditLine.text())
+            totalPrice+=value*qte
+            self.basketTree.treeModel.setData(index,euro(value*qte),Qt.EditRole)
+
 
         model = self.basketTree.treeModel
-        for i in reversed(range(model.columnCount(index.parent()))):
-            self.basketTree.treeView.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
+        self.basketTree.totalRowInfo.setRow(0,1,euro(totalPrice)) #Display the total price
+        self.basketTree.totalPrice=totalPrice #store the total price as a number
+
+        self.forceRefresh()
+
 
     def hasProductUID(self,uid):
 
@@ -461,20 +510,31 @@ class QItemSelector(QWidget):
                 n_child=model.rootItem.childCount()
                 n_column=model.columnCount(index)
 
-                if (self.hasProductUID(item.internalPointer().uid) == -1):
+                if (self.hasProductUID(item.internalPointer().uid) == -1): #if the selected item already exist in the basket
                     if not model.insertRow(index.row()+1, index.parent()):
                         return
-
-                    btn=QQuantity()
-                    #btn.quantityEditLine.editingFinished.connect(self.update)
-                    self.buttonList.insert(0,btn)
-                    btn.quantityChanged.connect(self.updatePrices)
 
                     child=model.index(index.row()+1,1,index.parent())
                     child.internalPointer().price=item.internalPointer().price
                     child.internalPointer().uid=item.internalPointer().uid
 
-                    self.basketTree.treeView.setIndexWidget(child,btn)
+                    delButton=QDelButton()
+                    #delButton.setText("x")
+                    delButton.setIcon(QIcon("ressources/icones/delete.png"))
+                    delButton.setIconSize(QSize(32, 32))
+                    delButton.setFixedSize(QSize(48,48))
+
+                    quantityButton=QQuantity()
+
+                    self.quantityButtonList.insert(0,quantityButton)
+                    self.delButtonList.insert(0,delButton)
+
+                    quantityButton.quantityChanged.connect(self.updatePrices)
+                    delButton.deleted[QToolButton].connect(self.deleteItem)
+
+
+                    self.basketTree.treeView.setIndexWidget(child,quantityButton)
+                    self.basketTree.treeView.setIndexWidget(model.index(index.row()+1,3,index.parent()),delButton)
 
                     for column in range(model.columnCount(index.parent())): #TODO: This part a quiet DIRTY
 
@@ -482,15 +542,26 @@ class QItemSelector(QWidget):
                         if (column == 0):
                             model.setData(child,item.internalPointer().data(0), Qt.EditRole)
                         if (column == 2):
-                            model.setData(child,str(float(btn.quantityEditLine.text())*item.internalPointer().price)+" €" , Qt.EditRole)
-                    
+                            model.setData(child,euro(float(quantityButton.quantityEditLine.text())*item.internalPointer().price) , Qt.EditRole)
 
-                    for i in reversed(range(model.columnCount(index.parent()))):
-                        self.basketTree.treeView.resizeColumnToContents(i) #TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed 
+                    self.forceRefresh()
                 else:
                     row=self.hasProductUID(item.internalPointer().uid)
 #                    index=model.index(row,0)
-                    self.buttonList[row].incQuantity()
+                    self.quantityButtonList[row].incQuantity()
+                
+                self.updatePrices()
+
+    def deleteItem(self,delButton):
+        
+        index=self.delButtonList.index(delButton)
+        model=self.basketTree.treeModel
+
+        self.quantityButtonList.pop(index)
+        self.delButtonList.pop(index)
+        model.removeRow(index,QModelIndex())
+
+        self.updatePrices()   
 
 
 class QBasket(QWidget):
@@ -506,11 +577,37 @@ class QBasket(QWidget):
         self.treeView.setModel(self.treeModel)
         self.treeView.expandAll()
         self.treeView.resizeColumnToContents(0)
+        self.totalRowInfo=QRowInfo()
+        self.totalPrice=0
+
+        #Settings
+
+        self.totalRowInfo.addRow("Total",euro(0))
         
 
         #Link
         self.mainVBoxLayout.addWidget(self.treeView)
+        self.mainVBoxLayout.addWidget(self.totalRowInfo)
         self.setLayout(self.mainVBoxLayout)
+
+
+class QDelButton(QToolButton):
+
+    deleted=pyqtSignal(QToolButton)
+
+    def __init__(self,parent=None):
+        super().__init__(parent)
+        self.row=-1
+        self.clicked.connect(self.delete)
+
+    def setRow(self,row):
+        self.row=row
+    
+    def getRow(self):
+        return self.row
+
+    def delete(self):
+        self.deleted.emit(self)
 
 class QQuantity(QWidget):
 
@@ -553,7 +650,7 @@ class QQuantity(QWidget):
         value=int(self.quantityEditLine.text())
         self.quantityEditLine.setText(str(value+1))
         self.quantityEditLine.editingFinished.emit()
-        self.quantityChanged.emit()
+        #self.quantityChanged.emit()
         
 
     def decQuantity(self):
@@ -561,7 +658,7 @@ class QQuantity(QWidget):
         if (value > 0):
             self.quantityEditLine.setText(str(value-1))
             self.quantityEditLine.editingFinished.emit()
-            self.quantityChanged.emit()
+#            self.quantityChanged.emit()
             
     def editingFinished(self):
         value=int(self.quantityEditLine.text())
@@ -640,7 +737,7 @@ class QInfoNFC(QGroupBox):
         #settings
 
         self.setTitle("Lecteur NFC")
-        self.RowInfo.addRow("Solde","0€")
+        self.RowInfo.addRow("Solde",euro(0))
         self.RowInfo.addRow("UID","00 00 00 00 00 00 00")
 
         nfcObserver=QCardObserver()
@@ -697,8 +794,7 @@ class QCounter(QWidget):
         #Order definition (left pannel)
         self.orderVBoxLayout=QVBoxLayout()
         self.orderGroupBox=QGroupBox() 
-        self.orderRemovePushButton=QPushButton()
-        self.orderListWidget= QBasket(["Articles","Quantité","Prix total"])
+        self.orderListWidget= QBasket(["Articles","Quantité","Prix total",""])
 
         #ProductSelection definition (middle pannel)
         self.productSelectionVBoxLayout=QVBoxLayout()
@@ -720,7 +816,6 @@ class QCounter(QWidget):
         #Order pannel
         
         self.orderVBoxLayout.addWidget(self.orderListWidget)
-        self.orderVBoxLayout.addWidget(self.orderRemovePushButton)
         self.orderGroupBox.setLayout(self.orderVBoxLayout)
         self.mainGridLayout.addWidget(self.orderGroupBox,0,0,2,1)
 
@@ -743,7 +838,6 @@ class QCounter(QWidget):
         ###Settings###
         #Order pannel
         self.orderGroupBox.setTitle("Panier")
-        self.orderRemovePushButton.setText("Supprimer")
 
         #Product Selection pannel
         self.productSelectionGroupBox.setTitle("Sélection des articles")

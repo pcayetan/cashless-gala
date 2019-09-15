@@ -32,6 +32,7 @@ if (__name__ == '__main__'):
 
 
     # la fenêtre est rendue visible
+#    MainWindow.showMaximized()
     MainWindow.show()
     FakeCard.show()
     # exécution de l'application, l'exécution permet de gérer les événements
