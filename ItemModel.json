@@ -2,15 +2,24 @@
   "Boisson": 
   {
     "Chaudes":
-    {"Café":[1,1.5],"Thé":[2,1.5]},
+    {"Café":{"uid":"CAFE","defaultPrice":1.5,"happyHour": "19h30 - 19h40 = 0.5 ; 19h50 - 20h00 = 0.25"},
+     "Thé":{"uid":"THE","defaultPrice":1.5}
+    },
     "Alcools":
-    {"Bières":[3,1.00],"Champagne":[4,2.00]},
+    {
+    "Bières":{"uid":"BIERE","defaultPrice":1.00, "happyHour": "12h57 - 13h59 = 0.5 ; 20h00 - 23h50 = 0.25"},
+    "Champagne":{"uid":"CHAMPAGNE","defaultPrice":2.00}
+    },
     "Softs":
-    {"Coca":[5,1.00],"Ice Tea":[6,1.50]}
+    {
+    "Coca":{"uid":"COCA","defaultPrice":1.00},
+    "Ice Tea":{"uid":"ICE-TEA","defaultPrice":1.50},
+    "Eaux":{"uid":"EAU","defaultPrice":0.5}
+    }
   },
   "Snacks":
   {
-    "Frites":[7,1.00],
-    "Hot-Dog":[8,2.00]
+    "Frites":{"uid":"FRITE","defaultPrice":1.00, "happyHour": "18h13 - 20h00 = 0.5"},
+    "Hot-Dog":{"uid":"HOT-DOG","defaultPrice":2.00}
   }
 }
