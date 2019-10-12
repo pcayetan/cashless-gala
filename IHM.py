@@ -429,6 +429,7 @@ class QTransaction(QWidget):
         self.historyGroupBox = QGroupBox()
         self.historyLayout = QVBoxLayout()
         self.historyTree = QBarHistory(["UID", "Credit"])
+        self.infoNFC = QInfoNFC()
 
         # settings
 
@@ -461,7 +462,7 @@ class QTransaction(QWidget):
 
         self.payementTypeGroupBox.setLayout(self.payementTypeLayout)
 
-        self.mainGridLayout.addWidget(self.payementTypeGroupBox, 0, 0)
+        self.mainGridLayout.addWidget(self.payementTypeGroupBox, 0, 0, 1, 1)
 
         # Payement
         self.payementLayout.addWidget(self.creditCardPayement)
@@ -470,12 +471,13 @@ class QTransaction(QWidget):
         self.payementLayout.addWidget(self.nfcPayement)
         self.payementLayout.addWidget(self.otherPayement)
 
-        self.mainGridLayout.addLayout(self.payementLayout, 1, 0, 2, 1)
+        self.mainGridLayout.addLayout(self.payementLayout, 1, 0, 1, 1)
 
         # History
-        self.historyLayout.addWidget(self.historyTree)
-        self.historyGroupBox.setLayout(self.historyLayout)
-        self.mainGridLayout.addWidget(self.historyGroupBox, 0, 1, 3, 1)
+        self.historyLayout.addWidget(self.infoNFC)
+        self.historyLayout.addWidget(self.historyGroupBox)
+        self.historyGroupBox.setLayout(self.historyTree.layout())
+        self.mainGridLayout.addLayout(self.historyLayout, 0, 1, 2, 1)
 
         self.setLayout(self.mainGridLayout)
 
