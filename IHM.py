@@ -18,7 +18,27 @@ import json
 
 import copy
 
+
+#  Shared variables
 PWD = os.getcwd() + "/"
+
+
+#  Get item tree
+
+try:
+    itemRegister = QItemRegister()
+    config = MachineConfig()
+    ITEM_TREE = requestCounterProduct(config.counterID)
+    itemRegister.loadDict(ITEM_TREE)
+except:
+    print("Unable to download the item file")
+    try:
+        with open(config.defaultItemFileName, "r") as file:
+            ITEM_TREE = json.load(file)
+        itemRegister.loadDict(ITEM_TREE)
+    except:
+        ITEM_TREE = {}
+        print("Local item file not found")
 
 
 def setFont(Widget, Font):
@@ -46,26 +66,41 @@ class QAutoCompleteLineEdit(QLineEdit):
 class QInfoNFC(QGroupBox):
     """Display some basics info about the NFC card """
 
+    connector = QConnector()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         # Definitions
         self.mainVBoxLayout = QVBoxLayout()
-        #        self.frameGroupBox=QGroupBox()
         self.RowInfo = QRowInfo()
+        self.userInfoButton = QPushButton()
 
         # Link
         #        self.frameGroupBox.setLayout(self.mainVBoxLayout)
         self.setLayout(self.mainVBoxLayout)
         self.mainVBoxLayout.addWidget(self.RowInfo)
+        self.mainVBoxLayout.addWidget(self.userInfoButton)
+        self.connector.balanceInfoUpdated[float].connect(self.updateBalance)
+
+        self.userInfoButton.clicked.connect(self.showUserHistory)
 
         # settings
 
         self.setTitle("Lecteur NFC")
+
         self.RowInfo.addRow("Solde", euro(0))
         self.RowInfo.addRow("UID", "00 00 00 00 00 00 00")
 
+        self.userInfoButton.setText("Afficher historique utilisateur")
+
+        try:
+            balance = requestUserBalance(toHexString(observer.cardUID))
+            balance = balance["user_balance"]
+            self.RowInfo.setRow(0, 1, euro(balance))
+        except:
+            self.RowInfo.setRow(0, 1, euro(0))
+
         nfcObserver = QCardObserver()
-        #  print(nfcObserver)
 
         nfcObserver.cardInserted.connect(self.addCard)
         nfcObserver.cardRemoved.connect(self.removeCard)
@@ -76,9 +111,28 @@ class QInfoNFC(QGroupBox):
             print("Erreur de lecture, veuillez réessayer")
         self.RowInfo.setRow(1, 1, toHexString(observer.cardUID))
 
+        try:
+            balance = requestUserBalance(toHexString(observer.cardUID))
+            balance = balance["user_balance"]
+            self.RowInfo.setRow(0, 1, euro(balance))
+        except:
+            self.RowInfo.setRow(0, 1, euro(0))
+
     def removeCard(self):
         observer = QCardObserver()
         self.RowInfo.setRow(1, 1, toHexString(observer.cardUID))
+        self.RowInfo.setRow(0, 1, euro(0))
+
+    def updateBalance(self, newBalance):
+        self.RowInfo.setRow(0, 1, euro(newBalance))
+
+    def showUserHistory(self):
+
+        observer = QCardObserver()
+        if observer.hasCard() is True:
+            cardUID = observer.cardUID
+            response = requestUserHistory(toHexString(cardUID), 10)  # Ask for the 10 last user transactions
+            print(response)
 
 
 class QSearchBar(QWidget):
@@ -113,7 +167,7 @@ class QCounter(QWidget):
         itemRegister = QItemRegister()
         super().__init__(parent)
         ###TOOLS###
-        self.jsonFileName = "ItemModel.json"
+        self.jsonFileName = "ItemModel.json"  # OBSOLETE
 
         ###Definition###
 
@@ -127,7 +181,8 @@ class QCounter(QWidget):
         self.productSelectionVBoxLayout = QVBoxLayout()
         self.productSelectionGroupBox = QGroupBox()
         self.searchBar = QSearchBar()
-        self.productTree = QItemSelector(["Articles", "Prix"], self.__getItemDictionary("ItemModel.json"))
+
+        self.productTree = QItemSelector(["Articles", "Prix"], ITEM_TREE)
 
         # infoNFC definition (right pannel)
 
@@ -178,7 +233,12 @@ class QCounter(QWidget):
 
         # Product Selection pannel
         self.productSelectionGroupBox.setTitle("Sélection des articles")
-        self.searchBar.inputLine.model.setStringList(self.__getItemList())
+
+        itemList = []
+        for key in itemRegister.itemDict:
+            itemList.append(key)
+        #        self.searchBar.inputLine.model.setStringList(self.__getItemList())
+        self.searchBar.inputLine.model.setStringList(itemList)
 
         # NFC & History space
 
@@ -270,11 +330,13 @@ class QCounter(QWidget):
         QTimer.singleShot(10, self.searchBar.clearText)  # The timer is helpfull here because it ensure the text is set BEFORE clearing it
         self.basketTree.updateBasket()
 
+    # OBSOLETE
     def __getItemList(self):
         itemList = []
         self.__parseDictionary(self.__getItemDictionary(self.jsonFileName), itemList)
         return itemList
 
+    # OBSOLETE
     def __getItemDictionary(self, jsonFileName):
         try:
             with open(jsonFileName, "r") as file:
@@ -283,6 +345,7 @@ class QCounter(QWidget):
             # rise some error:
             print("ERROR: Can't read the file", jsonFileName)
 
+    # OBSOLETE
     def __parseDictionary(self, data, itemList):
         if isFinalNode(data) is False:
             for i in data:
@@ -309,19 +372,86 @@ class QCounter(QWidget):
     def payement(self):
         observer = QCardObserver()
         cardUID = observer.cardUID
+        connector = QConnector()
         print("payement:", MAC, toHexString(cardUID), self.basketTree.basket)
-        success, uuid = requestBuy(MAC, cardUID, self.basketTree.basket)
 
-        if success:
-            print("Paiement effectué avec succes")
+        response = requestBuy(toHexString(cardUID), config.counterID, MAC, self.basketTree.basket)
+        if response:
+            print("Paiement effectué avec succès")
             transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice}
-            self.historyTree.addTransaction(uuid, transaction)
+            self.historyTree.addTransaction(response["transaction_id"], transaction)
+            connector.updateBalanceInfo(response["user_balance"])
+            #            self.infoNFC.updateBalance(response['user_balance'])
             self.basketTree.clearBasket()
         else:
             print("Paiement refusé")
 
 
-class QCreditCardPayement(QGroupBox):
+class QUserInfo(QGroupBox):
+    def __init__(self):
+        super().__init__(self)
+
+        # Definitons
+
+        self.mainVBoxLayout = QVBoxLayout()
+        self.rowInfo = QRowInfo()
+
+        # Settings
+        self.setTitle("USER")
+
+        self.rowInfo.addRow("Solde", euro(0))
+        self.rowInfo.addRow("UID", "00 00 00 00 00 00 00")
+
+        # Link
+
+
+# class QUserHistory(Q)
+
+
+class QAbstractPayement(QGroupBox):
+
+    credited = pyqtSignal(float)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setTitle("Paiement par carte de crédit")
+        self.warningDialog = None
+
+    def credit(self):
+
+        osbserver = QCardObserver()
+        cardUID = osbserver.cardUID
+
+        currentText = self.inputLine.text()
+        currentText = currentText.replace("€", "").replace(",", ".").replace(" ", "").strip()
+
+        mantissas = currentText.split(".")
+        isFormatValid = True
+
+        if len(mantissas) == 2:
+            mantissas = mantissas[1]
+            if len(mantissas) <= 2:
+                print("Valid amount format")
+                isFormatValid = True  # useless but visual
+            else:
+                print("Invalid amount format (more than two digits after '.')")
+                isFormatValid = False
+
+                self.warningDialog = QMessageBox(QMessageBox.Warning, "Format invalide", "Format invalide, veuillez saisir au plus deux chiffres après la virgule", QMessageBox.Ok)
+                self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                self.warningDialog.show()
+                center(self.warningDialog)
+
+        if isFormatValid is True:
+            try:
+                amount = float(currentText)
+                self.inputLine.setText(euro(0))
+                self.credited.emit(amount)
+            except:
+                print("Amount format is invalid")
+
+
+class QCreditCardPayement(QAbstractPayement):
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -333,7 +463,7 @@ class QCreditCardPayement(QGroupBox):
         self.mainGridLayout = QGridLayout()
 
         self.label = QLabel()
-        self.inputLine = QLineEdit()
+        self.inputLine = QAutoSelectLineEdit()
         self.okButton = QPushButton()
 
         # Settings
@@ -356,6 +486,8 @@ class QCreditCardPayement(QGroupBox):
         self.setLayout(self.mainVBoxLayout)
 
         self.inputLine.editingFinished.connect(self.formatInputLine)
+        self.okButton.clicked.connect(self.credit)
+        self.inputLine.returnPressed.connect(self.credit)
 
     def formatInputLine(self):
         currentText = self.inputLine.text()
@@ -376,7 +508,7 @@ class QCashPayement(QGroupBox):
         self.setTitle("Paiement par espèce")
 
 
-class QAEPayement(QGroupBox):
+class QAEPayement(QCreditCardPayement):
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -390,11 +522,10 @@ class QNFCPayement(QGroupBox):
         self.setTitle("Transfert entre cartes NFC")
 
 
-class QOtherPayement(QGroupBox):
+class QOtherPayement(QCreditCardPayement):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        self.setTitle("Autres moyens de paiement")
+        self.setTitle("Singularité")
 
 
 class QTransaction(QWidget):
@@ -440,7 +571,7 @@ class QTransaction(QWidget):
         self.aeAccountRadio.setText("Compte AE")
         self.nfcRadio.setText("Transfert NFC")
         self.nfcRadio.setToolTip("Permet de transférer des fonds depuis une carte NFC vers une autre")
-        self.otherRadio.setText("Autre")
+        self.otherRadio.setText("Non défini")
         self.otherRadio.setToolTip("Moyens de paiements indéfinis, créditation pure, offre promo, en nature avec lae bar(maid/man) <3, etc..")
 
         self.creditCardRadio.setChecked(True)
@@ -472,6 +603,11 @@ class QTransaction(QWidget):
         self.payementLayout.addWidget(self.otherPayement)
 
         self.mainGridLayout.addLayout(self.payementLayout, 1, 0, 1, 1)
+
+        self.creditCardPayement.credited[float].connect(self.credit)
+        self.otherPayement.credited[float].connect(self.credit)
+        self.aePayement.credited[float].connect(self.credit)
+        # self.balanceInfoUpdated[float].connect(connector.updateBalanceInfo)
 
         # History
         self.historyLayout.addWidget(self.infoNFC)
@@ -507,13 +643,29 @@ class QTransaction(QWidget):
         if self.otherRadio.isChecked():
             self.payementLayout.setCurrentWidget(self.otherPayement)
 
+    def credit(self, amount):
+
+        observer = QCardObserver()
+        cardUID = observer.cardUID
+
+        if observer.hasCard() is True:
+            if amount > 0:
+                response = requestRefilling(toHexString(cardUID), config.counterID, MAC, amount)
+                print("User {} has been credited of {}. New balance {}".format(response["user_UID"], euro(amount), euro(response["user_balance"])))
+                self.infoNFC.updateBalance(response["user_balance"])
+                # self.balanceInfoUpdated.emit(response["user_balance"])
+                connector = QConnector()
+                connector.updateBalanceInfo(response["user_balance"])
+
+            else:
+                print("The amount must be positive")
+        else:
+            print("Please a card on the reader")
+
 
 class QMainTab(QTabWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
-        itemRegister = QItemRegister()
-        itemRegister.loadItemFile("ItemModel.json")
 
         # Initialization
         self.TabCounter = QCounter()
@@ -570,8 +722,6 @@ class QNFCDialog(QWidget):
         print("QNFCDialog: Carte détectée")
         self.cardInserted.emit()
         self.blockSignals(True)
-        # if(self.CardMonitor.countObservers() > 0):
-        #    self.CardMonitor.deleteObserver(self.CardObserver)
         self.close()
 
 
@@ -622,6 +772,7 @@ class QFakeCard(QWidget):
 
 class QMainMenu(QMainWindow):
     def __init__(self):
+        itemRegister.start()
         super().__init__()
         self.setWindowTitle("Gala.Manager.Core")
         self.resize(1200, 800)

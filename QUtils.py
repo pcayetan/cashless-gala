@@ -58,7 +58,7 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
     def __init__(self, parent=None):
         QObject.__init__(self)
 
-        self.itemDict = {}
+        self.itemDict = {}  # BASE OF ITEMS, WITHOUT TREE LOGIC
 
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
@@ -67,13 +67,20 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
         self.__latchHappyHour = {}
         self.timer.timeout.connect(self.updatePrice)
 
+    def start(self):
+        self.timer.start()
+
     def loadItemFile(self, itemModelFile):
         with open(itemModelFile, "r") as file:
             data = json.load(file)
             self.__parseDictionary(data)
         self.happyHour = self.parseHappyHour()
-        self.timer.start()
-        # g print(self.itemDict)
+
+    def loadDict(self, itemDict):
+        if isinstance(itemDict, dict) is False:
+            raise TypeError("not a dictionary")
+        self.__parseDictionary(itemDict)
+        self.happyHour = self.parseHappyHour()
 
     def __parseDictionary(self, data):
 
@@ -227,3 +234,24 @@ class QErrorDialog(QMessageBox):
         #        self.setWindowIcon()
         self.setWindowTitle(title)
         self.setBaseSize(QSize(800, 600))
+
+
+class QConnectorSingleton(type(QObject)):
+    _instance = {}
+
+    def __call__(cls):
+        if cls not in cls._instance:
+            cls._instance[cls] = super(QConnectorSingleton, cls).__call__()
+        return cls._instance[cls]
+
+
+class QConnector(QObject, metaclass=QConnectorSingleton):
+
+    balanceInfoUpdated = pyqtSignal(float)  # amount
+
+    def __init__(self):
+        QObject.__init__(self)
+
+    def updateBalanceInfo(self, newBalance):
+        self.balanceInfoUpdated.emit(newBalance)
+        print("UPDATED", newBalance)

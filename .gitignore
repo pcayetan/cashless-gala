@@ -11,3 +11,4 @@ dist/
 *.csv
 ressources/*
 counterHistory.json
+client

@@ -7,6 +7,8 @@ from smartcard.util import toHexString
 import copy
 import json
 
+from Client import *
+
 
 class QItemSelector(QWidget):
     def __init__(self, headers, data=None, parent=None):
@@ -345,6 +347,7 @@ class QTransactionInfo(QWidget):
 
         # Settings
 
+        self.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
         self.infoGroupBox.setTitle("Informations transaction")
 
         self.info.addRow("UID transaction", self.transaction["transactionUID"])
@@ -368,14 +371,22 @@ class QTransactionInfo(QWidget):
 
     def cancelTransaction(self):
 
+        config = MachineConfig()
         observer = QCardObserver()
+        connector = QConnector()
+
         if toHexString(observer.cardUID) == self.transaction["cardUID"]:
-            # REQUETE ANULATION TRANSACTION
+            response = requestRefund(self.transaction["transactionUID"], config.counterID, MAC)
+            connector.updateBalanceInfo(response["user_balance"])
 
             self.hide()
-            return True
+            if response:
+                return True
+            else:
+                return False
         else:
             self.transactionInfoWarning = QMessageBox(QMessageBox.Information, "Authentification requise", "Veuillez présenter la carte concernée par la transaction", QMessageBox.Ok)
+            self.transactionInfoWarning.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
             self.transactionInfoWarning.button(QMessageBox.Ok).clicked.connect(self.transactionInfoWarning.hide)
             self.transactionInfoWarning.show()
             center(self.transactionInfoWarning)
