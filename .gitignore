@@ -12,3 +12,5 @@ dist/
 ressources/*
 counterHistory.json
 client
+defaultHistory.json
+transactionHistory.json

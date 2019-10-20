@@ -76,14 +76,13 @@ def requestRefilling(userUID, counterID, computerMAC, amount):
 
 
 def requestGeneralHistory(historySize):
-    pass
+    raise NotImplementedError
 
 
 def requestUserHistory(userUID, historySize):
     try:
-        return api_instance.get_user_history_user_uid_history_size_post(10, userUID)
+        return api_instance.get_user_history_user_uid_history_size_post(historySize, userUID)
     except ApiException as e:
-        print(e)
         return None
     except MaxRetryError as e:
         print("Unable to establish connexion with the server")
@@ -91,7 +90,13 @@ def requestUserHistory(userUID, historySize):
 
 
 def requestCounterHistory(counterID, historySize):
-    pass
+    try:
+        return api_instance.get_counter_history_counter_id_history_size_post(historySize, counterID)
+    except ApiException as e:
+        return None
+    except MaxRetryError as e:
+        print("Unable to establish connexion with the server")
+        return None
 
 
 def requestComputerHistory(computerMAC, historySize):

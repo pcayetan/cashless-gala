@@ -70,6 +70,9 @@ class QInfoNFC(QGroupBox):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        observer = QCardObserver()
+
         # Definitions
         self.mainVBoxLayout = QVBoxLayout()
         self.RowInfo = QRowInfo()
@@ -100,10 +103,8 @@ class QInfoNFC(QGroupBox):
         except:
             self.RowInfo.setRow(0, 1, euro(0))
 
-        nfcObserver = QCardObserver()
-
-        nfcObserver.cardInserted.connect(self.addCard)
-        nfcObserver.cardRemoved.connect(self.removeCard)
+        observer.cardInserted.connect(self.addCard)
+        observer.cardRemoved.connect(self.removeCard)
 
     def addCard(self):
         observer = QCardObserver()
@@ -170,6 +171,7 @@ class QCounter(QWidget):
         self.jsonFileName = "ItemModel.json"  # OBSOLETE
 
         ###Definition###
+        self.warningDialog = None
 
         self.mainGridLayout = QGridLayout()
         # Order definition (left pannel)
@@ -365,7 +367,6 @@ class QCounter(QWidget):
             else:
                 self.payement()
                 print("Carte déjà présente sur le lecteur")
-
         else:
             print("Widget déjà ouvert")
 
@@ -374,17 +375,27 @@ class QCounter(QWidget):
         cardUID = observer.cardUID
         connector = QConnector()
         print("payement:", MAC, toHexString(cardUID), self.basketTree.basket)
-
-        response = requestBuy(toHexString(cardUID), config.counterID, MAC, self.basketTree.basket)
-        if response:
-            print("Paiement effectué avec succès")
-            transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice}
-            self.historyTree.addTransaction(response["transaction_id"], transaction)
-            connector.updateBalanceInfo(response["user_balance"])
-            #            self.infoNFC.updateBalance(response['user_balance'])
-            self.basketTree.clearBasket()
+        if self.basketTree.basket != {}:
+            response = requestBuy(toHexString(cardUID), config.counterID, MAC, self.basketTree.basket)
+            if response:
+                print("Paiement effectué avec succès")
+                transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice}
+                self.historyTree.addTransaction(response["transaction_id"], transaction)
+                connector.updateBalanceInfo(response["user_balance"])
+                #            self.infoNFC.updateBalance(response['user_balance'])
+                self.basketTree.clearBasket()
+            else:
+                print("Paiement refusé")
+                self.warningDialog = QMessageBox(QMessageBox.Warning, "Solde insuffisant", "Veuillez recharger la carte", QMessageBox.Ok)
+                self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                self.warningDialog.show()
+                center(self.warningDialog)
         else:
-            print("Paiement refusé")
+            print("Empty basket")
+            self.warningDialog = QMessageBox(QMessageBox.Warning, "Panier vide", "Veuillez sélectionner des articles avant de valider la commande", QMessageBox.Ok)
+            self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.warningDialog.show()
+            center(self.warningDialog)
 
 
 class QUserInfo(QGroupBox):
@@ -431,10 +442,8 @@ class QAbstractPayement(QGroupBox):
         if len(mantissas) == 2:
             mantissas = mantissas[1]
             if len(mantissas) <= 2:
-                print("Valid amount format")
                 isFormatValid = True  # useless but visual
             else:
-                print("Invalid amount format (more than two digits after '.')")
                 isFormatValid = False
 
                 self.warningDialog = QMessageBox(QMessageBox.Warning, "Format invalide", "Format invalide, veuillez saisir au plus deux chiffres après la virgule", QMessageBox.Ok)
@@ -446,9 +455,18 @@ class QAbstractPayement(QGroupBox):
             try:
                 amount = float(currentText)
                 self.inputLine.setText(euro(0))
-                self.credited.emit(amount)
+                if amount > 0:
+                    self.credited.emit(amount)
+                else:
+                    self.warningDialog = QMessageBox(QMessageBox.Warning, "Format invalide", "Format invalide, veuillez saisir un nombre strictement positif", QMessageBox.Ok)
+                    self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                    self.warningDialog.show()
+                    center(self.warningDialog)
             except:
-                print("Amount format is invalid")
+                self.warningDialog = QMessageBox(QMessageBox.Warning, "Format invalide", "Format invalide, veuillez saisir un nombre", QMessageBox.Ok)
+                self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                self.warningDialog.show()
+                center(self.warningDialog)
 
 
 class QCreditCardPayement(QAbstractPayement):
@@ -527,6 +545,40 @@ class QOtherPayement(QCreditCardPayement):
         super().__init__(parent)
         self.setTitle("Singularité")
 
+    def credit(self):
+
+        osbserver = QCardObserver()
+        cardUID = osbserver.cardUID
+
+        currentText = self.inputLine.text()
+        currentText = currentText.replace("€", "").replace(",", ".").replace(" ", "").strip()
+
+        mantissas = currentText.split(".")
+        isFormatValid = True
+
+        if len(mantissas) == 2:
+            mantissas = mantissas[1]
+            if len(mantissas) <= 2:
+                isFormatValid = True  # useless but visual
+            else:
+                isFormatValid = False
+
+                self.warningDialog = QMessageBox(QMessageBox.Warning, "Format invalide", "Format invalide, veuillez saisir au plus deux chiffres après la virgule", QMessageBox.Ok)
+                self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                self.warningDialog.show()
+                center(self.warningDialog)
+
+        if isFormatValid is True:
+            try:
+                amount = float(currentText)
+                self.inputLine.setText(euro(0))
+                self.credited.emit(amount)
+            except:
+                self.warningDialog = QMessageBox(QMessageBox.Warning, "Format invalide", "Format invalide, veuillez saisir un nombre", QMessageBox.Ok)
+                self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                self.warningDialog.show()
+                center(self.warningDialog)
+
 
 class QTransaction(QWidget):
     def __init__(self, parent=None):
@@ -559,7 +611,7 @@ class QTransaction(QWidget):
 
         self.historyGroupBox = QGroupBox()
         self.historyLayout = QVBoxLayout()
-        self.historyTree = QBarHistory(["UID", "Credit"])
+        self.historyTree = QTransactionHistory(["UID", "Credit"])
         self.infoNFC = QInfoNFC()
 
         # settings
@@ -649,16 +701,16 @@ class QTransaction(QWidget):
         cardUID = observer.cardUID
 
         if observer.hasCard() is True:
-            if amount > 0:
-                response = requestRefilling(toHexString(cardUID), config.counterID, MAC, amount)
-                print("User {} has been credited of {}. New balance {}".format(response["user_UID"], euro(amount), euro(response["user_balance"])))
-                self.infoNFC.updateBalance(response["user_balance"])
-                # self.balanceInfoUpdated.emit(response["user_balance"])
-                connector = QConnector()
-                connector.updateBalanceInfo(response["user_balance"])
-
-            else:
-                print("The amount must be positive")
+            response = requestRefilling(toHexString(cardUID), config.counterID, MAC, amount)
+            print("User {} has been credited of {}. New balance {}".format(response["user_UID"], euro(amount), euro(response["user_balance"])))
+            self.infoNFC.updateBalance(response["user_balance"])
+            # self.balanceInfoUpdated.emit(response["user_balance"])
+            connector = QConnector()
+            connector.updateBalanceInfo(response["user_balance"])
+            transaction = {"cardUID": response["user_UID"], "price": amount}
+            # TODO: NEED Transaction ID in response to avoid this dangerous id = ...
+            id = requestComputerHistory(MAC, 1)[0]
+            self.historyTree.addTransaction(id["id"], transaction)
         else:
             print("Please a card on the reader")
 
@@ -774,9 +826,10 @@ class QMainMenu(QMainWindow):
     def __init__(self):
         itemRegister.start()
         super().__init__()
+
         self.setWindowTitle("Gala.Manager.Core")
         self.resize(1200, 800)
-        self.setWindowIcon(QIcon(PWD + "ressources/logo.png"))
+        self.setWindowIcon(QIcon(PWD + "ressources/logo-black.png"))
         center(self)
         self.MainTab = QMainTab()
         self.setCentralWidget(self.MainTab)
@@ -792,10 +845,30 @@ class QMainMenu(QMainWindow):
         font.setPointSize(16)
         setFont(self, font)
 
-        # self.CardObserver.cardInserted.connect(self.addCard)
-        # self.CardObserver.cardRemoved.connect(self.removeCard)
+        #  Menu
+        mainMenu = self.menuBar()  # Built in function that hold actions
 
-        # self.MainTab.TabCounter.
+        # Definitions
+        configMenu = mainMenu.addMenu("&Config")
+        helpMenu = mainMenu.addMenu("&Aide")
+        counterMenu = configMenu.addMenu("&Comptoir")
+        ipAction = QAction("&Adresse serveur", self)
+
+        configMenu.addAction(ipAction)
+
+        #  Settings
+        # Link
+
+        self.statusBar()  # Built in function that show menu bar
+
+    def ForceHistoryRefresh(self):
+        pass
+
+    def setServerAddress(self, ipAddress):
+        pass
+
+    def setCounter(self, Counter):
+        pass
 
 
 class QFadingWidget(QWidget):

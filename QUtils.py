@@ -254,4 +254,3 @@ class QConnector(QObject, metaclass=QConnectorSingleton):
 
     def updateBalanceInfo(self, newBalance):
         self.balanceInfoUpdated.emit(newBalance)
-        print("UPDATED", newBalance)

@@ -171,7 +171,40 @@ class QBarHistoryModel(QItemSelectorModel):
         return item.getText(index.column())
 
 
-class QTransactionInfoModel(QTreeModel):
+class QTransactionHistoryModel(QItemSelectorModel):
+    def __init__(self, headers, data=None, parent=None):
+        super().__init__(headers)
+        self.rootItem = TreeItem(headers)
+
+    def data(self, index, role):
+        observer = QCardObserver()
+        cardUID = observer.cardUID
+
+        if not index.isValid():
+            return None
+
+        if role == Qt.ToolTipRole:
+            text = ""
+            text += str(index.internalPointer().data["transactionUID"])
+            return text
+
+        try:
+            #         if role == Qt.ForegroundRole and toHexString(cardUID) == index.internalPointer().data["cardUID"]:
+            #             return QColor(Qt.white)
+
+            if role == Qt.BackgroundColorRole and toHexString(cardUID) == index.internalPointer().data["cardUID"]:
+                # return QColor(Qt.green)
+                return QColor(88, 231, 167)
+        except:
+            pass
+
+        if role != Qt.DisplayRole:
+            return None
+        item = index.internalPointer()
+        return item.getText(index.column())
+
+
+class QBuyInfoModel(QTreeModel):
     def __init__(self, headers, data=None, parent=None):
         # super(QTreeModel,self).__init__(parent) #Weird but seems ok
         super().__init__(headers)  # Weird but seems ok

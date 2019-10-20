@@ -212,26 +212,25 @@ class QBasket(QWidget):
         self.editable = tof
 
 
-class QBarHistory(QWidget):
+class QAbstractHistory(QWidget):
     def __init__(self, headers, data=None, parent=None):
         super().__init__(parent)
 
         # Definitions
+        config = MachineConfig()
 
-        self.transactionInfo = QTransactionInfo  # Not instancied on purpose
+        self.transactionInfo = QBuyInfoDialog  # Not instancied on purpose
 
         self.mainVBoxLayout = QVBoxLayout()
 
-        self.treeModel = QBarHistoryModel(headers, data)
         self.treeView = QSuperTreeView()
 
         self.transactionList = {}
-        self.historyFileName = "counterHistory.json"
+        self.historyFileName = "defaultHistory.json"
 
-        try:
-            self.recoverHistory()
-        except:
-            pass
+        # print(response)
+
+        self.recoverHistory()
 
         # Settings
 
@@ -253,7 +252,7 @@ class QBarHistory(QWidget):
 
         observer = QCardObserver()
 
-        self.transactionInfo = QTransactionInfo(modelIndex)
+        self.transactionInfo = QBuyInfoDialog(modelIndex)
         self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
 
         self.transactionInfo.setWindowTitle("Information transaction")
@@ -261,41 +260,6 @@ class QBarHistory(QWidget):
 
         self.transactionInfo.show()
         center(self.transactionInfo)
-
-    def recoverHistory(self, historyFile=None):
-
-        if historyFile is None:
-            historyFile = self.historyFileName
-
-        try:
-            with open(historyFile, "r") as file:
-                history = json.load(file)
-        except:
-            print("WARNING: Can't read the file", historyFile)
-
-        for i in history:
-            self.addTransaction(i, history[i])
-
-    def addTransaction(self, uid, transaction):
-
-        model = self.treeModel
-
-        self.transactionList[uid] = transaction  # {"cardUID:0","basket:{"objet":qte,...},"price":0"}
-        with open(self.historyFileName, "w") as file:
-            json.dump(self.transactionList, file)
-
-        if not model.insertRow(0, QModelIndex()):
-            return
-
-        child = model.index(0, 0)
-        cardUID = transaction["cardUID"]
-        price = transaction["price"]
-        child.internalPointer().data["basket"] = transaction["basket"]
-        child.internalPointer().data["cardUID"] = cardUID
-        child.internalPointer().data["transactionUID"] = uid
-        child.internalPointer().data["price"] = price
-        child.internalPointer().data["text"] = [cardUID.replace(" ", ""), euro(price), ""]
-        self.forceRefresh()
 
     def removeSelectedTransaction(self):
 
@@ -327,7 +291,160 @@ class QBarHistory(QWidget):
             # THE SIZE OF THE TREEVIEW MAYBE UPDATED WITH setModel FUNCTION, NOT TRIED YET
 
 
-class QTransactionInfo(QWidget):
+class QBarHistory(QAbstractHistory):
+    def __init__(self, headers, data=None, parent=None):
+
+        self.treeModel = QBarHistoryModel(headers, data)  # Must be set before super
+        super().__init__(headers, data, parent)
+
+        # Definitions
+        config = MachineConfig()
+        self.historyFileName = "counterHistory.json"
+
+    def showTransactionInfo(self, modelIndex):
+
+        observer = QCardObserver()
+
+        self.transactionInfo = QBuyInfoDialog(modelIndex)
+        self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
+
+        self.transactionInfo.setWindowTitle("Information transaction")
+        self.transactionInfo.forceRefresh()
+
+        self.transactionInfo.show()
+        center(self.transactionInfo)
+
+    def recoverHistory(self, historyFile=None):
+
+        response = requestComputerHistory(MAC, -1)
+
+        if response:
+            print("History downloaded")
+            history = {}
+            for i in response:
+                if i["amount"] < 0:  # if it's a buy
+                    basket = {}
+                    for j in i["shopping_cart"]:
+                        basket[j["product_code"]] = j["quantity"]
+                    history[i["id"]] = {"cardUID": i["user_UID"], "basket": basket, "price": -i["amount"]}
+                else:  # if it's a refilling
+                    pass
+        else:
+            print("Local history loaded")
+            if historyFile is None:
+                historyFile = self.historyFileName
+            try:
+                with open(historyFile, "r") as file:
+                    history = json.load(file)
+            except:
+                print("WARNING: Can't read the file", historyFile)
+
+        try:
+            for i in history:
+                self.addTransaction(i, history[i])
+        except:
+            pass
+
+    def addTransaction(self, uid, transaction):
+
+        model = self.treeModel
+
+        self.transactionList[uid] = transaction  # {"cardUID:0","basket:{"objet":qte,...},"price":0"}
+        with open(self.historyFileName, "w") as file:
+            json.dump(self.transactionList, file)
+
+        if not model.insertRow(0, QModelIndex()):
+            return
+
+        child = model.index(0, 0)
+        cardUID = transaction["cardUID"]
+        price = transaction["price"]
+        child.internalPointer().data["basket"] = transaction["basket"]
+        child.internalPointer().data["cardUID"] = cardUID
+        child.internalPointer().data["transactionUID"] = uid
+        child.internalPointer().data["price"] = price
+        child.internalPointer().data["text"] = [cardUID.replace(" ", ""), euro(price), ""]
+        self.forceRefresh()
+
+
+class QTransactionHistory(QAbstractHistory):
+    def __init__(self, headers, data=None, parent=None):
+
+        self.treeModel = QTransactionHistoryModel(headers, data)  # Must be set before super
+        super().__init__(headers, data, parent)
+        self.historyFileName = "transactionHistory.json"
+
+        # Definitions
+        config = MachineConfig()
+        self.historyFileName = "transactionHistory.json"
+
+    def showTransactionInfo(self, modelIndex):
+
+        observer = QCardObserver()
+
+        self.transactionInfo = QTransactionInfoDialog(modelIndex)
+        self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
+
+        self.transactionInfo.setWindowTitle("Information transaction")
+        if self.transactionInfo.treeModel:
+            self.transactionInfo.forceRefresh()
+
+        self.transactionInfo.show()
+        center(self.transactionInfo)
+
+    def recoverHistory(self, historyFile=None):
+
+        response = requestComputerHistory(MAC, -1)
+
+        if response:
+            print("History downloaded")
+            history = {}
+            for i in response:
+                if i["amount"] > 0:  # if it's a credit
+                    basket = {}
+                    for j in i["shopping_cart"]:
+                        basket[j["product_code"]] = j["quantity"]
+                    history[i["id"]] = {"cardUID": i["user_UID"], "price": i["amount"]}
+                else:  # if it's a refilling
+                    pass
+        else:
+            print("Local history loaded")
+            if historyFile is None:
+                historyFile = self.historyFileName
+            try:
+                with open(historyFile, "r") as file:
+                    history = json.load(file)
+            except:
+                print("WARNING: Can't read the file", historyFile)
+
+        try:
+            for i in history:
+                self.addTransaction(i, history[i])
+        except:
+            pass
+
+    def addTransaction(self, uid, transaction):
+
+        model = self.treeModel
+
+        self.transactionList[uid] = transaction  # {"cardUID:0","basket:{"objet":qte,...},"price":0"}
+        with open(self.historyFileName, "w") as file:
+            json.dump(self.transactionList, file)
+
+        if not model.insertRow(0, QModelIndex()):
+            return
+
+        child = model.index(0, 0)
+        cardUID = transaction["cardUID"]
+        price = transaction["price"]
+        child.internalPointer().data["cardUID"] = cardUID
+        child.internalPointer().data["transactionUID"] = uid
+        child.internalPointer().data["price"] = price
+        child.internalPointer().data["text"] = [cardUID.replace(" ", ""), euro(price), ""]
+        self.forceRefresh()
+
+
+class QAbstractInfoDialog(QWidget):
     def __init__(self, index, parent=None):
         super().__init__(parent)
 
@@ -335,10 +452,10 @@ class QTransactionInfo(QWidget):
         self.transaction = index.internalPointer().getData()
         # Definitions
 
-        self.mainGridLayout = QGridLayout()
+        self.treeView = None
+        self.treeModel = None
 
-        self.treeView = QSuperTreeView()
-        self.treeModel = QTransactionInfoModel(["Article", "Quantité"], self.transaction)
+        self.mainGridLayout = QGridLayout()
 
         self.infoGroupBox = QGroupBox()
         self.infoVBoxLayout = QVBoxLayout()
@@ -350,15 +467,9 @@ class QTransactionInfo(QWidget):
         self.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
         self.infoGroupBox.setTitle("Informations transaction")
 
-        self.info.addRow("UID transaction", self.transaction["transactionUID"])
-        self.info.addRow("Prix du panier", euro(self.transaction["price"]))
-        self.info.addRow("UID carte", self.transaction["cardUID"])
         self.cancelButton.setText("Annuler transaction")
 
         # Link
-
-        self.mainGridLayout.addWidget(self.treeView, 0, 0)
-        self.treeView.setModel(self.treeModel)
 
         self.infoVBoxLayout.addWidget(self.info)
         self.infoVBoxLayout.addWidget(self.cancelButton)
@@ -378,6 +489,7 @@ class QTransactionInfo(QWidget):
         if toHexString(observer.cardUID) == self.transaction["cardUID"]:
             response = requestRefund(self.transaction["transactionUID"], config.counterID, MAC)
             connector.updateBalanceInfo(response["user_balance"])
+            print("Transaction canceled, new balance ", euro(response["user_balance"]))
 
             self.hide()
             if response:
@@ -392,6 +504,25 @@ class QTransactionInfo(QWidget):
             center(self.transactionInfoWarning)
             return False
 
+
+class QBuyInfoDialog(QAbstractInfoDialog):
+    def __init__(self, index, parent=None):
+        super().__init__(index, parent)
+        # Definitions
+
+        self.treeView = QSuperTreeView()
+        self.treeModel = QBuyInfoModel(["Article", "Quantité"], self.transaction)
+
+        # Settings
+        self.info.addRow("UID transaction", self.transaction["transactionUID"])
+        self.info.addRow("Prix du panier", euro(self.transaction["price"]))
+        self.info.addRow("UID carte", self.transaction["cardUID"])
+
+        # Link
+
+        self.mainGridLayout.addWidget(self.treeView, 0, 0)
+        self.treeView.setModel(self.treeModel)
+
     def forceRefresh(self):
 
         model = self.treeModel
@@ -401,6 +532,16 @@ class QTransactionInfo(QWidget):
             view.resizeColumnToContents(i)  # TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed
             # UPDATE: ACCORDING TO THIS LINK https://stackoverflow.com/questions/8364061/how-do-you-set-the-column-width-on-a-qtreeview
             # THE SIZE OF THE TREEVIEW MAYBE UPDATED WITH setModel FUNCTION, NOT TRIED YET
+
+
+class QTransactionInfoDialog(QAbstractInfoDialog):
+    def __init__(self, index, parent=None):
+        super().__init__(index, parent)
+
+        # Settings
+        self.info.addRow("UID transaction", self.transaction["transactionUID"])
+        self.info.addRow("Montant", euro(self.transaction["price"]))
+        self.info.addRow("UID carte", self.transaction["cardUID"])
 
 
 class QDelButton(QToolButton):
