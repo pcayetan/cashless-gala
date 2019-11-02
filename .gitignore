@@ -9,7 +9,6 @@ build/
 dist/
 *.spec
 *.csv
-ressources/*
 counterHistory.json
 client
 defaultHistory.json
