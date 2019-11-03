@@ -13,3 +13,4 @@ counterHistory.json
 client
 defaultHistory.json
 transactionHistory.json
+*.zip
