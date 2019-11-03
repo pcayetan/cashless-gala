@@ -829,7 +829,7 @@ class QMainMenu(QMainWindow):
 
         self.setWindowTitle("Gala.Manager.Core")
         self.resize(1200, 800)
-        self.setWindowIcon(QIcon(PWD + "ressources/logo-black.png"))
+        self.setWindowIcon(QIcon(PWD + "ressources/icon.ico"))
         center(self)
         self.MainTab = QMainTab()
         self.setCentralWidget(self.MainTab)

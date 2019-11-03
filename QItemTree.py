@@ -27,6 +27,9 @@ class QItemSelector(QWidget):
         self.mainVBoxLayout.addWidget(self.treeView)
         self.setLayout(self.mainVBoxLayout)
 
+        # Allow animation while expanding tree
+        self.treeView.setAnimated(True)
+
 
 class QBasket(QWidget):
     def __init__(self, headers, data=None, parent=None):
@@ -60,6 +63,7 @@ class QBasket(QWidget):
         self.setLayout(self.mainVBoxLayout)
 
         self.treeModel.priceChanged.connect(self.updateBasket)
+
 
     def clearBasket(self):
 
@@ -208,8 +212,18 @@ class QBasket(QWidget):
 
         self.updateBasket()
 
-    def setEditable(tof):
+    def setEditable(self, tof):
         self.editable = tof
+
+    def keyPressEvent(self,event):
+        try:
+            #TODO: Set multiple selection/deletion possible
+            if event.key() == Qt.Key_Delete:
+                row = self.treeView.selectedIndexes()[0].row()
+                button = self.delButtonList[row]
+                self.deleteItem(button)
+        except:
+            print("Delete item: No item selected")
 
 
 class QAbstractHistory(QWidget):
@@ -326,7 +340,12 @@ class QBarHistory(QAbstractHistory):
                     basket = {}
                     for j in i["shopping_cart"]:
                         basket[j["product_code"]] = j["quantity"]
-                    history[i["id"]] = {"cardUID": i["user_UID"], "basket": basket, "price": -i["amount"]}
+
+                    print("TIME !!!! ",i["time"])
+                    #TODO: Serialize the time on the SERVER OR use the standard function for parse string-> datetime parsing 
+                    # Please close your eyes here ...
+                    time=i["time"].split(' ')[4] 
+                    history[i["id"]] = {"cardUID": i["user_UID"], "basket": basket, "price": -i["amount"], "time": time}
                 else:  # if it's a refilling
                     pass
         else:
@@ -363,6 +382,9 @@ class QBarHistory(QAbstractHistory):
         child.internalPointer().data["cardUID"] = cardUID
         child.internalPointer().data["transactionUID"] = uid
         child.internalPointer().data["price"] = price
+        #TODO: Ask the transaction time to the server, else if the client has to reboot, the printed time will be wrong
+        h,m,s= QTime.currentTime().hour(), QTime.currentTime().minute(), QTime.currentTime().second()
+        child.internalPointer().data["time"] = transaction["time"]
         child.internalPointer().data["text"] = [cardUID.replace(" ", ""), euro(price), ""]
         self.forceRefresh()
 
@@ -517,6 +539,7 @@ class QBuyInfoDialog(QAbstractInfoDialog):
         self.info.addRow("UID transaction", self.transaction["transactionUID"])
         self.info.addRow("Prix du panier", euro(self.transaction["price"]))
         self.info.addRow("UID carte", self.transaction["cardUID"])
+        self.info.addRow("Heure transaction", self.transaction["time"])
 
         # Link
 
