@@ -8,9 +8,12 @@ from smartcard.util import toHexString
 class Item(TreeItem):
     def __init__(self, data, parent=None):
         super().__init__(data, parent)
-        self.data["price"] = 0
-        self.data["uid"] = ""
-        self.data["icon"] = ""
+        if "price" not in self.data:
+            self.data["price"] = 0
+        if "uid" not in self.data:
+            self.data["uid"] = ""
+        if "icon" not in self.data:
+            self.data["icon"] = ""
 
     def insertChildren(self, position, count, columns):
         if position < 0 or position > len(self.childItems):
@@ -22,6 +25,38 @@ class Item(TreeItem):
             self.childItems.insert(position, item)
 
         return True
+
+
+class QUserHistoryModel(QTreeModel):
+    def __init__(self, headers, data=None, parent=None):
+        super().__init__(headers)
+        self.rootItem = Item(headers)
+        self.itemList = []
+
+        buyItem = Item(["Achats", ""], self.rootItem)
+        transactionItem = Item(["Transactions", ""], self.rootItem)
+
+        self.rootItem.appendChild(buyItem)
+        self.rootItem.appendChild(transactionItem)
+        try:
+            for i in data:
+                i["transactionUID"] = i["id"]
+
+                i["cardUID"] = i["user_UID"]
+                i["basket"] = {"Objet": 1}
+                if i["shopping_cart"] == []:  # It's a transaction
+                    i["text"] = [str(i["id"]), euro(i["amount"])]
+                    i["price"] = i["amount"]
+                    child = Item(i, transactionItem)
+                    transactionItem.appendChild(child)
+                else:  # It's a buy
+                    i["text"] = [str(i["id"]), euro(-i["amount"])]
+                    i["price"] = -i["amount"]
+                    child = Item(i, buyItem)
+                    buyItem.appendChild(child)
+                # self.transactionList[i["id"]] = i
+        except:
+            pass
 
 
 class QItemSelectorModel(QTreeModel):

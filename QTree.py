@@ -17,7 +17,9 @@ class TreeItem:
 
         self.data["text"] = []
 
-        if isinstance(data, list):
+        if isinstance(data, dict):
+            self.data = data
+        elif isinstance(data, list):
             self.data["text"] = data
         else:
             self.data["text"] = [data]

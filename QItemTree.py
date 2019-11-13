@@ -215,7 +215,7 @@ class QBasket(QWidget):
     def setEditable(self, tof):
         self.editable = tof
 
-    def keyPressEvent(self,event):
+    def keyPressEvent(self, event):
         try:
             #TODO: Set multiple selection/deletion possible
             if event.key() == Qt.Key_Delete:
@@ -263,17 +263,18 @@ class QAbstractHistory(QWidget):
         self.treeView.doubleClicked[QModelIndex].connect(self.showTransactionInfo)
 
     def showTransactionInfo(self, modelIndex):
+        
+        if modelIndex.internalPointer().childCount() == 0:
+            observer = QCardObserver()
 
-        observer = QCardObserver()
+            self.transactionInfo = QBuyInfoDialog(modelIndex)
+            self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
 
-        self.transactionInfo = QBuyInfoDialog(modelIndex)
-        self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
+            self.transactionInfo.setWindowTitle("Information transaction")
+            self.transactionInfo.forceRefresh()
 
-        self.transactionInfo.setWindowTitle("Information transaction")
-        self.transactionInfo.forceRefresh()
-
-        self.transactionInfo.show()
-        center(self.transactionInfo)
+            self.transactionInfo.show()
+            center(self.transactionInfo)
 
     def removeSelectedTransaction(self):
 
@@ -282,12 +283,13 @@ class QAbstractHistory(QWidget):
         try:
             if self.transactionInfo.cancelTransaction() is False:
                 return
-
             uid = index.internalPointer().data["transactionUID"]
-            del self.transactionList[uid]
-            with open(self.historyFileName, "w") as file:
-                json.dump(self.transactionList, file)
-
+            try:
+                del self.transactionList[uid]
+                with open(self.historyFileName, "w") as file:
+                    json.dump(self.transactionList, file)
+            except:
+                pass
             if not model.removeRows(index.row(), 1, index.parent()):
                 pass
 
@@ -303,6 +305,17 @@ class QAbstractHistory(QWidget):
             view.resizeColumnToContents(i)  # TODO: FIX THIS SHITY HACK ! I use this because without this the button is not correctly placed
             # UPDATE: ACCORDING TO THIS LINK https://stackoverflow.com/questions/8364061/how-do-you-set-the-column-width-on-a-qtreeview
             # THE SIZE OF THE TREEVIEW MAYBE UPDATED WITH setModel FUNCTION, NOT TRIED YET
+
+
+class QUserHistory(QAbstractHistory):
+    def __init__(self, headers, data=None, parent=None):
+        self.treeModel = QUserHistoryModel(headers,data)
+        super().__init__(headers, data,parent)
+        self.treeView.expandAll()
+        self.forceRefresh()
+
+    def recoverHistory(self):
+        pass
 
 
 class QBarHistory(QAbstractHistory):

@@ -102,7 +102,7 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
             return copy.deepcopy(self.itemDict)
 
     def getPrice(self, itemID):
-        pass
+        raise (NotImplementedError)
 
     def parseHappyHour(self):
         # Happy hour format:
@@ -235,6 +235,11 @@ class QErrorDialog(QMessageBox):
         self.setWindowTitle(title)
         self.setBaseSize(QSize(800, 600))
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.setFixedWidth(600)
+        self.setFixedHeight(100)
+
 
 class QConnectorSingleton(type(QObject)):
     _instance = {}
@@ -254,3 +259,46 @@ class QConnector(QObject, metaclass=QConnectorSingleton):
 
     def updateBalanceInfo(self, newBalance):
         self.balanceInfoUpdated.emit(newBalance)
+
+
+class QSimpleNumberInputDialog(QWidget):
+    valueSelected = pyqtSignal(float)
+
+    def __init__(self, questionText, parent=None):
+        super().__init__(parent)
+        # Definitions
+        self.mainHBoxLayout = QHBoxLayout()
+        self.questionLabel = QLabel()
+        self.inputBar = QLineEdit()
+        self.okButton = QPushButton()
+        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir un nombre réel.")
+
+        # Settings
+        self.questionLabel.setText(questionText)
+        self.setWindowTitle(questionText)
+        self.okButton.setText("OK")
+        self.inputBar.setText("2")
+
+        # Links
+
+        self.mainHBoxLayout.addWidget(self.questionLabel)
+        self.mainHBoxLayout.addWidget(self.inputBar)
+        self.mainHBoxLayout.addWidget(self.okButton)
+        self.inputBar.returnPressed.connect(self.sendValue)
+        self.okButton.clicked.connect(self.sendValue)
+
+        self.setLayout(self.mainHBoxLayout)
+
+    def sendValue(self):
+        try:
+            self.valueSelected.emit(float(self.inputBar.text()))
+            self.inputBar.setText("2")
+            self.close()
+        except:
+
+            self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.errorDialog.show()
+            center(self.errorDialog)
+
+        self.inputBar.setText("")
+

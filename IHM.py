@@ -18,6 +18,8 @@ import json
 
 import copy
 
+import datetime #En attendant que Cyl mette l'heure dans les réponse 
+                #de transaction
 
 #  Shared variables
 PWD = os.getcwd() + "/"
@@ -86,6 +88,7 @@ class QInfoNFC(QGroupBox):
         self.connector.balanceInfoUpdated[float].connect(self.updateBalance)
 
         self.userInfoButton.clicked.connect(self.showUserHistory)
+        self.userInfoTree = None
 
         # settings
 
@@ -132,7 +135,11 @@ class QInfoNFC(QGroupBox):
         observer = QCardObserver()
         if observer.hasCard() is True:
             cardUID = observer.cardUID
-            response = requestUserHistory(toHexString(cardUID), 10)  # Ask for the 10 last user transactions
+            response = requestUserHistory(toHexString(cardUID), -1)  # Ask for the 10 last user transactions
+            self.userInfoTree=QUserHistory(["ID","Prix"],response)
+            self.userInfoTree.show()
+            center(self.userInfoTree)
+
             print(response)
 
 
@@ -162,6 +169,191 @@ class QSearchBar(QWidget):
     def clearText(self):
         self.inputLine.setText("")
 
+class QMultiUserDialog(QWidget):
+    def __init__(self, basket, numberUser, parent=None):
+        super().__init__(parent)
+        #Definition
+        self.mainVBoxLayout = QVBoxLayout()
+        self.prixTotal = QRowInfo()
+        self.validateOrder  = QPushButton()
+
+        self.userUIDLabel = []
+        self.userUID = []
+
+        self.userPriceLabel=[]
+        self.userPrice = []
+        self.userPriceValue = []
+
+        self.userBalanceLabel = []
+        self.userBalance = []
+
+        self.scanUserButton = []
+        self.lineLayout = []
+
+        self.progressBar = QProgressBar()
+        self.firstEdit = True
+        self.indexEdit = 0
+        
+        iregister=QItemRegister()
+        itemList=iregister.getItems()
+        self.totalPrice=0
+        for i in basket:
+            self.totalPrice+=itemList[i]["currentPrice"]*basket[i]
+            
+
+        self.prixTotal.addRow("Total à payer",euro(self.totalPrice))
+        self.mainVBoxLayout.addWidget(self.prixTotal)
+
+        for i in range(numberUser):
+            #Definitions
+            self.userUIDLabel.append(QLabel())
+            self.userUID.append(QLabel())
+
+            self.userPriceLabel.append(QLabel())
+            self.userPrice.append(QAutoSelectLineEdit())
+
+            self.userBalanceLabel.append(QLabel())
+            self.userBalance.append(QLabel())
+
+            self.scanUserButton.append(QPushButton())
+
+            self.lineLayout.append(QHBoxLayout())
+
+            #Settings
+
+            self.userUIDLabel[i].setText("UID")
+            self.userUID[i].setText("00 00 00 00 00 00 00")
+
+            self.userPriceLabel[i].setText("paye")
+            self.userPrice[i].setText(euro(0))
+            self.userPrice[i].setEnabled(False)
+
+            self.userBalanceLabel[i].setText("Solde")
+            self.userBalance[i].setText(euro(0))
+
+            self.scanUserButton[i].setText("Scanner")
+            self.scanUserButton[i].clicked.connect(self.selectUserToScan)
+
+            #Links
+            self.lineLayout[i].addWidget(self.userUIDLabel[i])
+            self.lineLayout[i].addWidget(self.userUID[i])
+
+            self.lineLayout[i].addWidget(self.userPriceLabel[i])
+            self.lineLayout[i].addWidget(self.userPrice[i])
+
+            self.lineLayout[i].addWidget(self.userBalanceLabel[i])
+            self.lineLayout[i].addWidget(self.userBalance[i])
+
+            self.lineLayout[i].addWidget(self.scanUserButton[i])
+            self.mainVBoxLayout.addLayout(self.lineLayout[i])
+
+            self.userPrice[i].editingFinished.connect(self.balanceUpdate)
+
+
+        #Settings
+        self.setWindowTitle("Paiment séparé")
+
+        self.progressBar.setMinimum(0)
+        self.progressBar.setMaximum(100)
+        self.progressBar.setValue(0)
+
+        self.validateOrder.setText("Valider et payer")
+
+
+
+        #Link
+        observer = QCardObserver()
+        observer.cardInserted.connect(self.scanUsers)
+        self.mainVBoxLayout.addWidget(self.progressBar)
+        self.mainVBoxLayout.addWidget(self.validateOrder)
+        self.setLayout(self.mainVBoxLayout)
+    
+    def scanUsers(self):
+        observer = QCardObserver()
+        alreadyScannedUID=[]
+        
+        N_user=len(self.userUID)
+
+        for i in self.userUID:
+            alreadyScannedUID.append(i.text())
+        
+        cardUID=toHexString(observer.cardUID)
+        if self.firstEdit is True:
+            if cardUID not in alreadyScannedUID:
+                response = requestUserBalance(cardUID)
+                if response:
+                    self.userUID[self.indexEdit].setText(cardUID)
+                    self.userBalance[self.indexEdit].setText(euro(response["user_balance"]))
+                    if response["user_balance"] > self.totalPrice/N_user:
+                        self.userPrice[self.indexEdit].setText(euro(self.totalPrice/N_user))
+                    else:
+                        self.userPrice[self.indexEdit].setText(euro(response["user_balance"]))
+                    self.userPrice[self.indexEdit].setEnabled(True)
+                    self.balanceUpdate()
+                    self.indexEdit+=1
+                else:
+                    warningDialog = QErrorDialog("Erreur","Utilisateur introuvable","Veuillez enregistrer cette carte à la billeterie")
+                    center(warningDialog)
+                    warningDialog.exec()
+
+                if self.indexEdit == len(self.userUID):
+                    self.firstEdit=False
+        else:
+            if cardUID not in alreadyScannedUID:
+                response = requestUserBalance(cardUID)
+                if response:
+                    self.userUID[self.indexEdit].setText(cardUID)
+                    self.userBalance[self.indexEdit].setText(euro(response["user_balance"]))
+                    self.userPrice[self.indexEdit].setEnabled(True)
+                else:
+                    warningDialog = QErrorDialog("Erreur","Utilisateur introuvable","Veuillez enregistrer cette carte à la billeterie")
+                    center(warningDialog)
+                    warningDialog.exec()
+    
+    def selectUserToScan(self):
+
+        self.firstEdit=False
+        for i in range(len(self.scanUserButton)):
+            if self.sender() == self.scanUserButton[i]:
+                self.indexEdit=i
+
+    def balanceUpdate(self):
+        sum=0.0
+        for i in range(len(self.userUID)):
+            try:
+                currentPrice=self.userPrice[i].text().replace("€","").replace(" ","").replace(",",".")
+                currentBalance=self.userBalance[i].text().replace("€","").replace(" ","").replace(",",".")
+
+                
+
+                if float(currentBalance) >= float(currentPrice):
+                    self.userPrice[i].setText(currentPrice)
+                else:
+                    self.userPrice[i].setText(currentBalance)
+
+                sum+=float(self.userPrice[i].text())
+            except:
+                warningDialog=QErrorDialog("Erreur format","Erreur format invalide","Veuillez saisir un nombre réel positif")
+                center(warningDialog)
+                warningDialog.exec()
+        sum=sum/self.totalPrice*100
+        self.progressBar.setValue(sum)
+        self.formatInputLine()
+
+    
+    def formatInputLine(self):
+
+        for inputLine in self.userPrice:
+            currentText =inputLine.text()
+            currentText = currentText.replace("€", "").replace(",", ".").replace(" ", "").strip()
+            inputLine.blockSignals(True)
+            try:
+                inputLine.setText(euro(currentText))
+            except:
+                inputLine.setText(euro(0))
+
+            inputLine.blockSignals(False)
+
 
 class QCounter(QWidget):
     def __init__(self, parent=None):
@@ -190,10 +382,15 @@ class QCounter(QWidget):
 
         self.paymentVBoxLayout = QVBoxLayout()
         self.infoNFC = QInfoNFC()
-        self.GroupBoxHistory = QGroupBox()
+        self.groupBoxHistory = QGroupBox()
         self.historyTree = QBarHistory(["UID", "Prix"])
         self.NFCDialog = QNFCDialog()
         self.ButtonValidateOrder = QPushButton()
+
+        self.multiUserOrder = QPushButton()
+        self.multiUserQuantity = QSimpleNumberInputDialog("Combien de clients ?")
+        self.multiUserDialog = QMultiUserDialog #Not instancied on purpose
+        
 
         ###Link###
         self.setLayout(self.mainGridLayout)
@@ -202,13 +399,13 @@ class QCounter(QWidget):
 
         self.orderVBoxLayout.addWidget(self.basketTree)
         self.orderGroupBox.setLayout(self.orderVBoxLayout)
-        self.mainGridLayout.addWidget(self.orderGroupBox, 0, 0, 2, 1)
+        self.mainGridLayout.addWidget(self.orderGroupBox, 0, 0, 3, 1)
 
         # Product Selection pannel
         self.productSelectionVBoxLayout.addWidget(self.searchBar)
         self.productSelectionVBoxLayout.addWidget(self.productTree)
         self.productSelectionGroupBox.setLayout(self.productSelectionVBoxLayout)
-        self.mainGridLayout.addWidget(self.productSelectionGroupBox, 0, 1, 2, 1)
+        self.mainGridLayout.addWidget(self.productSelectionGroupBox, 0, 1, 3, 1)
 
         # self.productTree.setBasket(self.basketTree)
 
@@ -219,13 +416,18 @@ class QCounter(QWidget):
 
         # Payment pannel
 
-        self.GroupBoxHistory.setLayout(self.historyTree.layout())
+        self.groupBoxHistory.setLayout(self.historyTree.layout())
 
         self.paymentVBoxLayout.addWidget(self.infoNFC)
-        self.paymentVBoxLayout.addWidget(self.GroupBoxHistory, 2)
+        self.paymentVBoxLayout.addWidget(self.groupBoxHistory, 2)
         self.mainGridLayout.addLayout(self.paymentVBoxLayout, 0, 2)
         self.mainGridLayout.addWidget(self.ButtonValidateOrder, 1, 2)
+        self.mainGridLayout.addWidget(self.multiUserOrder, 2, 2)
         self.ButtonValidateOrder.clicked.connect(self.OpenNFCDialog)
+
+        self.multiUserOrder.clicked.connect(self.OpenMultiUserQuantityDialog)
+        self.multiUserQuantity.valueSelected[float].connect(self.OpenMultiUserDialog)
+        
 
         self.NFCDialog.cardInserted.connect(self.payement)
 
@@ -244,13 +446,36 @@ class QCounter(QWidget):
 
         # NFC & History space
 
-        self.GroupBoxHistory.setTitle("Historique")
+        self.groupBoxHistory.setTitle("Historique")
 
         self.ButtonValidateOrder.setText("Valider et payer")
         self.ButtonValidateOrder.setFixedHeight(50)
+        self.multiUserOrder.setText("Plusieurs acheteurs")
+        self.multiUserOrder.setFixedHeight(50)
 
         # Payement
         self.NFCDialog.blockSignals(True)
+
+    def OpenMultiUserQuantityDialog(self):
+        if self.basketTree.basket != {}:
+            self.multiUserQuantity.show()
+            center(self.multiUserQuantity)
+        else:
+            print("Empty basket")
+            self.warningDialog = QMessageBox(QMessageBox.Warning, "Panier vide", "Veuillez sélectionner des articles avant de valider la commande", QMessageBox.Ok)
+            self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.warningDialog.show()
+            center(self.warningDialog)
+
+    def OpenMultiUserDialog(self, quantity):
+        
+        if quantity.is_integer() and quantity>0:
+            self.multiUserDialog= QMultiUserDialog(self.basketTree.basket, int(quantity))
+            self.multiUserDialog.show()
+            center(self.multiUserDialog)
+        else:
+            errorDialog=QErrorDialog()
+            errorDialog.exec()
 
     def lineSelect(self):  # Probably one of my ugliest functions... T_T
         itemName = self.searchBar.inputLine.text()
@@ -358,17 +583,25 @@ class QCounter(QWidget):
             itemList.append(data["uid"])
 
     def OpenNFCDialog(self):
-        cardHandler = QCardObserver()
-        if not self.NFCDialog.isVisible():
-            if not cardHandler.hasCard():
-                center(self.NFCDialog)
-                self.NFCDialog.blockSignals(False)
-                self.NFCDialog.show()
+        if self.basketTree.basket != {}:
+            cardHandler = QCardObserver()
+            if not self.NFCDialog.isVisible():
+                if not cardHandler.hasCard():
+                    center(self.NFCDialog)
+                    self.NFCDialog.blockSignals(False)
+                    self.NFCDialog.show()
+                else:
+                    self.payement()
+                    print("Carte déjà présente sur le lecteur")
             else:
-                self.payement()
-                print("Carte déjà présente sur le lecteur")
+                print("Widget déjà ouvert")
         else:
-            print("Widget déjà ouvert")
+            print("Empty basket")
+            self.warningDialog = QMessageBox(QMessageBox.Warning, "Panier vide", "Veuillez sélectionner des articles avant de valider la commande", QMessageBox.Ok)
+            self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.warningDialog.show()
+            center(self.warningDialog)
+
 
     def payement(self):
         observer = QCardObserver()
@@ -379,7 +612,7 @@ class QCounter(QWidget):
             response = requestBuy(toHexString(cardUID), config.counterID, MAC, self.basketTree.basket)
             if response:
                 print("Paiement effectué avec succès")
-                transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice}
+                transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time":datetime.datetime.now().strftime("%H:%M:%S")}
                 self.historyTree.addTransaction(response["transaction_id"], transaction)
                 connector.updateBalanceInfo(response["user_balance"])
                 #            self.infoNFC.updateBalance(response['user_balance'])
@@ -397,6 +630,34 @@ class QCounter(QWidget):
             self.warningDialog.show()
             center(self.warningDialog)
 
+    def multiUserPayement(self, userList, userPrice):
+
+        observer = QCardObserver()
+        cardUID = userList[0]
+        connector = QConnector()
+        
+        print("payement:", MAC, toHexString(cardUID), self.basketTree.basket)
+        if self.basketTree.basket != {}:
+            response = requestBuy(toHexString(cardUID), config.counterID, MAC, self.basketTree.basket)
+            if response:
+                print("Paiement effectué avec succès")
+                transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time":datetime.datetime.now().strftime("%H:%M:%S")}
+                self.historyTree.addTransaction(response["transaction_id"], transaction)
+                connector.updateBalanceInfo(response["user_balance"])
+                #            self.infoNFC.updateBalance(response['user_balance'])
+                self.basketTree.clearBasket()
+            else:
+                print("Paiement refusé")
+                self.warningDialog = QMessageBox(QMessageBox.Warning, "Solde insuffisant", "Veuillez recharger la carte", QMessageBox.Ok)
+                self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+                self.warningDialog.show()
+                center(self.warningDialog)
+        else:
+            print("Empty basket")
+            self.warningDialog = QMessageBox(QMessageBox.Warning, "Panier vide", "Veuillez sélectionner des articles avant de valider la commande", QMessageBox.Ok)
+            self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.warningDialog.show()
+            center(self.warningDialog)
 
 class QUserInfo(QGroupBox):
     def __init__(self):
