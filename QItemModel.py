@@ -86,6 +86,11 @@ class QItemSelectorModel(QTreeModel):
                     return QPixmap("ressources/icones/" + index.internalPointer().getText(0) + ".png")
                 except:
                     pass  # No picture found
+        if role == Qt.ToolTipRole:
+            try:
+                return index.internalPointer().data["uid"]
+            except:
+                pass
 
         if role == Qt.ForegroundRole:
             try:
@@ -146,8 +151,11 @@ class QItemSelectorModel(QTreeModel):
 
             for child in indexList:
                 if child.internalPointer().data["uid"] == uid:
+
                     child.internalPointer().data["price"] = itemDict[uid]["currentPrice"]
-                    model.setData(model.index(0, 1, child.parent()), euro(itemDict[uid]["currentPrice"]), Qt.EditRole)
+                    child.internalPointer().data["text"][1] = euro(itemDict[uid]["currentPrice"])
+                    model.setData(model.index(0, 1, child.parent()), euro(child.internalPointer().data["text"][1]), Qt.EditRole)
+
             # self.treeView.doubleClicked[QModelIndex].connect(self.selectItem)
         except:
             pass

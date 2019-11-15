@@ -24,8 +24,8 @@ class MachineConfigSingleton(type(swagger_client.Configuration)):
 class MachineConfig(swagger_client.Configuration, metaclass=MachineConfigSingleton):
     def __init__(self):
         super().__init__()
-        self.counterID = 1
-        self.host = "http://127.0.0.1:5000"
+        self.counterID = 4
+        self.host = "http://192.168.2.100:5000"
         self.defaultItemFileName = "ItemModel.json"
 
     def setHost(host):
@@ -138,3 +138,29 @@ def requestUserBalance(uid):
         return None
     except MaxRetryError as e:
         return None
+
+
+def requestCounterList():
+    try:
+        return api_instance.get_counter_list_get()
+    except ApiException as e:
+        if e.status == 404:
+            print("No counter found")
+        return None
+    except MaxRetryError as e:
+        return None
+
+
+def requestTransfert(sender, receiver, amount):
+    try:
+        body = swagger_client.Body3(receiver, sender, amount)
+        return api_instance.transfer_money_post(body)
+    except ApiException as e:
+        if e.status == 401:
+            print("Not enough money")
+        elif e.status == 404:
+            print("User not found")
+        return None
+    except MaxRetryError as e:
+        return None
+

@@ -299,6 +299,5 @@ class QSimpleNumberInputDialog(QWidget):
             self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.errorDialog.show()
             center(self.errorDialog)
-
-        self.inputBar.setText("")
+            self.inputBar.setText("2")
 

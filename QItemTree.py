@@ -354,7 +354,6 @@ class QBarHistory(QAbstractHistory):
                     for j in i["shopping_cart"]:
                         basket[j["product_code"]] = j["quantity"]
 
-                    print("TIME !!!! ",i["time"])
                     #TODO: Serialize the time on the SERVER OR use the standard function for parse string-> datetime parsing 
                     # Please close your eyes here ...
                     time=i["time"].split(' ')[4] 
