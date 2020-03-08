@@ -24,8 +24,9 @@ class MachineConfigSingleton(type(swagger_client.Configuration)):
 class MachineConfig(swagger_client.Configuration, metaclass=MachineConfigSingleton):
     def __init__(self):
         super().__init__()
-        self.counterID = 4
-        self.host = "http://192.168.2.100:5000"
+        self.counterID = 1
+        #self.host = "http://127.0.0.1:5000"
+        self.host = "http://192.168.2.101:5000"
         self.defaultItemFileName = "ItemModel.json"
 
     def setHost(host):
