@@ -11,6 +11,8 @@ import json
 
 from babel.numbers import format_currency
 
+from Client import *
+
 # Server response emulation
 import uuid
 
@@ -59,7 +61,7 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
         QObject.__init__(self)
 
         self.itemDict = {}  # BASE OF ITEMS, WITHOUT TREE LOGIC
-
+        self.itemTree = {}  # List of items ordered by category
         self.timer = QTimer(self)
         self.timer.setInterval(1000)
         #     self.timer.start()
@@ -156,7 +158,11 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
 
     def updatePrice(self):
         """Check for each timeout if the price have to be updated"""
-        h, m, s = QTime.currentTime().hour(), QTime.currentTime().minute(), QTime.currentTime().second()
+        h, m, s = (
+            QTime.currentTime().hour(),
+            QTime.currentTime().minute(),
+            QTime.currentTime().second(),
+        )
         time = h + m / 60
         for uid in self.happyHour:
             if self.__isValid(self.happyHour[uid]):
@@ -179,7 +185,9 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
                         if self.__latchHappyHour[uid][interval[0]] == 1:
                             self.__latchHappyHour[uid][interval[0]] = 0
                             self.itemDict[uid]["currentPrice"] = self.itemDict[uid]["defaultPrice"]
-                            print("Fin happy hour pour", uid, "nouveau prix", self.itemDict[uid]["currentPrice"])
+                            print(
+                                "Fin happy hour pour", uid, "nouveau prix", self.itemDict[uid]["currentPrice"],
+                            )
                             self.priceUpdated.emit(uid)
                         else:
                             pass
@@ -261,9 +269,7 @@ class QConnector(QObject, metaclass=QConnectorSingleton):
         self.balanceInfoUpdated.emit(newBalance)
 
 
-class QSimpleNumberInputDialog(QWidget):
-    valueSelected = pyqtSignal(float)
-
+class QAbstractInputDialog(QWidget):
     def __init__(self, questionText, parent=None):
         super().__init__(parent)
         # Definitions
@@ -271,13 +277,13 @@ class QSimpleNumberInputDialog(QWidget):
         self.questionLabel = QLabel()
         self.inputBar = QLineEdit()
         self.okButton = QPushButton()
-        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir un nombre réel.")
+        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Erreur")
 
         # Settings
         self.questionLabel.setText(questionText)
         self.setWindowTitle(questionText)
         self.okButton.setText("OK")
-        self.inputBar.setText("2")
+        self.inputBar.setText("")
 
         # Links
 
@@ -289,15 +295,69 @@ class QSimpleNumberInputDialog(QWidget):
 
         self.setLayout(self.mainHBoxLayout)
 
+
+class QSimpleNumberInputDialog(QAbstractInputDialog):
+    valueSelected = pyqtSignal(float)
+
+    def __init__(self, questionText, parent=None):
+        super().__init__(parent)
+        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir un nombre réel.")
+        self.inputBar.setText("2")
+
     def sendValue(self):
         try:
             self.valueSelected.emit(float(self.inputBar.text()))
             self.inputBar.setText("2")
             self.close()
         except:
-
             self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.errorDialog.show()
             center(self.errorDialog)
             self.inputBar.setText("2")
 
+
+class QIpInputDialog(QAbstractInputDialog):
+    valueSelected = pyqtSignal(str)
+
+    def __init__(self, questionText, parent=None):
+        super().__init__(parent)
+        config = MachineConfig()
+        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir une Ip V4 valide")
+        self.inputBar.setText(config.host[len("http://") :])
+
+    def sendValue(self):
+        config = MachineConfig()
+        ipParser = self.inputBar.text().replace(" ", "").split(".")
+        valid = True
+        if len(ipParser) == 4:
+            for i in ipParser:
+                try:
+                    if 0 <= int(i) and int(i) <= 255:
+                        pass
+                    else:  # invalid ip
+                        valid = False
+                except:  # Not a number
+                    portParser = i.split(":")
+                    if len(portParser) == 2:
+                        try:
+                            if 0 <= int(portParser[0]) and int(portParser[0]) <= 255 and int(portParser[1]) > 0:
+                                pass
+                            else:
+                                valid = False
+                        except:
+                            valid = False
+                    else:
+                        valid = False
+        else:
+            valid = False
+
+        if valid is True:
+            self.inputBar.setText(self.inputBar.text().replace(" ", ""))
+            self.valueSelected.emit(self.inputBar.text())
+            config.setHost("http://" + self.inputBar.text())
+            api_instance = swagger_client.DefaultApi(swagger_client.ApiClient(config))
+            self.close()
+        else:
+            self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.errorDialog.show()
+            center(self.errorDialog)

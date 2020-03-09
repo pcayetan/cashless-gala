@@ -18,28 +18,45 @@ import json
 
 import copy
 
-import datetime #En attendant que Cyl mette l'heure dans les réponse 
-                #de transaction
+import datetime  # En attendant que Cyl mette l'heure dans les réponse
+
+# de transaction
 
 #  Shared variables
 PWD = os.getcwd() + "/"
 
 
 #  Get item tree
+# INITIALISATION
 
 try:
     itemRegister = QItemRegister()
+
     config = MachineConfig()
-    ITEM_TREE = requestCounterProduct(config.counterID)
-    itemRegister.loadDict(ITEM_TREE)
+    config.counterList = requestCounterList()
+    for i in config.counterList:
+        config.counterDict[i[1]] = i[0]
+
+    try:
+        with open("data/counter", "r") as file:
+            line = file.readline().strip()
+            if line in config.counterDict:
+                config.counterID = config.counterDict[line]
+            else:
+                config.counterID = 1
+    except:
+        print('Unable to read the file "counter" in "data"')
+
+    itemRegister.itemTree = requestCounterProduct(config.counterID)
+    itemRegister.loadDict(itemRegister.itemTree)
 except:
     print("Unable to download the item file")
     try:
         with open(config.defaultItemFileName, "r") as file:
-            ITEM_TREE = json.load(file)
-        itemRegister.loadDict(ITEM_TREE)
+            itemRegister.itemTree = json.load(file)
+        itemRegister.loadDict(itemRegister.itemTree)
     except:
-        ITEM_TREE = {}
+        itemRegister.itemTree = {}
         print("Local item file not found")
 
 
@@ -136,7 +153,7 @@ class QInfoNFC(QGroupBox):
         if observer.hasCard() is True:
             cardUID = observer.cardUID
             response = requestUserHistory(toHexString(cardUID), -1)  # Ask for the 10 last user transactions
-            self.userInfoTree=QUserHistory(["ID","Prix"],response)
+            self.userInfoTree = QUserHistory(["ID", "Prix"], response)
             self.userInfoTree.show()
             center(self.userInfoTree)
 
@@ -169,22 +186,23 @@ class QSearchBar(QWidget):
     def clearText(self):
         self.inputLine.setText("")
 
+
 class QMultiUserDialog(QWidget):
-    
+
     paid = pyqtSignal(str)
 
     def __init__(self, basket, numberUser, parent=None):
         super().__init__(parent)
-        #Definition
+        # Definition
         self.mainVBoxLayout = QVBoxLayout()
         self.totalPriceRowInfo = QRowInfo()
-        self.validateOrder  = QPushButton()
+        self.validateOrder = QPushButton()
         self.amountPaid = 0
 
         self.userUIDLabel = []
         self.userUID = []
 
-        self.userPriceLabel=[]
+        self.userPriceLabel = []
         self.userPrice = []
         self.userPriceValue = []
 
@@ -198,13 +216,12 @@ class QMultiUserDialog(QWidget):
         self.firstEdit = True
         self.indexEdit = 0
         self.basket = basket
-        
-        iregister=QItemRegister()
-        itemList=iregister.getItems()
-        self.totalPrice=0
+
+        iregister = QItemRegister()
+        itemList = iregister.getItems()
+        self.totalPrice = 0
         for i in basket:
-            self.totalPrice+=itemList[i]["currentPrice"]*basket[i]
-            
+            self.totalPrice += itemList[i]["currentPrice"] * basket[i]
 
         self.totalPriceRowInfo.addRow("Reste à payer", euro(self.totalPrice))
         self.totalPriceRowInfo.addRow("Total à payer", euro(self.totalPrice))
@@ -212,7 +229,7 @@ class QMultiUserDialog(QWidget):
         self.mainVBoxLayout.addWidget(self.totalPriceRowInfo)
 
         for i in range(numberUser):
-            #Definitions
+            # Definitions
             self.userUIDLabel.append(QLabel())
             self.userUID.append(QLabel())
 
@@ -226,7 +243,7 @@ class QMultiUserDialog(QWidget):
 
             self.lineLayout.append(QHBoxLayout())
 
-            #Settings
+            # Settings
 
             self.userUIDLabel[i].setText("UID")
             self.userUID[i].setText("00 00 00 00 00 00 00")
@@ -241,7 +258,7 @@ class QMultiUserDialog(QWidget):
             self.scanUserButton[i].setText("Scanner")
             self.scanUserButton[i].clicked.connect(self.selectUserToScan)
 
-            #Links
+            # Links
             self.lineLayout[i].addWidget(self.userUIDLabel[i])
             self.lineLayout[i].addWidget(self.userUID[i])
 
@@ -256,8 +273,7 @@ class QMultiUserDialog(QWidget):
 
             self.userPrice[i].editingFinished.connect(self.balanceUpdate)
 
-
-        #Settings
+        # Settings
         self.setWindowTitle("Paiment séparé")
         self.setWindowIcon(QIcon("ressources/icones/group.png"))
 
@@ -267,9 +283,7 @@ class QMultiUserDialog(QWidget):
 
         self.validateOrder.setText("Valider et payer")
 
-
-
-        #Link
+        # Link
 
         self.validateOrder.clicked.connect(self.payement)
         observer = QCardObserver()
@@ -277,43 +291,43 @@ class QMultiUserDialog(QWidget):
         self.mainVBoxLayout.addWidget(self.progressBar)
         self.mainVBoxLayout.addWidget(self.validateOrder)
         self.setLayout(self.mainVBoxLayout)
-    
+
     def scanUsers(self):
-        if self.isVisible() is True: #Ce widget foutait la merde en arrière plan, il faut le forcer à agir visible
+        if self.isVisible() is True:  # Ce widget foutait la merde en arrière plan, il faut le forcer à agir visible
             observer = QCardObserver()
-            alreadyScannedUID=[]
-            
-            N_user=len(self.userUID)
+            alreadyScannedUID = []
+
+            N_user = len(self.userUID)
 
             for i in self.userUID:
                 alreadyScannedUID.append(i.text())
-            
-            cardUID=toHexString(observer.cardUID)
+
+            cardUID = toHexString(observer.cardUID)
             if self.firstEdit is True:
                 if cardUID not in alreadyScannedUID:
                     response = requestUserBalance(cardUID)
                     if response:
                         self.userUID[self.indexEdit].setText(cardUID)
                         self.userBalance[self.indexEdit].setText(euro(response["user_balance"]))
-                        if response["user_balance"] > self.totalPrice/N_user:
-                            self.userPrice[self.indexEdit].setText(euro(self.totalPrice/N_user))
+                        if response["user_balance"] > self.totalPrice / N_user:
+                            self.userPrice[self.indexEdit].setText(euro(self.totalPrice / N_user))
                         else:
                             self.userPrice[self.indexEdit].setText(euro(response["user_balance"]))
 
-                        temp=float(self.userPrice[self.indexEdit].text().replace("€","").replace(",","."))
-                        self.amountPaid+=temp
-                        self.totalPriceRowInfo.setRow(0,1, euro(self.totalPrice - self.amountPaid))
+                        temp = float(self.userPrice[self.indexEdit].text().replace("€", "").replace(",", "."))
+                        self.amountPaid += temp
+                        self.totalPriceRowInfo.setRow(0, 1, euro(self.totalPrice - self.amountPaid))
 
                         self.userPrice[self.indexEdit].setEnabled(True)
                         self.balanceUpdate()
-                        self.indexEdit+=1
+                        self.indexEdit += 1
                     else:
-                        warningDialog = QErrorDialog("Erreur","Utilisateur introuvable","Veuillez enregistrer cette carte à la billeterie")
+                        warningDialog = QErrorDialog("Erreur", "Utilisateur introuvable", "Veuillez enregistrer cette carte à la billeterie")
                         center(warningDialog)
                         warningDialog.exec()
 
                     if self.indexEdit == len(self.userUID):
-                        self.firstEdit=False
+                        self.firstEdit = False
             else:
                 if cardUID not in alreadyScannedUID:
                     response = requestUserBalance(cardUID)
@@ -322,61 +336,59 @@ class QMultiUserDialog(QWidget):
                         self.userBalance[self.indexEdit].setText(euro(response["user_balance"]))
                         self.userPrice[self.indexEdit].setEnabled(True)
                     else:
-                        warningDialog = QErrorDialog("Erreur","Utilisateur introuvable","Veuillez enregistrer cette carte à la billeterie")
+                        warningDialog = QErrorDialog("Erreur", "Utilisateur introuvable", "Veuillez enregistrer cette carte à la billeterie")
                         center(warningDialog)
                         warningDialog.exec()
-    
+
     def selectUserToScan(self):
 
-        self.firstEdit=False
+        self.firstEdit = False
         for i in range(len(self.scanUserButton)):
             if self.sender() == self.scanUserButton[i]:
-                self.indexEdit=i
+                self.indexEdit = i
 
     def balanceUpdate(self):
-        sum=0.0
-        leftToPay=self.totalPrice
+        sum = 0.0
+        leftToPay = self.totalPrice
         for i in range(len(self.userUID)):
             try:
-                currentPrice=self.userPrice[i].text().replace("€","").replace(" ","").replace(",",".").strip()
-                currentBalance=self.userBalance[i].text().replace("€","").replace(" ","").replace(",",".").strip()
+                currentPrice = self.userPrice[i].text().replace("€", "").replace(" ", "").replace(",", ".").strip()
+                currentBalance = self.userBalance[i].text().replace("€", "").replace(" ", "").replace(",", ".").strip()
                 print(float(currentPrice))
                 if float(currentPrice) > 0:
                     if float(currentBalance) >= float(currentPrice):
                         self.userPrice[i].setText(currentPrice)
                     else:
                         self.userPrice[i].setText(currentBalance)
-                    leftToPay-=float(self.userPrice[i].text())
+                    leftToPay -= float(self.userPrice[i].text())
 
                     if leftToPay < 0:
-                        print(float(currentPrice),leftToPay)
-                        temp=float(currentPrice)
-                        self.userPrice[i].setText(str(float(currentPrice)+leftToPay))
-                        leftToPay+=temp
+                        print(float(currentPrice), leftToPay)
+                        temp = float(currentPrice)
+                        self.userPrice[i].setText(str(float(currentPrice) + leftToPay))
+                        leftToPay += temp
 
-                    sum+=float(self.userPrice[i].text())
+                    sum += float(self.userPrice[i].text())
                 else:
                     self.userPrice[i].setText("0")
 
-
             except:
-                warningDialog=QErrorDialog("Erreur format","Erreur format invalide","Veuillez saisir un nombre réel positif")
+                warningDialog = QErrorDialog("Erreur format", "Erreur format invalide", "Veuillez saisir un nombre réel positif")
                 center(warningDialog)
                 warningDialog.exec()
                 self.userPrice[i].blockSignals(True)
                 self.userPrice[i].setText("0")
                 self.userPrice[i].blockSignals(False)
 
-        self.totalPriceRowInfo.setRow(0,1,euro(leftToPay))
-        sum=sum/self.totalPrice*100
+        self.totalPriceRowInfo.setRow(0, 1, euro(leftToPay))
+        sum = sum / self.totalPrice * 100
         self.progressBar.setValue(sum)
         self.formatInputLine()
 
-    
     def formatInputLine(self):
 
         for inputLine in self.userPrice:
-            currentText =inputLine.text()
+            currentText = inputLine.text()
             currentText = currentText.replace("€", "").replace(",", ".").replace(" ", "").strip()
             inputLine.blockSignals(True)
             try:
@@ -385,42 +397,39 @@ class QMultiUserDialog(QWidget):
                 inputLine.setText(euro(0))
 
             inputLine.blockSignals(False)
-    
+
     def payement(self):
-        sum=0
+        sum = 0
         machine = MachineConfig()
-        
+
         for inputLine in self.userPrice:
             currentText = inputLine.text()
             currentText = currentText.replace("€", "").replace(",", ".").replace(" ", "").strip()
-            sum+=float(currentText)
+            sum += float(currentText)
 
         if sum == self.totalPrice:
-            referenceUID=self.userUID[0]
-            referencePrice=self.userPrice[0]
-            responseList=[]
-            for i in range(1,len(self.userPrice)):
-                price = float(self.userPrice[i].text().replace("€","").replace(",",".").replace(" ","").strip())
-                response = requestTransfert(self.userUID[i].text(),referenceUID.text(),price)
+            referenceUID = self.userUID[0]
+            referencePrice = self.userPrice[0]
+            responseList = []
+            for i in range(1, len(self.userPrice)):
+                price = float(self.userPrice[i].text().replace("€", "").replace(",", ".").replace(" ", "").strip())
+                response = requestTransfert(self.userUID[i].text(), referenceUID.text(), price)
                 responseList.append(response)
                 if response:
                     print(response)
-            
 
-
-            #response=requestBuy(referenceUID.text(),machine.counterID,MAC,self.basket)
+            # response=requestBuy(referenceUID.text(),machine.counterID,MAC,self.basket)
             if response:
-                #Succes
+                # Succes
                 print("Achat multiple succes")
                 self.paid.emit(referenceUID.text())
                 self.disconnect()
                 self.close()
             else:
                 print("Achat multiple echec")
-                
+
         elif sum < self.totalPrice:
             pass
-
 
 
 class QCounter(QWidget):
@@ -444,7 +453,7 @@ class QCounter(QWidget):
         self.productSelectionGroupBox = QGroupBox()
         self.searchBar = QSearchBar()
 
-        self.productTree = QItemSelector(["Articles", "Prix"], ITEM_TREE)
+        self.productTree = QItemSelector(["Articles", "Prix"], itemRegister.itemTree)
 
         # infoNFC definition (right pannel)
 
@@ -457,8 +466,7 @@ class QCounter(QWidget):
 
         self.multiUserOrder = QPushButton()
         self.multiUserQuantity = QSimpleNumberInputDialog("Combien de clients ?")
-        self.multiUserDialog = QMultiUserDialog #Not instancied on purpose
-        
+        self.multiUserDialog = QMultiUserDialog  # Not instancied on purpose
 
         ###Link###
         self.setLayout(self.mainGridLayout)
@@ -495,7 +503,6 @@ class QCounter(QWidget):
 
         self.multiUserOrder.clicked.connect(self.OpenMultiUserQuantityDialog)
         self.multiUserQuantity.valueSelected[float].connect(self.OpenMultiUserDialog)
-        
 
         self.NFCDialog.cardInserted.connect(self.payement)
 
@@ -536,14 +543,14 @@ class QCounter(QWidget):
             center(self.warningDialog)
 
     def OpenMultiUserDialog(self, quantity):
-        
-        if quantity.is_integer() and quantity>0:
-            self.multiUserDialog= QMultiUserDialog(self.basketTree.basket, int(quantity))
+
+        if quantity.is_integer() and quantity > 0:
+            self.multiUserDialog = QMultiUserDialog(self.basketTree.basket, int(quantity))
             self.multiUserDialog.paid[str].connect(self.payement)
             self.multiUserDialog.show()
             center(self.multiUserDialog)
         else:
-            errorDialog=QErrorDialog("Erreur de saisie","Erreur format","Veuillez renseigner un nombre")
+            errorDialog = QErrorDialog("Erreur de saisie", "Erreur format", "Veuillez renseigner un nombre")
             errorDialog.exec()
 
     def lineSelect(self):  # Probably one of my ugliest functions... T_T
@@ -670,17 +677,16 @@ class QCounter(QWidget):
             self.warningDialog.show()
             center(self.warningDialog)
 
-
     def payement(self, multiUserUID=None):
 
         if self.sender() == self.multiUserDialog:
-            cardUID= multiUserUID
+            cardUID = multiUserUID
         else:
             observer = QCardObserver()
             cardUID = observer.cardUID
 
         try:
-            cardUID= toHexString(cardUID)
+            cardUID = toHexString(cardUID)
         except:
             cardUID = str(cardUID)
         connector = QConnector()
@@ -689,7 +695,7 @@ class QCounter(QWidget):
             response = requestBuy(cardUID, config.counterID, MAC, self.basketTree.basket)
             if response:
                 print("Paiement effectué avec succès")
-                transaction = {"cardUID": cardUID, "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time":datetime.datetime.now().strftime("%H:%M:%S")}
+                transaction = {"cardUID": cardUID, "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time": datetime.datetime.now().strftime("%H:%M:%S")}
                 self.historyTree.addTransaction(response["transaction_id"], transaction)
                 connector.updateBalanceInfo(response["user_balance"])
                 #            self.infoNFC.updateBalance(response['user_balance'])
@@ -712,13 +718,13 @@ class QCounter(QWidget):
         observer = QCardObserver()
         cardUID = userList[0]
         connector = QConnector()
-        
+
         print("payement:", MAC, toHexString(cardUID), self.basketTree.basket)
         if self.basketTree.basket != {}:
             response = requestBuy(toHexString(cardUID), config.counterID, MAC, self.basketTree.basket)
             if response:
                 print("Paiement effectué avec succès")
-                transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time":datetime.datetime.now().strftime("%H:%M:%S")}
+                transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time": datetime.datetime.now().strftime("%H:%M:%S")}
                 self.historyTree.addTransaction(response["transaction_id"], transaction)
                 connector.updateBalanceInfo(response["user_balance"])
                 #            self.infoNFC.updateBalance(response['user_balance'])
@@ -735,6 +741,7 @@ class QCounter(QWidget):
             self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.warningDialog.show()
             center(self.warningDialog)
+
 
 class QUserInfo(QGroupBox):
     def __init__(self):
@@ -870,7 +877,6 @@ class QCashPayement(QAbstractPayement):
 
         self.setTitle("Paiement par espèce")
 
-
         self.label = QLabel()
         self.inputLine = QAutoSelectLineEdit()
         self.okButton = QPushButton()
@@ -893,10 +899,10 @@ class QCashPayement(QAbstractPayement):
 
         self.mainGridLayout.addWidget(self.label, 0, 0, Qt.AlignLeft)
         self.mainGridLayout.addWidget(self.inputLine, 0, 1, Qt.AlignLeft)
-        self.mainGridLayout.addWidget(self.moneyInLabel,1,0,Qt.AlignLeft)
-        self.mainGridLayout.addWidget(self.moneyIn,1,1,Qt.AlignLeft)
-        self.mainGridLayout.addWidget(self.moneyBackLabel,2,0,Qt.AlignLeft)
-        self.mainGridLayout.addWidget(self.moneyBack,2,1,Qt.AlignLeft)
+        self.mainGridLayout.addWidget(self.moneyInLabel, 1, 0, Qt.AlignLeft)
+        self.mainGridLayout.addWidget(self.moneyIn, 1, 1, Qt.AlignLeft)
+        self.mainGridLayout.addWidget(self.moneyBackLabel, 2, 0, Qt.AlignLeft)
+        self.mainGridLayout.addWidget(self.moneyBack, 2, 1, Qt.AlignLeft)
 
         self.mainGridLayout.addWidget(self.okButton, 3, 0, Qt.AlignLeft)
 
@@ -913,18 +919,17 @@ class QCashPayement(QAbstractPayement):
         currentText = self.inputLine.text()
 
         try:
-            creditAmount=float(self.inputLine.text())
-            currentTextMoneyIn=self.moneyIn.text()
-            currentTextMoneyIn=currentTextMoneyIn.replace("€", "").replace(",", ".").replace(" ", "").strip()
+            creditAmount = float(self.inputLine.text())
+            currentTextMoneyIn = self.moneyIn.text()
+            currentTextMoneyIn = currentTextMoneyIn.replace("€", "").replace(",", ".").replace(" ", "").strip()
             moneyInAmount = float(currentTextMoneyIn)
             self.moneyBack.setText(euro(moneyInAmount - creditAmount))
         except:
-            creditAmount=0
-            currentTextMoneyIn=self.moneyIn.text()
-            currentTextMoneyIn=currentTextMoneyIn.replace("€", "").replace(",", ".").replace(" ", "").strip()
+            creditAmount = 0
+            currentTextMoneyIn = self.moneyIn.text()
+            currentTextMoneyIn = currentTextMoneyIn.replace("€", "").replace(",", ".").replace(" ", "").strip()
             moneyInAmount = float(currentTextMoneyIn)
             self.moneyBack.setText(euro(moneyInAmount - creditAmount))
-
 
         currentText = currentText.replace("€", "").replace(",", ".").replace(" ", "").strip()
         self.inputLine.blockSignals(True)
@@ -1251,12 +1256,12 @@ class QMainMenu(QMainWindow):
         self.setWindowTitle("Gala.Manager.Core")
         self.resize(1200, 800)
         self.setWindowIcon(QIcon(PWD + "ressources/icon.ico"))
+
         center(self)
         self.MainTab = QMainTab()
         self.setCentralWidget(self.MainTab)
 
         # NFC
-        # self.NFCReader=getReaders()[0]
 
         self.CardMonitor = CardMonitor()
         self.CardObserver = QCardObserver()
@@ -1273,23 +1278,70 @@ class QMainMenu(QMainWindow):
         configMenu = mainMenu.addMenu("&Config")
         helpMenu = mainMenu.addMenu("&Aide")
         counterMenu = configMenu.addMenu("&Comptoir")
+        counterActionList = []
+        self.counterActionGroup = QActionGroup(self)
+        for i in config.counterDict:
+            action = QAction(i, self)
+            action.setCheckable(True)
+            counterActionList.append(action)
+            self.counterActionGroup.addAction(action)
+            counterMenu.addAction(action)
+            if config.counterDict[i] == config.counterID:
+                action.setChecked(True)
+            action.triggered.connect(self.updateCounter)
+
         ipAction = QAction("&Adresse serveur", self)
+        ipAction.triggered.connect(self.setServerAddress)
 
         configMenu.addAction(ipAction)
+
+        self.ipDialog = QIpInputDialog("Veuillez saisir l'adresse du serveur")
+        self.ipDialog.setWindowTitle("IP Serveur")
 
         #  Settings
         # Link
 
+        # Toolbar
         self.statusBar()  # Built in function that show menu bar
+
+        self.counterLabel = QLabel()
+        self.counterLabel.setText(self.counterActionGroup.checkedAction().text())
+        self.statusBar().addPermanentWidget(self.counterLabel)
 
     def ForceHistoryRefresh(self):
         pass
 
-    def setServerAddress(self, ipAddress):
-        pass
+    def setServerAddress(self):
+        self.ipDialog.show()
+        center(self.ipDialog)
 
-    def setCounter(self, Counter):
-        pass
+    def updateCounter(self):
+        counterName = self.counterActionGroup.checkedAction().text()
+        self.counterLabel.setText(counterName)
+        try:
+            with open("data/counter", "w") as file:
+                file.write(counterName)
+        except:
+            print('Unable to write the file "counter" in "data"')
+        config.counterID = config.counterDict[counterName]
+
+        try:
+            itemRegister.itemTree = requestCounterProduct(config.counterID)
+            itemRegister.itemDict = {}
+            itemRegister.loadDict(itemRegister.itemTree)
+        except:
+            print("Unable to download the item file")
+            try:
+                with open(config.defaultItemFileName, "r") as file:
+                    itemRegister.itemTree = json.load(file)
+                itemRegister.loadDict(itemRegister.itemTree)
+            except:
+                itemRegister.itemTree = {}
+                print("Local item file not found")
+
+        self.MainTab.TabCounter.productTree.treeModel.updateModel(itemRegister.itemTree)
+        self.statusBar().showMessage("Comptoir: " + self.counterActionGroup.checkedAction().text())
+        # self.MainTab.TabCounter.productTree.treeModel.layoutChanged.emit()
 
 
 class QFadingWidget(QWidget):

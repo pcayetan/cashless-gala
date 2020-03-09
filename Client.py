@@ -25,14 +25,17 @@ class MachineConfig(swagger_client.Configuration, metaclass=MachineConfigSinglet
     def __init__(self):
         super().__init__()
         self.counterID = 1
-        #self.host = "http://127.0.0.1:5000"
-        self.host = "http://192.168.2.101:5000"
+        self.counterDict = {}  # Ordered as dictionary
+        self.counterList = []  # Ordered as list
+
+        self.host = "http://127.0.0.1:5000"
+        # self.host = "http://192.168.2.101:5000"
         self.defaultItemFileName = "ItemModel.json"
 
-    def setHost(host):
+    def setHost(self, host):
         self.host = host
 
-    def setCounterID(counterID):
+    def setCounterID(self, counterID):
         self.counterID = counterID
 
 
@@ -164,4 +167,3 @@ def requestTransfert(sender, receiver, amount):
         return None
     except MaxRetryError as e:
         return None
-

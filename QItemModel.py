@@ -75,6 +75,13 @@ class QItemSelectorModel(QTreeModel):
         itemRegister = QItemRegister()
         itemRegister.priceUpdated[QVariant].connect(self.updatePrice)
 
+    def updateModel(self, data):
+        self.rootItem.removeChildren(0, self.rootItem.childCount())
+        self.itemList = []
+        if data is not None:
+            self.setupModelData(data, self.rootItem)
+        self.layoutChanged.emit()  # Force update of the model
+
     def data(self, index, role):
 
         if not index.isValid():

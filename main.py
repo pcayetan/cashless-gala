@@ -10,14 +10,14 @@ if __name__ == "__main__":
         app = QApplication(sys.argv)
 
     MainWindow = QMainMenu()
-    FakeCard = QFakeCard()
-    FakeCard.LinkWidget(MainWindow.MainTab.TabCounter.NFCDialog)
+    # FakeCard = QFakeCard()
+    # FakeCard.LinkWidget(MainWindow.MainTab.TabCounter.NFCDialog)
 
     #    W.Layout.addStretch(1)
 
     # la fenêtre est rendue visible
     #    MainWindow.showMaximized()
     MainWindow.show()
-    FakeCard.show()
+    # FakeCard.show()
     # exécution de l'application, l'exécution permet de gérer les événements
     app.exec_()
