@@ -10,7 +10,6 @@ dist/
 *.spec
 *.csv
 counterHistory.json
-client
 defaultHistory.json
 transactionHistory.json
 *.zip
@@ -18,3 +17,4 @@ data
 venv/
 *.svg
 *.dot
+*_pb2*

@@ -18,3 +18,5 @@ swagger-client==1.0.0
 typed-ast==1.4.0
 urllib3==1.25.8
 wrapt==1.11.2
+grpcio==1.28.1
+grpcio-tools==1.28.1

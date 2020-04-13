@@ -1,0 +1,267 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+service Payment {
+
+  rpc Buy (BuyingRequest) returns (BuyingReply){}
+  rpc Refill(RefillingRequest) returns (RefillingReply) {}
+  rpc Refound(RefoundRequest) returns (RefoundReply) {}
+  rpc Transfert(TransfertRequest) returns (TransfertReply) {}
+  rpc Balance(BalanceRequest) returns (BalanceReply) {}
+  rpc History(HistoryRequest) returns (HistoryReply) {}
+  rpc CounterList(CounterListRequest) returns (CounterListReply) {}
+  rpc Products(ProductsRequest) returns (ProductsReply) {}
+}
+
+enum PaymentMethod {
+  UNKNOWN = 0;
+  CASH = 1;
+  CARD = 2;
+  CHECK = 3;
+  AE = 4;
+  TRANSFER = 5;
+  OTHER = 6;
+}
+
+message Product {
+  message HappyHour {
+    google.protobuf.Timestamp start = 1;
+    google.protobuf.Timestamp end = 2;
+    double price = 3;
+  }
+  int64 id = 1;
+  string name = 2;
+  string code = 3;
+  float default_price = 4;
+  repeated HappyHour happy_hours = 5;
+}
+
+message BasketItem {
+  int64 product_id = 1;
+  int64 quantity = 2;
+  double unit_price = 3;
+}
+
+message Refilling {
+  string customer_id = 1;
+  int64 counter_id = 2;
+  string mac_address = 3;
+  PaymentMethod payment_method = 4;
+  double amount = 5;
+  google.protobuf.Timestamp date = 6;
+}
+
+message Buying {
+  int64 id = 1;
+  string label = 2;
+  double price = 3; // Real buying price
+  bool refounded = 4;
+  google.protobuf.Timestamp date = 5;
+  repeated string customer_id = 6;
+  repeated BasketItem items = 7;
+}
+
+message BuyingRequest {
+  string customer_id = 1;
+  int64 counter_id = 2;
+  string mac_address = 3;
+  repeated BasketItem basket = 4;
+}
+
+message BuyingReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_CUSTOMER = 2;
+    MISSING_COUNTER = 3;
+    MISSING_MAC_ADDRESS = 4;
+    MISSING_BASKET = 5;
+
+    COUNTER_NOT_FOUND = 6;
+    ITEM_NOT_FOUND = 7;
+
+    NOT_ENOUGH_MONEY = 8;
+  }
+
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  double customer_balance = 3;
+  Buying transaction = 4;
+}
+
+message RefillingRequest {
+  string customer_id = 1;
+  int64 counter_id = 2;
+  string mac_address = 3;
+  PaymentMethod payment_method = 4;
+  double amount = 5;
+}
+
+message RefillingReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_CUSTOMER = 2;
+    MISSING_COUNTER = 3;
+    MISSING_MAC_ADDRESS = 4;
+    MISSING_PAYMENT_METHOD = 5;
+    MISISNG_AMOUNT = 6;
+
+    PAYMENT_METHOD_NOT_ALLOWED = 7;
+
+    COUNTER_NOT_FOUND = 8;
+  }
+
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  double customer_balance = 3;
+}
+
+message RefoundRequest {
+  int64 transaction_id = 1;
+  string customer_id = 2;
+  int64 counter_id = 3;
+  string mac_address = 4;
+}
+
+message RefoundReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_TRANSACTION = 2;
+    MISSING_CUSTOMER = 3;
+    MISSING_COUNTER = 4;
+    MISSING_MAC_ADDRESS = 5;
+
+    TRANSACTION_NOT_FOUND = 6;
+    COUNTER_NOT_FOUND = 8;
+
+    WRONG_CUSTOMER = 9;
+  }
+
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  double customer_balance = 3;
+}
+
+message TransfertRequest {
+  string origin_id = 1;
+  string destination_id = 2;
+  double amount = 3;
+  int64 counter_id = 4;
+  string mac_address = 5;
+}
+
+message TransfertReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_ORIGN = 2;
+    MISSING_DESTINATION = 3;
+    MISSING_AMOUNT = 4;
+    MISSING_COUNTER = 5;
+    MISSING_MAC_ADDRESS = 6;
+
+    COUNTER_NOT_FOUND = 7;
+
+    NOT_ENOUGH_MONEY = 8;
+  }
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  double origin_balance = 3;
+  double destination_balance = 4;
+}
+
+message BalanceRequest {
+  string customer_id = 1;
+}
+
+message BalanceReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_CUSTOMER = 2;
+  }
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  double balance = 3;
+}
+
+message HistoryRequest {
+  enum HistoryType {
+    BUYINGS = 0;
+    REFILLINGS = 1;
+  }
+  HistoryType type = 1; // Only one required
+
+  // Optional fields
+  int64 counter = 2;
+  string customer_id = 3;
+  string mac_address = 4;
+  uint64 max_history_size = 5;
+}
+
+message HistoryReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_TYPE = 2;
+  }
+
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  repeated Buying buyings = 3;
+  repeated Refilling refillings = 4;
+}
+
+message CounterListRequest {}
+
+message CounterListReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+  }
+  message Counter {
+    int64 id = 1;
+    string name = 2;
+  }
+
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  repeated Counter counters = 3;
+}
+
+message ProductsRequest {
+  int64 counter_id = 1;
+}
+
+message ProductsReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_COUNTER = 2;
+
+    COUNTER_NOT_FOUND = 3;
+  }
+  enum ProductType {
+    PRODUCT = 0;
+    CATEGORY = 1;
+  }
+  message Item {
+    ProductType type = 1;
+    map<string, Item> category = 2;
+    Product product = 3;
+  }
+
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  map<string, Item> products = 3;
+}
