@@ -16,3 +16,5 @@ transactionHistory.json
 *.zip
 data
 venv/
+*.svg
+*.dot

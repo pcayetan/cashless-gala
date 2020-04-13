@@ -64,7 +64,6 @@ class QBasket(QWidget):
 
         self.treeModel.priceChanged.connect(self.updateBasket)
 
-
     def clearBasket(self):
 
         buttonList = copy.copy(self.delButtonList)
@@ -124,12 +123,8 @@ class QBasket(QWidget):
 
     def selectItem(self, item):
         data = item.internalPointer().getText()
-        if len(data) > 1:
+        if len(data) > 1:  # If that's an end node (category don't have price)
             if data[1] != "":
-                #  errorDialog=QErrorDialog("WTF ?")
-                #  center(errorDialog)
-                #  errorDialog.exec()
-                #  index = self.treeView.selectionModel().currentIndex()
                 model = self.treeModel
 
                 if self.hasProductUID(item.internalPointer().data["uid"]) == -1:  # if the selected item already exist in the basket
@@ -217,7 +212,7 @@ class QBasket(QWidget):
 
     def keyPressEvent(self, event):
         try:
-            #TODO: Set multiple selection/deletion possible
+            # TODO: Set multiple selection/deletion possible
             if event.key() == Qt.Key_Delete:
                 row = self.treeView.selectedIndexes()[0].row()
                 button = self.delButtonList[row]
@@ -231,7 +226,6 @@ class QAbstractHistory(QWidget):
         super().__init__(parent)
 
         # Definitions
-        config = MachineConfig()
 
         self.transactionInfo = QBuyInfoDialog  # Not instancied on purpose
 
@@ -241,8 +235,6 @@ class QAbstractHistory(QWidget):
 
         self.transactionList = {}
         self.historyFileName = "defaultHistory.json"
-
-        # print(response)
 
         self.recoverHistory()
 
@@ -263,14 +255,13 @@ class QAbstractHistory(QWidget):
         self.treeView.doubleClicked[QModelIndex].connect(self.showTransactionInfo)
 
     def showTransactionInfo(self, modelIndex):
-        
+
         if modelIndex.internalPointer().childCount() == 0:
-            observer = QCardObserver()
 
             self.transactionInfo = QBuyInfoDialog(modelIndex)
             self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
 
-            self.transactionInfo.setWindowTitle("Information transaction")
+            # self.transactionInfo.setWindowTitle("Information transaction")
             self.transactionInfo.forceRefresh()
 
             self.transactionInfo.show()
@@ -280,6 +271,7 @@ class QAbstractHistory(QWidget):
 
         model = self.treeModel
         index = self.transactionInfo.selectedIndex
+        connector = QConnector()
         try:
             if self.transactionInfo.cancelTransaction() is False:
                 return
@@ -291,9 +283,14 @@ class QAbstractHistory(QWidget):
             except:
                 pass
             if not model.removeRows(index.row(), 1, index.parent()):
-                pass
+                connector.statusBarshowMessage("Échec de suppression de la transaction")
+            else:
+                connector.statusBarshowMessage("Suppression de la transaction")
 
         except:
+            popUp = QErrorDialog("Échec de l'opération", "Transaction introuvable", "Il semble que cette transaction ait déjà été annulée")
+            center(popUp)
+            popUp.exec()
             print("ERROR: Unable to remove transaction")
 
     def forceRefresh(self):
@@ -309,13 +306,41 @@ class QAbstractHistory(QWidget):
 
 class QUserHistory(QAbstractHistory):
     def __init__(self, headers, data=None, parent=None):
-        self.treeModel = QUserHistoryModel(headers,data)
-        super().__init__(headers, data,parent)
+        self.treeModel = QUserHistoryModel(headers, data)
+        super().__init__(headers, data, parent)
         self.treeView.expandAll()
         self.forceRefresh()
+        self.setWindowTitle("Historique utilisateur")
+        self.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxInformation))
 
     def recoverHistory(self):
         pass
+
+    def showTransactionInfo(self, modelIndex):
+
+        if modelIndex.internalPointer().childCount() == 0:
+
+            if modelIndex.parent().row() == 0:  # If it's in the buy section
+
+                self.transactionInfo = QBuyInfoDialog(modelIndex)
+                self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
+
+                self.transactionInfo.forceRefresh()
+                self.transactionInfo.setWindowTitle("Information transaction")
+
+                self.transactionInfo.show()
+                center(self.transactionInfo)
+            elif modelIndex.parent().row() == 1:  # If it's a transaction (refilling)
+
+                self.transactionInfo = QTransactionInfoDialog(modelIndex)
+                self.transactionInfo.cancelButton.clicked.connect(self.removeSelectedTransaction)
+
+                self.transactionInfo.setWindowTitle("Information transaction")
+                if self.transactionInfo.treeModel:
+                    self.transactionInfo.forceRefresh()
+
+                self.transactionInfo.show()
+                center(self.transactionInfo)
 
 
 class QBarHistory(QAbstractHistory):
@@ -354,9 +379,9 @@ class QBarHistory(QAbstractHistory):
                     for j in i["shopping_cart"]:
                         basket[j["product_code"]] = j["quantity"]
 
-                    #TODO: Serialize the time on the SERVER OR use the standard function for parse string-> datetime parsing 
+                    # TODO: Serialize the time on the SERVER OR use the standard function for parse string-> datetime parsing
                     # Please close your eyes here ...
-                    time=i["time"].split(' ')[4] 
+                    time = i["time"].split(" ")[4]
                     history[i["id"]] = {"cardUID": i["user_UID"], "basket": basket, "price": -i["amount"], "time": time}
                 else:  # if it's a refilling
                     pass
@@ -394,8 +419,8 @@ class QBarHistory(QAbstractHistory):
         child.internalPointer().data["cardUID"] = cardUID
         child.internalPointer().data["transactionUID"] = uid
         child.internalPointer().data["price"] = price
-        #TODO: Ask the transaction time to the server, else if the client has to reboot, the printed time will be wrong
-        h,m,s= QTime.currentTime().hour(), QTime.currentTime().minute(), QTime.currentTime().second()
+        # TODO: Ask the transaction time to the server, else if the client has to reboot, the printed time will be wrong
+        h, m, s = QTime.currentTime().hour(), QTime.currentTime().minute(), QTime.currentTime().second()
         child.internalPointer().data["time"] = transaction["time"]
         child.internalPointer().data["text"] = [cardUID.replace(" ", ""), euro(price), ""]
         self.forceRefresh()

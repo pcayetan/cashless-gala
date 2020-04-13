@@ -34,24 +34,33 @@ class QUserHistoryModel(QTreeModel):
         self.itemList = []
 
         buyItem = Item(["Achats", ""], self.rootItem)
-        transactionItem = Item(["Transactions", ""], self.rootItem)
+        transactionItem = Item(["Rechargements", ""], self.rootItem)
 
         self.rootItem.appendChild(buyItem)
         self.rootItem.appendChild(transactionItem)
         try:
-            for i in data:
-                i["transactionUID"] = i["id"]
-
+            for i in data:  # for each transaction in user's history
+                i["transactionUID"] = i["id"]  # TODO : Basicly this kind of shit should be avoided
                 i["cardUID"] = i["user_UID"]
-                i["basket"] = {"Objet": 1}
+
+                # Should also be avoided, this happen because
+                # the response is formated {["product_code":XXX,"quantity":YYY]}
+                # but my programm excpect {"product_code":quantity}
+                dico = {}
+                for j in i["shopping_cart"]:
+                    dico[j["product_code"]] = j["quantity"]
+
                 if i["shopping_cart"] == []:  # It's a transaction
                     i["text"] = [str(i["id"]), euro(i["amount"])]
                     i["price"] = i["amount"]
+
+                    i["basket"] = {"Rechargement": 1}
                     child = Item(i, transactionItem)
                     transactionItem.appendChild(child)
                 else:  # It's a buy
                     i["text"] = [str(i["id"]), euro(-i["amount"])]
                     i["price"] = -i["amount"]
+                    i["basket"] = dico
                     child = Item(i, buyItem)
                     buyItem.appendChild(child)
                 # self.transactionList[i["id"]] = i

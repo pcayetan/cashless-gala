@@ -152,12 +152,10 @@ class QInfoNFC(QGroupBox):
         observer = QCardObserver()
         if observer.hasCard() is True:
             cardUID = observer.cardUID
-            response = requestUserHistory(toHexString(cardUID), -1)  # Ask for the 10 last user transactions
+            response = requestUserHistory(toHexString(cardUID), -1)  # Ask for the whole user's history
             self.userInfoTree = QUserHistory(["ID", "Prix"], response)
             self.userInfoTree.show()
             center(self.userInfoTree)
-
-            print(response)
 
 
 class QSearchBar(QWidget):
@@ -632,31 +630,6 @@ class QCounter(QWidget):
         QTimer.singleShot(10, self.searchBar.clearText)  # The timer is helpfull here because it ensure the text is set BEFORE clearing it
         self.basketTree.updateBasket()
 
-    # OBSOLETE
-    def __getItemList(self):
-        itemList = []
-        self.__parseDictionary(self.__getItemDictionary(self.jsonFileName), itemList)
-        return itemList
-
-    # OBSOLETE
-    def __getItemDictionary(self, jsonFileName):
-        try:
-            with open(jsonFileName, "r") as file:
-                return json.load(file)
-        except:
-            # rise some error:
-            print("ERROR: Can't read the file", jsonFileName)
-
-    # OBSOLETE
-    def __parseDictionary(self, data, itemList):
-        if isFinalNode(data) is False:
-            for i in data:
-                if isFinalNode(data[i]) is True:
-                    data[i]["name"] = i
-                self.__parseDictionary(data[i], itemList)
-        else:
-            itemList.append(data["uid"])
-
     def OpenNFCDialog(self):
         if self.basketTree.basket != {}:
             cardHandler = QCardObserver()
@@ -695,6 +668,7 @@ class QCounter(QWidget):
             response = requestBuy(cardUID, config.counterID, MAC, self.basketTree.basket)
             if response:
                 print("Paiement effectué avec succès")
+                connector.statusBarshowMessage("Paiement effectué")
                 transaction = {"cardUID": cardUID, "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time": datetime.datetime.now().strftime("%H:%M:%S")}
                 self.historyTree.addTransaction(response["transaction_id"], transaction)
                 connector.updateBalanceInfo(response["user_balance"])
@@ -702,12 +676,14 @@ class QCounter(QWidget):
                 self.basketTree.clearBasket()
             else:
                 print("Paiement refusé")
+                connector.statusBarshowMessage("Solde insuffisant")
                 self.warningDialog = QMessageBox(QMessageBox.Warning, "Solde insuffisant", "Veuillez recharger la carte", QMessageBox.Ok)
                 self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
                 self.warningDialog.show()
                 center(self.warningDialog)
         else:
             print("Empty basket")
+            connector.statusBarshowMessage("Panier vide")
             self.warningDialog = QMessageBox(QMessageBox.Warning, "Panier vide", "Veuillez sélectionner des articles avant de valider la commande", QMessageBox.Ok)
             self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.warningDialog.show()
@@ -724,6 +700,7 @@ class QCounter(QWidget):
             response = requestBuy(toHexString(cardUID), config.counterID, MAC, self.basketTree.basket)
             if response:
                 print("Paiement effectué avec succès")
+                connector.statusBarshowMessage("Paiement effectué")
                 transaction = {"cardUID": toHexString(cardUID), "basket": self.basketTree.basket, "price": self.basketTree.totalPrice, "time": datetime.datetime.now().strftime("%H:%M:%S")}
                 self.historyTree.addTransaction(response["transaction_id"], transaction)
                 connector.updateBalanceInfo(response["user_balance"])
@@ -731,12 +708,14 @@ class QCounter(QWidget):
                 self.basketTree.clearBasket()
             else:
                 print("Paiement refusé")
+                connector.statusBarshowMessage("Solde insuffisant")
                 self.warningDialog = QMessageBox(QMessageBox.Warning, "Solde insuffisant", "Veuillez recharger la carte", QMessageBox.Ok)
                 self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
                 self.warningDialog.show()
                 center(self.warningDialog)
         else:
             print("Empty basket")
+            connector.statusBarshowMessage("Panier vide")
             self.warningDialog = QMessageBox(QMessageBox.Warning, "Panier vide", "Veuillez sélectionner des articles avant de valider la commande", QMessageBox.Ok)
             self.warningDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.warningDialog.show()
@@ -1303,9 +1282,14 @@ class QMainMenu(QMainWindow):
 
         # Toolbar
         self.statusBar()  # Built in function that show menu bar
+        connector = QConnector()
+        connector.statusBar = self.statusBar()
 
         self.counterLabel = QLabel()
-        self.counterLabel.setText(self.counterActionGroup.checkedAction().text())
+        try:
+            self.counterLabel.setText(self.counterActionGroup.checkedAction().text())
+        except:
+            print("No counter found")
         self.statusBar().addPermanentWidget(self.counterLabel)
 
     def ForceHistoryRefresh(self):
@@ -1340,7 +1324,8 @@ class QMainMenu(QMainWindow):
                 print("Local item file not found")
 
         self.MainTab.TabCounter.productTree.treeModel.updateModel(itemRegister.itemTree)
-        self.statusBar().showMessage("Comptoir: " + self.counterActionGroup.checkedAction().text())
+        connector = QConnector()
+        connector.statusBarshowMessage("Comptoir: " + self.counterActionGroup.checkedAction().text())
         # self.MainTab.TabCounter.productTree.treeModel.layoutChanged.emit()
 
 

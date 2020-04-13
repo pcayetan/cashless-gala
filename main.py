@@ -1,23 +1,25 @@
 from IHM import *
 
+# TODO: ENSURE BALANCE CAN'T HAVE ABSURDS VALUES (eg: 16.33333...)
+# TODO: FIX MULTI-USER PANEL
+# TODO: UNIFY KEY NAME BITWEEN THE SERVER AND THE CLIENT
+# TODO: MAKE AUTOMATIC GRAPH
+# TODO: FIND A EASIER WAY TO HANDLE TREEMODELS AND STUFF...
+# TODO: ADD WARNING WHEN ADD HUGE AMOUNT ON CARDS
+# TODO: HANDLE TRANSLATION
+# TODO: ADD A TOOLBAR STATUS SINGLETON HANDLER                          [OK VIA QCONNECTOR]
+# TODO: HANDLE CARD READER PLUG/UNPLUG                                  [OK]
 
 if __name__ == "__main__":
-    # Première étape : création d'une application Qt avec QApplication
-    #    afin d'avoir un fonctionnement correct avec IDLE ou Spyder
-    #    on vérifie s'il existe déjà une instance de QApplication
     app = QApplication.instance()
-    if not app:  # sinon on crée une instance de QApplication
+    if not app:
         app = QApplication(sys.argv)
 
     MainWindow = QMainMenu()
     # FakeCard = QFakeCard()
-    # FakeCard.LinkWidget(MainWindow.MainTab.TabCounter.NFCDialog)
-
-    #    W.Layout.addStretch(1)
 
     # la fenêtre est rendue visible
     #    MainWindow.showMaximized()
     MainWindow.show()
     # FakeCard.show()
-    # exécution de l'application, l'exécution permet de gérer les événements
     app.exec_()

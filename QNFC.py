@@ -22,6 +22,10 @@ from smartcard.System import readers as rd
 from smartcard.scard import SCardReleaseContext
 
 
+# ReaderObserver
+from smartcard.ReaderMonitoring import ReaderMonitor, ReaderObserver
+
+
 class NFC_Reader_Error(Exception):
     pass
 
@@ -120,3 +124,24 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
         self.cardUID = [0, 0, 0, 0]
         self.__hasCard = False
         self.cardRemoved.emit()
+
+
+# Allow the user to connect and disconect the reader whenerver he wants
+class printobserver(ReaderObserver):
+    """A simple reader observer that is notified
+    when readers are added/removed from the system and
+    prints the list of readers
+    """
+
+    def update(self, observable, actions):
+        (addedreaders, removedreaders) = actions
+        cardObserver = QCardObserver()
+        cardObserver.cardReader = getReader()
+        print("Added readers", addedreaders)
+        print("Removed readers", removedreaders)
+
+
+# TODO: Make something more "standard" regarding the rest of the code
+readermonitor = ReaderMonitor()
+readerobserver = printobserver()
+readermonitor.addObserver(readerobserver)

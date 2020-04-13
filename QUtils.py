@@ -264,9 +264,13 @@ class QConnector(QObject, metaclass=QConnectorSingleton):
 
     def __init__(self):
         QObject.__init__(self)
+        self.statusBar = None
 
     def updateBalanceInfo(self, newBalance):
         self.balanceInfoUpdated.emit(newBalance)
+
+    def statusBarshowMessage(self, message, timeout=3000):
+        self.statusBar.showMessage(message, timeout)
 
 
 class QAbstractInputDialog(QWidget):
