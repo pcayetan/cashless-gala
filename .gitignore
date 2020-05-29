@@ -18,3 +18,4 @@ venv/
 *.svg
 *.dot
 *_pb2*
+swagger-client
