@@ -3,7 +3,6 @@ syntax = "proto3";
 import "google/protobuf/timestamp.proto";
 
 service PaymentProtocol {
-
   rpc Buy (BuyingRequest) returns (BuyingReply) {}
   rpc Refill(RefillingRequest) returns (RefillingReply) {}
   rpc RefoundBuying(RefoundBuyingRequest) returns (RefoundBuyingReply) {}
@@ -32,8 +31,8 @@ message Product {
     double price = 3;
   }
   int64 id = 1;
-  string name = 2;
-  string code = 3;
+  string name = 2; //pretty print in trees
+  string code = 3; //code for fast search, not necessarily unique
   float default_price = 4;
   repeated HappyHour happy_hours = 5;
 }
@@ -41,7 +40,7 @@ message Product {
 message BasketItem {
   int64 product_id = 1;
   int64 quantity = 2;
-  double unit_price = 3; // Price at buying time, used in History
+  double unit_price = 3; // Price at buying time, used in History, not mandatory when it's a BuyingRequest
 }
 
 message Refilling {
@@ -53,19 +52,19 @@ message Refilling {
   google.protobuf.Timestamp date = 6;
 }
 
-message Payment {
+message Payment { //Allow us to handle multiple user buyings, describe who pays and how much.
   string customer_id = 1;
   double amount = 2;
 }
 
 message Buying {
   int64 id = 1;
-  string label = 2;
-  double price = 3; // Real buying price, sum of Payments
+  string label = 2; // description of the buying, ui purpose only
+  double price = 3; // price the customer(s) actually paid at 'date', sum of Payments
   bool refounded = 4;
   int64 counter_id = 5;
   google.protobuf.Timestamp date = 6;
-  repeated Payment payments = 7;
+  repeated Payment payments = 7; // Several users can pay the same thing during multi-payments
   repeated BasketItem items = 8;
 }
 
@@ -73,7 +72,7 @@ message BuyingRequest {
   int64 counter_id = 1;
   string device_uuid = 2;
   repeated Payment payments = 3; // Payment repartition between users
-  repeated BasketItem basket = 4;
+  repeated BasketItem basket = 4; //List of all products,their qty, their unit price when it's a reply...
 }
 
 message BuyingReply {
@@ -96,7 +95,7 @@ message BuyingReply {
   Status status = 1;
   google.protobuf.Timestamp now = 2;
   Buying transaction = 3;
-  repeated string customer_ids = 4;
+  repeated string customer_ids = 4; //Severeal
   repeated double customer_balances = 5;
 }
 
@@ -150,8 +149,8 @@ message RefoundBuyingReply {
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  repeated double customer_id = 3; // Multiple customer could be refounded at the same time
-  repeated double customer_balance = 4;
+  repeated double customer_id = 3; // Multiple customer could be refounded at the same time since multi-payment exist
+  repeated double customer_balance = 4; //So we can have multiple new balances...
 }
 
 message CancelRefillingRequest {
