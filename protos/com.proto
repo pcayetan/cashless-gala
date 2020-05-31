@@ -2,11 +2,12 @@ syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
 
-service Payment {
+service PaymentProtocol {
 
-  rpc Buy (BuyingRequest) returns (BuyingReply){}
+  rpc Buy (BuyingRequest) returns (BuyingReply) {}
   rpc Refill(RefillingRequest) returns (RefillingReply) {}
-  rpc Refound(RefoundRequest) returns (RefoundReply) {}
+  rpc RefoundBuying(RefoundBuyingRequest) returns (RefoundBuyingReply) {}
+  rpc CancelRefilling(CancelRefillingRequest) returns (CancelRefillingReply) {}
   rpc Transfert(TransfertRequest) returns (TransfertReply) {}
   rpc Balance(BalanceRequest) returns (BalanceReply) {}
   rpc History(HistoryRequest) returns (HistoryReply) {}
@@ -40,32 +41,38 @@ message Product {
 message BasketItem {
   int64 product_id = 1;
   int64 quantity = 2;
-  double unit_price = 3;
+  double unit_price = 3; // Price at buying time, used in History
 }
 
 message Refilling {
   string customer_id = 1;
   int64 counter_id = 2;
-  string mac_address = 3;
+  string device_uuid = 3;
   PaymentMethod payment_method = 4;
   double amount = 5;
   google.protobuf.Timestamp date = 6;
 }
 
+message Payment {
+  string customer_id = 1;
+  double amount = 2;
+}
+
 message Buying {
   int64 id = 1;
   string label = 2;
-  double price = 3; // Real buying price
+  double price = 3; // Real buying price, sum of Payments
   bool refounded = 4;
-  google.protobuf.Timestamp date = 5;
-  repeated string customer_id = 6;
-  repeated BasketItem items = 7;
+  int64 counter_id = 5;
+  google.protobuf.Timestamp date = 6;
+  repeated Payment payments = 7;
+  repeated BasketItem items = 8;
 }
 
 message BuyingRequest {
-  string customer_id = 1;
-  int64 counter_id = 2;
-  string mac_address = 3;
+  int64 counter_id = 1;
+  string device_uuid = 2;
+  repeated Payment payments = 3; // Payment repartition between users
   repeated BasketItem basket = 4;
 }
 
@@ -74,27 +81,29 @@ message BuyingReply {
     SUCCESS = 0;
     INTERNAL_SERVER_ERROR = 1;
 
-    MISSING_CUSTOMER = 2;
-    MISSING_COUNTER = 3;
-    MISSING_MAC_ADDRESS = 4;
-    MISSING_BASKET = 5;
+    MISSING_CUSTOMER_IN_PAYMENT = 2;
+    MISSING_AMOUNT_IN_PAYMENT = 3;
+    MISSING_COUNTER = 4;
+    MISSING_DEVICE_UUID = 5;
+    MISSING_BASKET = 6;
 
-    COUNTER_NOT_FOUND = 6;
-    ITEM_NOT_FOUND = 7;
+    COUNTER_NOT_FOUND = 7;
+    ITEM_NOT_FOUND = 8;
 
-    NOT_ENOUGH_MONEY = 8;
+    NOT_ENOUGH_MONEY = 9;
   }
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  double customer_balance = 3;
-  Buying transaction = 4;
+  Buying transaction = 3;
+  repeated string customer_ids = 4;
+  repeated double customer_balances = 5;
 }
 
 message RefillingRequest {
   string customer_id = 1;
   int64 counter_id = 2;
-  string mac_address = 3;
+  string device_uuid = 3;
   PaymentMethod payment_method = 4;
   double amount = 5;
 }
@@ -106,7 +115,7 @@ message RefillingReply {
 
     MISSING_CUSTOMER = 2;
     MISSING_COUNTER = 3;
-    MISSING_MAC_ADDRESS = 4;
+    MISSING_DEVICE_UUID = 4;
     MISSING_PAYMENT_METHOD = 5;
     MISISNG_AMOUNT = 6;
 
@@ -120,32 +129,54 @@ message RefillingReply {
   double customer_balance = 3;
 }
 
-message RefoundRequest {
+message RefoundBuyingRequest {
   int64 transaction_id = 1;
-  string customer_id = 2;
   int64 counter_id = 3;
-  string mac_address = 4;
+  string device_uuid = 4;
 }
 
-message RefoundReply {
+message RefoundBuyingReply {
   enum Status {
     SUCCESS = 0;
     INTERNAL_SERVER_ERROR = 1;
 
     MISSING_TRANSACTION = 2;
-    MISSING_CUSTOMER = 3;
-    MISSING_COUNTER = 4;
-    MISSING_MAC_ADDRESS = 5;
+    MISSING_COUNTER = 3;
+    MISSING_DEVICE_UUID = 4;
 
-    TRANSACTION_NOT_FOUND = 6;
-    COUNTER_NOT_FOUND = 8;
-
-    WRONG_CUSTOMER = 9;
+    TRANSACTION_NOT_FOUND = 5;
+    COUNTER_NOT_FOUND = 6;
   }
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  double customer_balance = 3;
+  repeated double customer_id = 3; // Multiple customer could be refounded at the same time
+  repeated double customer_balance = 4;
+}
+
+message CancelRefillingRequest {
+  int64 refilling_id = 1;
+  int64 counter_id = 3;
+  string device_uuid = 4;
+}
+
+message CancelRefillingReply {
+  enum Status {
+    SUCCESS = 0;
+    INTERNAL_SERVER_ERROR = 1;
+
+    MISSING_TRANSACTION = 2;
+    MISSING_COUNTER = 4;
+    MISSING_DEVICE_UUID = 5;
+
+    TRANSACTION_NOT_FOUND = 6;
+    COUNTER_NOT_FOUND = 7;
+  }
+
+  Status status = 1;
+  google.protobuf.Timestamp now = 2;
+  double customer_id = 3;
+  double customer_balance = 4;
 }
 
 message TransfertRequest {
@@ -153,7 +184,7 @@ message TransfertRequest {
   string destination_id = 2;
   double amount = 3;
   int64 counter_id = 4;
-  string mac_address = 5;
+  string device_uuid = 5;
 }
 
 message TransfertReply {
@@ -165,7 +196,7 @@ message TransfertReply {
     MISSING_DESTINATION = 3;
     MISSING_AMOUNT = 4;
     MISSING_COUNTER = 5;
-    MISSING_MAC_ADDRESS = 6;
+    MISSING_DEVICE_UUID = 6;
 
     COUNTER_NOT_FOUND = 7;
 
@@ -203,7 +234,7 @@ message HistoryRequest {
   // Optional fields
   int64 counter = 2;
   string customer_id = 3;
-  string mac_address = 4;
+  string device_uuid = 4;
   uint64 max_history_size = 5;
 }
 

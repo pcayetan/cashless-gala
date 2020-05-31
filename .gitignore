@@ -15,7 +15,11 @@ transactionHistory.json
 *.zip
 data
 venv/
+env/
 *.svg
 *.dot
 *_pb2*
 swagger-client
+*_pb2*
+.DS_Store
+.envrc
