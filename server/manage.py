@@ -7,32 +7,51 @@ import click
 
 
 @click.group()
-def protoc_group():
+def default_group():
     pass
 
 
-@click.group()
-def setup_group():
-    pass
+@default_group.command(name="runserver", help="Run the server")
+@click.option(
+    "--host", "-h", default="", type=str, help='Host to listen from (default "")'
+)
+@click.option(
+    "--port", "-p", default=50051, type=int, help="Port to listen from (default 50051)"
+)
+@click.option(
+    "--reflect",
+    "-r",
+    default=False,
+    type=bool,
+    help="Enable server reflection for debug (default False)",
+)
+def runserver(host, port, reflect):
+    from server import server
+
+    server.serve(host, port, reflect)
 
 
-@click.group()
-def random_key_group():
-    pass
-
-
-@setup_group.command(name="protoc", help="Generate protoc files")
+@default_group.command(name="protoc", help="Generate protoc files")
 def protoc():
     from subprocess import Popen
+    import fileinput
+    import time
 
-    Popen(
+    p = Popen(
         "python -m grpc_tools.protoc -I%s --python_out=%s --grpc_python_out=%s %s"
         % ("../protos", "./server/", "./server/", "../protos/com.proto"),
         shell=True,
     )
+    p.wait()
+    # Fix import path issues
+    with fileinput.FileInput("server/com_pb2_grpc.py", inplace=True) as file:
+        for line in file:
+            print(
+                line.replace("import com_pb2", "import server.com_pb2"), end="",
+            )
 
 
-@setup_group.command(name="setup", help="Generate database")
+@default_group.command(name="setup", help="Generate database")
 @click.option("--import", "-i", default=None, help="Import initial data from json file")
 @click.option(
     "--schema",
@@ -182,4 +201,4 @@ def setup(**kwargs):
 
 
 if __name__ == "__main__":
-    click.CommandCollection(sources=[setup_group, random_key_group])()
+    click.CommandCollection(sources=[default_group])()
