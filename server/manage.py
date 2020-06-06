@@ -35,7 +35,6 @@ def runserver(host, port, reflect):
 def protoc():
     from subprocess import Popen
     import fileinput
-    import time
 
     p = Popen(
         "python -m grpc_tools.protoc -I%s --python_out=%s --grpc_python_out=%s %s"
