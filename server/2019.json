@@ -1,0 +1,349 @@
+{
+    "event_date":
+    {
+        "year": 2019,
+        "month": 11,
+        "day": 16
+    },
+    "counters":
+    [
+        "Central",
+        "Fosse",
+        "Assidu",
+        "Libanais",
+        "Pop-corn",
+        "Bulle"
+    ],
+    "products":
+    [
+        {
+            "name": "Bi\u00e8re \u00e2ne mort",
+            "price": 2.7,
+            "category": "boissons.bi\u00e8re",
+            "counters":
+            [
+                "Central",
+                "Fosse"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 2.2
+                }
+            ]
+        },
+        {
+            "name": "Bi\u00e8re Saison",
+            "price": 3,
+            "category": "boissons.bi\u00e8re",
+            "counters":
+            [
+                "Central",
+                "Fosse"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 2.4
+                }
+            ]
+        },
+        {
+            "name": "Kastel red",
+            "price": 3,
+            "category": "boissons.bi\u00e8re",
+            "counters":
+            [
+                "Central",
+                "Fosse"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 2.4
+                }
+            ]
+        },
+        {
+            "name": "Cr\u00e9mant",
+            "price": 3.5,
+            "category": "boissons.Verre",
+            "counters":
+            [
+                "Central",
+                "Assidu"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 2.8
+                }
+            ]
+        },
+        {
+            "name": "Charmes (moelleux, vin blanc)",
+            "price": 3.7,
+            "category": "boissons.Verre",
+            "counters":
+            [
+                "Central",
+                "Assidu"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 3
+                }
+            ]
+        },
+        {
+            "name": "Champagne",
+            "price": 5,
+            "category": "boissons.Verre",
+            "counters":
+            [
+                "Central",
+                "Assidu"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 4
+                }
+            ]
+        },
+        {
+            "name": "Sirop",
+            "price": 1,
+            "category": "boissons.Verre",
+            "counters":
+            [
+                "Central",
+                "Fosse",
+                "Assidu"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 0.8
+                }
+            ]
+        },
+        {
+            "name": "Jus de pomme",
+            "price": 2,
+            "category": "boissons.Verre",
+            "counters":
+            [
+                "Central",
+                "Fosse",
+                "Assidu"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 1.6
+                }
+            ]
+        },
+        {
+            "name": "Limonade",
+            "price": 2,
+            "category": "boissons.Verre",
+            "counters":
+            [
+                "Central",
+                "Fosse",
+                "Assidu"
+            ],
+            "happy_hours":
+            [
+                {
+                    "start":
+                    {
+                        "hour": 21,
+                        "minute": 30
+                    },
+                    "end":
+                    {
+                        "hour": 22,
+                        "minute": 30
+                    },
+                    "price": 1.6
+                }
+            ]
+        },
+        {
+            "name": "Cr\u00e9mant Bouteille",
+            "price": 15.5,
+            "category": "boissons.Bouteille",
+            "counters":
+            [
+                "Central",
+                "Assidu"
+            ]
+        },
+        {
+            "name": "Champagne Bouteille",
+            "price": 25,
+            "category": "boissons.Bouteille",
+            "counters":
+            [
+                "Central",
+                "Assidu"
+            ]
+        },
+        {
+            "name": "Charmes Bouteille (moelleux, vin blanc)",
+            "price": 16,
+            "category": "boissons.Bouteille",
+            "counters":
+            [
+                "Central",
+                "Assidu"
+            ]
+        },
+        {
+            "name": "Petite assiette",
+            "price": 5,
+            "category": "nourriture.assiette",
+            "counters":
+            [
+                "Libanais"
+            ]
+        },
+        {
+            "name": "Grande assiette",
+            "price": 10,
+            "category": "nourriture.assiette",
+            "counters":
+            [
+                "Libanais"
+            ]
+        },
+        {
+            "name": "Dessert",
+            "price": 3,
+            "category": "nourriture.sucr\u00e9",
+            "counters":
+            [
+                "Libanais"
+            ]
+        },
+        {
+            "name": "Pop-corn",
+            "price": 1.5,
+            "category": "nourriture.sucr\u00e9",
+            "counters":
+            [
+                "Pop-corn"
+            ]
+        },
+        {
+            "name": "Consigne",
+            "price": 1,
+            "category": "Consigne.consigne",
+            "counters":
+            [
+                "Central",
+                "Assidu",
+                "Fosse",
+                "Libanais",
+                "Pop-corn"
+            ]
+        },
+        {
+            "name": "D\u00e9consigne",
+            "price": -1,
+            "category": "Consigne.consigne",
+            "counters":
+            [
+                "Central",
+                "Assidu",
+                "Fosse",
+                "Libanais",
+                "Pop-corn"
+            ]
+        }
+    ]
+}

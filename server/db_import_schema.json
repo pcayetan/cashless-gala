@@ -1,0 +1,479 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema",
+    "$id": "http://example.com/example.json",
+    "type": "object",
+    "title": "Schema for data importable by the CLI",
+    "default": {},
+    "required": [
+        "event_date",
+        "counters",
+        "products"
+    ],
+    "additionalProperties": true,
+    "properties": {
+        "event_date": {
+            "$id": "#/properties/event_date",
+            "type": "object",
+            "title": "The event_date schema",
+            "description": "Date of the event, used to compute Happy Hours",
+            "default": {},
+            "examples": [
+                {
+                    "year": 2019,
+                    "month": 11,
+                    "day": 16
+                }
+            ],
+            "required": [
+                "year",
+                "month",
+                "day"
+            ],
+            "additionalProperties": true,
+            "properties": {
+                "year": {
+                    "$id": "#/properties/event_date/properties/year",
+                    "type": "integer",
+                    "title": "The year schema",
+                    "description": "Year of the event",
+                    "default": 0,
+                    "examples": [
+                        2019
+                    ]
+                },
+                "month": {
+                    "$id": "#/properties/event_date/properties/month",
+                    "type": "integer",
+                    "title": "The month schema",
+                    "description": "Month of the event",
+                    "default": 0,
+                    "examples": [
+                        11
+                    ]
+                },
+                "day": {
+                    "$id": "#/properties/event_date/properties/day",
+                    "type": "integer",
+                    "title": "The day schema",
+                    "description": "Day of the event",
+                    "default": 0,
+                    "examples": [
+                        16
+                    ]
+                }
+            }
+        },
+        "counters": {
+            "$id": "#/properties/counters",
+            "type": "array",
+            "title": "The counters schema",
+            "description": "List of counters",
+            "default": [],
+            "examples": [
+                [
+                    "Central",
+                    "Fosse"
+                ]
+            ],
+            "additionalItems": true,
+            "items": {
+                "anyOf": [
+                    {
+                        "$id": "#/properties/counters/items/anyOf/0",
+                        "type": "string",
+                        "default": "",
+                        "examples": [
+                            "Central",
+                            "Fosse"
+                        ]
+                    }
+                ],
+                "$id": "#/properties/counters/items"
+            }
+        },
+        "products": {
+            "$id": "#/properties/products",
+            "type": "array",
+            "title": "The products schema",
+            "description": "List of products",
+            "default": [],
+            "examples": [
+                [
+                    {
+                        "name": "Bière âne mort",
+                        "price": 2.7,
+                        "category": "boissons.bière",
+                        "counters": [
+                            "Central",
+                            "Fosse"
+                        ],
+                        "happy_hours": [
+                            {
+                                "start": {
+                                    "hour": 21,
+                                    "minute": 30
+                                },
+                                "end": {
+                                    "hour": 22,
+                                    "minute": 30
+                                },
+                                "price": 2.2
+                            }
+                        ]
+                    },
+                    {
+                        "name": "Bière Saison",
+                        "price": 3,
+                        "category": "boissons.bière",
+                        "counters": [
+                            "Central",
+                            "Fosse"
+                        ],
+                        "happy_hours": [
+                            {
+                                "start": {
+                                    "hour": 21,
+                                    "minute": 30
+                                },
+                                "end": {
+                                    "hour": 22,
+                                    "minute": 30
+                                },
+                                "price": 2.4
+                            }
+                        ]
+                    }
+                ]
+            ],
+            "additionalItems": true,
+            "items": {
+                "anyOf": [
+                    {
+                        "$id": "#/properties/products/items/anyOf/0",
+                        "type": "object",
+                        "title": "The first anyOf schema",
+                        "description": "Description of a product",
+                        "default": {},
+                        "examples": [
+                            {
+                                "name": "Bière âne mort",
+                                "price": 2.7,
+                                "category": "boissons.bière",
+                                "counters": [
+                                    "Central",
+                                    "Fosse"
+                                ],
+                                "happy_hours": [
+                                    {
+                                        "start": {
+                                            "hour": 21,
+                                            "minute": 30
+                                        },
+                                        "end": {
+                                            "hour": 22,
+                                            "minute": 30
+                                        },
+                                        "price": 2.2
+                                    }
+                                ]
+                            }
+                        ],
+                        "required": [
+                            "name",
+                            "price",
+                            "counters"
+                        ],
+                        "additionalProperties": true,
+                        "properties": {
+                            "name": {
+                                "$id": "#/properties/products/items/anyOf/0/properties/name",
+                                "type": "string",
+                                "title": "The name schema",
+                                "description": "Name of the product",
+                                "default": "",
+                                "examples": [
+                                    "Bière âne mort"
+                                ]
+                            },
+                            "price": {
+                                "$id": "#/properties/products/items/anyOf/0/properties/price",
+                                "type": "number",
+                                "title": "The price schema",
+                                "description": "Default price of the product",
+                                "default": 0.0,
+                                "examples": [
+                                    2.7
+                                ]
+                            },
+                            "category": {
+                                "$id": "#/properties/products/items/anyOf/0/properties/category",
+                                "type": "string",
+                                "title": "The category schema",
+                                "description": "Category of the product, this is a dot separated string",
+                                "default": "",
+                                "examples": [
+                                    "boissons",
+                                    "boissons.bière"
+                                ]
+                            },
+                            "counters": {
+                                "$id": "#/properties/products/items/anyOf/0/properties/counters",
+                                "type": "array",
+                                "title": "The counters schema",
+                                "description": "List of counters where the product is available",
+                                "default": [],
+                                "examples": [
+                                    [
+                                        "Central",
+                                        "Fosse"
+                                    ]
+                                ],
+                                "additionalItems": true,
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "$id": "#/properties/products/items/anyOf/0/properties/counters/items/anyOf/0",
+                                            "type": "string",
+                                            "title": "The first anyOf schema",
+                                            "description": "Counter where the product is available",
+                                            "default": "",
+                                            "examples": [
+                                                "Central",
+                                                "Fosse"
+                                            ]
+                                        }
+                                    ],
+                                    "$id": "#/properties/products/items/anyOf/0/properties/counters/items"
+                                }
+                            },
+                            "happy_hours": {
+                                "$id": "#/properties/products/items/anyOf/0/properties/happy_hours",
+                                "type": "array",
+                                "title": "The happy_hours schema",
+                                "description": "List of timeframes where the product have a reduced price",
+                                "default": [],
+                                "examples": [
+                                    [
+                                        {
+                                            "start": {
+                                                "hour": 21,
+                                                "minute": 30
+                                            },
+                                            "end": {
+                                                "hour": 22,
+                                                "minute": 30
+                                            },
+                                            "price": 2.2
+                                        }
+                                    ]
+                                ],
+                                "additionalItems": true,
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0",
+                                            "type": "object",
+                                            "title": "The first anyOf schema",
+                                            "description": "Happy hour for the product",
+                                            "default": {},
+                                            "examples": [
+                                                {
+                                                    "start": {
+                                                        "hour": 21,
+                                                        "minute": 30
+                                                    },
+                                                    "end": {
+                                                        "hour": 22,
+                                                        "minute": 30
+                                                    },
+                                                    "price": 2.2
+                                                }
+                                            ],
+                                            "required": [
+                                                "start",
+                                                "end",
+                                                "price"
+                                            ],
+                                            "additionalProperties": true,
+                                            "properties": {
+                                                "start": {
+                                                    "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0/properties/start",
+                                                    "type": "object",
+                                                    "title": "The start schema",
+                                                    "description": "Starting hour of the happy hour",
+                                                    "default": {},
+                                                    "examples": [
+                                                        {
+                                                            "hour": 21,
+                                                            "minute": 30
+                                                        }
+                                                    ],
+                                                    "required": [
+                                                        "hour",
+                                                        "minute"
+                                                    ],
+                                                    "additionalProperties": true,
+                                                    "properties": {
+                                                        "hour": {
+                                                            "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0/properties/start/properties/hour",
+                                                            "type": "integer",
+                                                            "default": 0,
+                                                            "examples": [
+                                                                21
+                                                            ]
+                                                        },
+                                                        "minute": {
+                                                            "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0/properties/start/properties/minute",
+                                                            "type": "integer",
+                                                            "default": 0,
+                                                            "examples": [
+                                                                30
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                "end": {
+                                                    "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0/properties/end",
+                                                    "type": "object",
+                                                    "title": "The end schema",
+                                                    "description": "Ending hour of the happy hour",
+                                                    "default": {},
+                                                    "examples": [
+                                                        {
+                                                            "hour": 22,
+                                                            "minute": 30
+                                                        }
+                                                    ],
+                                                    "required": [
+                                                        "hour",
+                                                        "minute"
+                                                    ],
+                                                    "additionalProperties": true,
+                                                    "properties": {
+                                                        "hour": {
+                                                            "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0/properties/end/properties/hour",
+                                                            "type": "integer",
+                                                            "default": 0,
+                                                            "examples": [
+                                                                22
+                                                            ]
+                                                        },
+                                                        "minute": {
+                                                            "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0/properties/end/properties/minute",
+                                                            "type": "integer",
+                                                            "default": 0,
+                                                            "examples": [
+                                                                30
+                                                            ]
+                                                        }
+                                                    }
+                                                },
+                                                "price": {
+                                                    "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items/anyOf/0/properties/price",
+                                                    "type": "number",
+                                                    "title": "The price schema",
+                                                    "description": "New price of the article during this timeframe",
+                                                    "default": 0.0,
+                                                    "examples": [
+                                                        2.2
+                                                    ]
+                                                }
+                                            }
+                                        }
+                                    ],
+                                    "$id": "#/properties/products/items/anyOf/0/properties/happy_hours/items"
+                                }
+                            }
+                        }
+                    },
+                    {
+                        "$id": "#/properties/products/items/anyOf/1",
+                        "type": "object",
+                        "title": "The second anyOf schema",
+                        "description": "An explanation about the purpose of this instance.",
+                        "default": {},
+                        "examples": [
+                            {
+                                "name": "Crémant Bouteille",
+                                "price": 15.5,
+                                "category": "boissons.Bouteille",
+                                "counters": [
+                                    "Central",
+                                    "Assidu"
+                                ]
+                            }
+                        ],
+                        "required": [
+                            "name",
+                            "price"
+                        ],
+                        "additionalProperties": true,
+                        "properties": {
+                            "name": {
+                                "$id": "#/properties/products/items/anyOf/1/properties/name",
+                                "type": "string",
+                                "title": "The name schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": "",
+                                "examples": [
+                                    "Crémant Bouteille"
+                                ]
+                            },
+                            "price": {
+                                "$id": "#/properties/products/items/anyOf/1/properties/price",
+                                "type": "number",
+                                "title": "The price schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": 0.0,
+                                "examples": [
+                                    15.5
+                                ]
+                            },
+                            "category": {
+                                "$id": "#/properties/products/items/anyOf/1/properties/category",
+                                "type": "string",
+                                "title": "The category schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": "",
+                                "examples": [
+                                    "boissons"
+                                ]
+                            },
+                            "counters": {
+                                "$id": "#/properties/products/items/anyOf/1/properties/counters",
+                                "type": "array",
+                                "title": "The counters schema",
+                                "description": "An explanation about the purpose of this instance.",
+                                "default": [],
+                                "examples": [
+                                    [
+                                        "Central",
+                                        "Assidu"
+                                    ]
+                                ],
+                                "additionalItems": true,
+                                "items": {
+                                    "anyOf": [
+                                        {
+                                            "$id": "#/properties/products/items/anyOf/1/properties/counters/items/anyOf/0",
+                                            "type": "string",
+                                            "title": "The first anyOf schema",
+                                            "description": "An explanation about the purpose of this instance.",
+                                            "default": "",
+                                            "examples": [
+                                                "Central",
+                                                "Assidu"
+                                            ]
+                                        }
+                                    ],
+                                    "$id": "#/properties/products/items/anyOf/1/properties/counters/items"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "$id": "#/properties/products/items"
+            }
+        }
+    }
+}
