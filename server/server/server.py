@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*
 
-from concurrent import futures
 import grpc
+import json
+
+from concurrent import futures
 from google.protobuf.timestamp_pb2 import Timestamp
+from google.protobuf.json_format import Parse
 
 from server import db, models, com_pb2, com_pb2_grpc
 
@@ -87,10 +90,75 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         )
 
     def Products(self, request, context):
-        """Missing associated documentation comment in .proto file"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        """
+            Return the list of products available on a given counter
+        """
+        if request.counter_id < 1:
+            return com_pb2.ProductsReply(
+                status=com_pb2.ProductsReply.MISSING_COUNTER, now=pb_now()
+            )
+
+        counter = db.query(models.Counter).get(request.counter_id)
+        if counter is None:
+            return com_pb2.ProductsReply(
+                status=com_pb2.ProductsReply.COUNTER_NOT_FOUND, now=pb_now()
+            )
+
+        products = {}
+        for availability in counter.products_available:
+            product = availability.product
+
+            # Navigate in tree to get to the deepest category
+            # Create categories that doesn't exists in the process
+            cat_list = product.category.split(".")
+            main_cat = cat_list.pop(0)
+            products[main_cat] = products.get(main_cat, {"sub": {}, "products": []})
+            pos = products[main_cat]
+            for cat in cat_list:
+                pos["sub"][cat] = pos["sub"].get(cat, {"sub": {}, "products": []})
+                pos = pos["sub"][cat]
+
+            # Add the product at the end
+            p = {
+                "id": product.id,
+                "name": product.name,
+                "code": product.code,
+                "default_price": product.default_price,
+                "happy_hours": [],
+            }
+
+            # Add happy hours
+            for happy_hour in product.happy_hours:
+                start = Timestamp()
+                start.FromDatetime(happy_hour.start)
+                end = Timestamp()
+                end.FromDatetime(happy_hour.end)
+                p["happy_hours"].append(
+                    {
+                        "start": start.ToJsonString(),
+                        "end": end.ToJsonString(),
+                        "price": happy_hour.price,
+                    }
+                )
+            pos["products"].append(p)
+
+        # Here, we do a really ugly thing : we first encode everything to json
+        # and then decode it to a protobuf message before it gets encoded again
+        # THIS IS A TERRIBLE THING TO DO !
+        # Why am I doing that ? The map implementation for python is shitty and left me no choice
+        # This endpoint is realy slow and I don't care, it's not supposed to be called a lot
+        resp = com_pb2.ProductsReply()
+        Parse(
+            json.dumps(
+                {
+                    "status": com_pb2.ProductsReply.SUCCESS,
+                    "now": pb_now().ToJsonString(),
+                    "items": products,
+                }
+            ),
+            resp,
+        )
+        return resp
 
 
 def serve(address: str, port: int, reflect: bool):

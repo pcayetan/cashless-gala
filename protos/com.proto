@@ -280,18 +280,14 @@ message ProductsReply {
     MISSING_COUNTER = 2;
 
     COUNTER_NOT_FOUND = 3;
-  }
-  enum ProductType {
-    PRODUCT = 0;
-    CATEGORY = 1;
+
   }
   message Item {
-    ProductType type = 1;
-    map<string, Item> category = 2;
-    Product product = 3;
+    map<string, Item> sub = 1; // Sub category
+    repeated Product products = 2;
   }
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  map<string, Item> products = 3;
+  map<string, Item> items = 3; // The string is the name of the category
 }
