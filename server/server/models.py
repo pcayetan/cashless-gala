@@ -129,13 +129,13 @@ class Refilling(Model):
     __tablename__ = "refillings"
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
 
-    customer_id = Column(Integer, ForeignKey("customers.id"))
+    customer_id = Column(String, ForeignKey("customers.id"))
     customer = relationship(
         "Customer", backref=backref("refillings", lazy=True), lazy=True
     )
 
     payment_method_id = Column(Integer, ForeignKey("payment_methods.id"))
-    customer = relationship(
+    payment_method = relationship(
         "PaymentMethod", backref=backref("refillings", lazy=True), lazy=True
     )
 
@@ -150,6 +150,7 @@ class Refilling(Model):
     )
 
     amount = Column(Money)
+    date = Column(DateTime(timezone=True), default=datetime.utcnow)
     cancelled = Column(Boolean, default=False)
 
 
@@ -203,7 +204,7 @@ class Payment(Model):
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True, unique=True, autoincrement=True)
 
-    customer_id = Column(Integer, ForeignKey("customers.id"))
+    customer_id = Column(String, ForeignKey("customers.id"))
     customer = relationship(
         "Customer", backref=backref("payments", lazy=True), lazy=True
     )

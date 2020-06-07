@@ -44,7 +44,7 @@ message Product {
     google.protobuf.Timestamp end = 2;
     Money price = 3;
   }
-  int64 id = 1;
+  uint64 id = 1;
   string name = 2; //pretty print in trees
   string code = 3; //code for fast search, not necessarily unique
   Money default_price = 4;
@@ -53,18 +53,19 @@ message Product {
 }
 
 message BasketItem {
-  int64 product_id = 1;
+  uint64 product_id = 1;
   int64 quantity = 2;
   Money unit_price = 3; // Price at buying time, used in History, not mandatory when it's a BuyingRequest
 }
 
 message Refilling {
   string customer_id = 1;
-  int64 counter_id = 2;
+  uint64 counter_id = 2;
   string device_uuid = 3;
   PaymentMethod payment_method = 4;
   Money amount = 5;
-  google.protobuf.Timestamp date = 6;
+  bool cancelled = 6;
+  google.protobuf.Timestamp date = 7;
 }
 
 message Payment { //Allow us to handle multiple user buyings, describe who pays and how much.
@@ -73,18 +74,18 @@ message Payment { //Allow us to handle multiple user buyings, describe who pays 
 }
 
 message Buying {
-  int64 id = 1;
+  uint64 id = 1;
   string label = 2; // description of the buying, ui purpose only
   Money price = 3; // price the customer(s) actually paid at 'date', sum of Payments
   bool refounded = 4;
-  int64 counter_id = 5;
+  uint64 counter_id = 5;
   google.protobuf.Timestamp date = 6;
   repeated Payment payments = 7; // Several users can pay the same thing during multi-payments
   repeated BasketItem items = 8;
 }
 
 message BuyingRequest {
-  int64 counter_id = 1;
+  uint64 counter_id = 1;
   string device_uuid = 2;
   repeated Payment payments = 3; // Payment repartition between users
   repeated BasketItem basket = 4; //List of all products,their qty, their unit price when it's a reply...
@@ -116,7 +117,7 @@ message BuyingReply {
 
 message RefillingRequest {
   string customer_id = 1;
-  int64 counter_id = 2;
+  uint64 counter_id = 2;
   string device_uuid = 3;
   PaymentMethod payment_method = 4;
   Money amount = 5;
@@ -141,11 +142,12 @@ message RefillingReply {
   Status status = 1;
   google.protobuf.Timestamp now = 2;
   Money customer_balance = 3;
+  Refilling refilling = 4;
 }
 
 message RefoundBuyingRequest {
-  int64 transaction_id = 1;
-  int64 counter_id = 3;
+  uint64 transaction_id = 1;
+  uint64 counter_id = 3;
   string device_uuid = 4;
 }
 
@@ -164,13 +166,12 @@ message RefoundBuyingReply {
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  repeated Money customer_id = 3; // Multiple customer could be refounded at the same time since multi-payment exist
+  repeated string customer_id = 3; // Multiple customer could be refounded at the same time since multi-payment exist
   repeated Money customer_balance = 4; //So we can have multiple new balances...
 }
 
 message CancelRefillingRequest {
-  int64 refilling_id = 1;
-  int64 counter_id = 3;
+  uint64 refilling_id = 1;
   string device_uuid = 4;
 }
 
@@ -180,16 +181,14 @@ message CancelRefillingReply {
     INTERNAL_SERVER_ERROR = 1;
 
     MISSING_TRANSACTION = 2;
-    MISSING_COUNTER = 4;
-    MISSING_DEVICE_UUID = 5;
+    MISSING_DEVICE_UUID = 4;
 
-    TRANSACTION_NOT_FOUND = 6;
-    COUNTER_NOT_FOUND = 7;
+    TRANSACTION_NOT_FOUND = 5;
   }
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  Money customer_id = 3;
+  string customer_id = 3;
   Money customer_balance = 4;
 }
 
@@ -197,7 +196,7 @@ message TransfertRequest {
   string origin_id = 1;
   string destination_id = 2;
   Money amount = 3;
-  int64 counter_id = 4;
+  uint64 counter_id = 4;
   string device_uuid = 5;
 }
 
@@ -246,7 +245,7 @@ message HistoryRequest {
   HistoryType type = 1; // Only one required
 
   // Optional fields
-  int64 counter = 2;
+  uint64 counter = 2;
   string customer_id = 3;
   string device_uuid = 4;
   uint64 max_history_size = 5;
@@ -274,7 +273,7 @@ message CounterListReply {
     INTERNAL_SERVER_ERROR = 1;
   }
   message Counter {
-    int64 id = 1;
+    uint64 id = 1;
     string name = 2;
   }
 
@@ -284,7 +283,7 @@ message CounterListReply {
 }
 
 message ProductsRequest {
-  int64 counter_id = 1;
+  uint64 counter_id = 1;
 }
 
 message ProductsReply {

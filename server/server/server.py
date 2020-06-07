@@ -17,6 +17,12 @@ def pb_now() -> Timestamp:
     return timestamp
 
 
+def date_to_pb(date) -> Timestamp:
+    timestamp = Timestamp()
+    timestamp.FromDatetime(date)
+    return timestamp
+
+
 def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
     tup = dec.as_tuple()
     return com_pb2.Money(sign=tup.sign, exponent=tup.exponent, digits=tup.digits)
@@ -88,21 +94,29 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
 
         customer.balance += amount
         db.add(customer)
-        db.add(
-            models.Refilling(
-                customer_id=customer.id,
-                payment_method_id=request.payment_method,
-                counter_id=counter.id,
-                machine_id=machine.uuid,
-                amount=amount,
-                cancelled=False,
-            )
+        refilling = models.Refilling(
+            customer_id=customer.id,
+            payment_method_id=request.payment_method,
+            counter_id=counter.id,
+            machine_id=machine.uuid,
+            amount=amount,
+            cancelled=False,
         )
+        db.add(refilling)
         db.commit()
         return com_pb2.RefillingReply(
             now=pb_now(),
             status=com_pb2.RefillingReply.SUCCESS,
             customer_balance=decimal_to_pb_money(customer.balance),
+            refilling=com_pb2.Refilling(
+                customer_id=refilling.customer_id,
+                counter_id=refilling.counter_id,
+                device_uuid=refilling.machine_id,
+                payment_method=refilling.payment_method.id,
+                amount=decimal_to_pb_money(refilling.amount),
+                cancelled=refilling.cancelled,
+                date=date_to_pb(refilling.date),
+            ),
         )
 
     def RefoundBuying(self, request, context):
@@ -112,10 +126,36 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         raise NotImplementedError("Method not implemented!")
 
     def CancelRefilling(self, request, context):
-        """Missing associated documentation comment in .proto file"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        """
+            Cancel a refilling
+        """
+        if not request.refilling_id:
+            return com_pb2.CancelRefillingReply(
+                now=pb_now(), status=com_pb2.CancelRefillingReply.MISSING_TRANSACTION
+            )
+        if not request.device_uuid:
+            return com_pb2.CancelRefillingReply(
+                now=pb_now(), status=com_pb2.CancelRefillingReply.MISSING_DEVICE_UUID
+            )
+
+        refilling = db.query(models.Refilling).get(request.refilling_id)
+        if refilling is None:
+            return com_pb2.CancelRefillingReply(
+                now=pb_now(), status=com_pb2.CancelRefillingReply.TRANSACTION_NOT_FOUND
+            )
+
+        refilling.cancelled = True
+        customer = refilling.customer
+        customer.balance -= refilling.amount
+        db.add(refilling)
+        db.commit()
+
+        return com_pb2.CancelRefillingReply(
+            now=pb_now(),
+            status=com_pb2.CancelRefillingReply.SUCCESS,
+            customer_id=customer.id,
+            customer_balance=decimal_to_pb_money(customer.balance),
+        )
 
     def Transfert(self, request, context):
         """Missing associated documentation comment in .proto file"""
@@ -163,7 +203,7 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         """
             Return the list of products available on a given counter
         """
-        if request.counter_id < 1:
+        if not request.counter_id:
             return com_pb2.ProductsReply(
                 status=com_pb2.ProductsReply.MISSING_COUNTER, now=pb_now()
             )
@@ -188,14 +228,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
 
             # Add happy hours
             for happy_hour in product.happy_hours:
-                start = Timestamp()
-                start.FromDatetime(happy_hour.start)
-                end = Timestamp()
-                end.FromDatetime(happy_hour.end)
                 p.happy_hours.append(
                     com_pb2.Product.HappyHour(
-                        start=start,
-                        end=end,
+                        start=date_to_pb(happy_hour.start),
+                        end=date_to_pb(happy_hour.end),
                         price=decimal_to_pb_money(happy_hour.price),
                     )
                 )
