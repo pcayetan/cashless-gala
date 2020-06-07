@@ -8,8 +8,9 @@ import PyQt5.QtGui
 import copy
 import json
 
+from Atoms import *
 
-from babel.numbers import format_currency
+from Euro import Eur
 
 from Client import *
 
@@ -20,8 +21,8 @@ import uuid
 MAC = hex(uuid.getnode())
 
 
-def euro(price):
-    return format_currency(price, "EUR", locale="fr_FR")
+#def euro(price):
+#    return format_currency(price, "EUR", locale="fr_FR")
 
 
 def center(self):
@@ -32,16 +33,6 @@ def center(self):
     self.move(qr.topLeft())
 
 
-def isFinalNode(dictionary):
-    try:
-        for key in dictionary:
-            if isinstance(dictionary[key], dict) is False:
-                return True
-
-        return False
-    except:
-        print(dictionary, "is not a dictionary")
-        return True
 
 
 class QItemRegisterSingleton(type(QObject)):
@@ -131,7 +122,9 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
                         m_start /= 60
                         m_end /= 60
 
-                        parsedHappyHour.append([h_start + m_start, h_end + m_end, happyPrice])
+                        parsedHappyHour.append(
+                            [h_start + m_start, h_end + m_end, happyPrice]
+                        )
                     happyHourDict[uid] = parsedHappyHour
                 except:
                     pass
@@ -169,7 +162,9 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
                 for interval in self.happyHour[uid]:
 
                     try:
-                        self.__latchHappyHour[uid][interval[0]]  # If it does not exist yet
+                        self.__latchHappyHour[uid][
+                            interval[0]
+                        ]  # If it does not exist yet
                     except:
                         self.__latchHappyHour[uid][interval[0]] = 0  # Initialize it
 
@@ -179,14 +174,21 @@ class QItemRegister(QObject, metaclass=QItemRegisterSingleton):
                         else:
                             self.__latchHappyHour[uid][interval[0]] = 1
                             self.itemDict[uid]["currentPrice"] = interval[2]
-                            print("Happy hour pour ", uid, " nouveau prix: ", interval[2])
+                            print(
+                                "Happy hour pour ", uid, " nouveau prix: ", interval[2]
+                            )
                             self.priceUpdated.emit(uid)
                     else:
                         if self.__latchHappyHour[uid][interval[0]] == 1:
                             self.__latchHappyHour[uid][interval[0]] = 0
-                            self.itemDict[uid]["currentPrice"] = self.itemDict[uid]["defaultPrice"]
+                            self.itemDict[uid]["currentPrice"] = self.itemDict[uid][
+                                "defaultPrice"
+                            ]
                             print(
-                                "Fin happy hour pour", uid, "nouveau prix", self.itemDict[uid]["currentPrice"],
+                                "Fin happy hour pour",
+                                uid,
+                                "nouveau prix",
+                                self.itemDict[uid]["currentPrice"],
                             )
                             self.priceUpdated.emit(uid)
                         else:
@@ -224,14 +226,23 @@ class QRowInfo(QWidget):
         self.layoutRow.addWidget(labelRowName)
         self.layoutRow.addWidget(LabelValue)
         #        self.mainVBoxLayout.addLayout(self.layoutRow)
-        self.mainVBoxLayout.insertLayout(self.mainVBoxLayout.count() - 1, self.layoutRow)
+        self.mainVBoxLayout.insertLayout(
+            self.mainVBoxLayout.count() - 1, self.layoutRow
+        )
 
     def setRow(self, i, j, String):
         self.row[i][j].setText(String)
 
 
 class QErrorDialog(QMessageBox):
-    def __init__(self, title="Erreur", message="Erreur", info="Une erreur est survenue", icon=QMessageBox.Warning, parent=None):
+    def __init__(
+        self,
+        title="Erreur",
+        message="Erreur",
+        info="Une erreur est survenue",
+        icon=QMessageBox.Warning,
+        parent=None,
+    ):
         super().__init__(parent)
 
         self.setText(message)
@@ -249,30 +260,6 @@ class QErrorDialog(QMessageBox):
         self.setFixedHeight(100)
 
 
-class QConnectorSingleton(type(QObject)):
-    _instance = {}
-
-    def __call__(cls):
-        if cls not in cls._instance:
-            cls._instance[cls] = super(QConnectorSingleton, cls).__call__()
-        return cls._instance[cls]
-
-
-class QConnector(QObject, metaclass=QConnectorSingleton):
-
-    balanceInfoUpdated = pyqtSignal(float)  # amount
-
-    def __init__(self):
-        QObject.__init__(self)
-        self.statusBar = None
-
-    def updateBalanceInfo(self, newBalance):
-        self.balanceInfoUpdated.emit(newBalance)
-
-    def statusBarshowMessage(self, message, timeout=3000):
-        self.statusBar.showMessage(message, timeout)
-
-
 class QAbstractInputDialog(QWidget):
     def __init__(self, questionText, parent=None):
         super().__init__(parent)
@@ -281,7 +268,9 @@ class QAbstractInputDialog(QWidget):
         self.questionLabel = QLabel()
         self.inputBar = QLineEdit()
         self.okButton = QPushButton()
-        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Erreur")
+        self.errorDialog = QErrorDialog(
+            "Erreur de saisie", "Erreur de saisie", "Erreur"
+        )
 
         # Settings
         self.questionLabel.setText(questionText)
@@ -305,7 +294,9 @@ class QSimpleNumberInputDialog(QAbstractInputDialog):
 
     def __init__(self, questionText, parent=None):
         super().__init__(parent)
-        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir un nombre réel.")
+        self.errorDialog = QErrorDialog(
+            "Erreur de saisie", "Erreur de saisie", "Veuillez saisir un nombre réel."
+        )
         self.inputBar.setText("2")
 
     def sendValue(self):
@@ -314,7 +305,9 @@ class QSimpleNumberInputDialog(QAbstractInputDialog):
             self.inputBar.setText("2")
             self.close()
         except:
-            self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.errorDialog.setWindowIcon(
+                self.style().standardIcon(QStyle.SP_MessageBoxWarning)
+            )
             self.errorDialog.show()
             center(self.errorDialog)
             self.inputBar.setText("2")
@@ -325,9 +318,9 @@ class QIpInputDialog(QAbstractInputDialog):
 
     def __init__(self, questionText, parent=None):
         super().__init__(parent)
-        config = MachineConfig()
-        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir une Ip V4 valide")
-        self.inputBar.setText(config.host[len("http://") :])
+        self.errorDialog = QErrorDialog(
+            "Erreur de saisie", "Erreur de saisie", "Veuillez saisir une Ip V4 valide"
+        )
 
     def sendValue(self):
         config = MachineConfig()
@@ -344,7 +337,11 @@ class QIpInputDialog(QAbstractInputDialog):
                     portParser = i.split(":")
                     if len(portParser) == 2:
                         try:
-                            if 0 <= int(portParser[0]) and int(portParser[0]) <= 255 and int(portParser[1]) > 0:
+                            if (
+                                0 <= int(portParser[0])
+                                and int(portParser[0]) <= 255
+                                and int(portParser[1]) > 0
+                            ):
                                 pass
                             else:
                                 valid = False
@@ -362,6 +359,14 @@ class QIpInputDialog(QAbstractInputDialog):
             api_instance = swagger_client.DefaultApi(swagger_client.ApiClient(config))
             self.close()
         else:
-            self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+            self.errorDialog.setWindowIcon(
+                self.style().standardIcon(QStyle.SP_MessageBoxWarning)
+            )
             self.errorDialog.show()
             center(self.errorDialog)
+
+
+class QNotImplemented(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setText("NOT IMPLEMENTED")

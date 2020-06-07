@@ -1,4 +1,4 @@
-from IHM import *
+from GUI import *
 
 # TODO: ENSURE BALANCE CAN'T HAVE ABSURDS VALUES (eg: 16.33333...)
 # TODO: FIX MULTI-USER PANEL

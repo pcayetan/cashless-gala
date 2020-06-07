@@ -1,169 +1,129 @@
+
 from __future__ import print_function
-import time
-import swagger_client
-from swagger_client.rest import ApiException
-from pprint import pprint
 
-import json
+import grpc
+from grpc import RpcError
+import com_pb2
+import com_pb2_grpc
+from google.protobuf.timestamp_pb2 import Timestamp
 
-# For handle request MaxRetry exception
-from urllib3.exceptions import *
+from Atoms import *
 
-import uuid
-
-
-class MachineConfigSingleton(type(swagger_client.Configuration)):
+class ClientSingleton(type):
     _instance = {}
 
     def __call__(cls):
         if cls not in cls._instance:
-            cls._instance[cls] = super(MachineConfigSingleton, cls).__call__()
+            cls._instance[cls] = super(ClientSingleton , cls).__call__()
         return cls._instance[cls]
 
+class Client(metaclass=ClientSingleton):
 
-class MachineConfig(swagger_client.Configuration, metaclass=MachineConfigSingleton):
     def __init__(self):
-        super().__init__()
-        self.counterID = 1
-        self.counterDict = {}  # Ordered as dictionary
-        self.counterList = []  # Ordered as list
+        self.serverAddress=None
+        self.channel = None
+        self.stub = None
 
-        self.host = "http://127.0.0.1:5000"
-        # self.host = "http://192.168.2.101:5000"
-        self.defaultItemFileName = "ItemModel.json"
+    def requestBuy(self,**kwargs):
+        """
+    int64 counter_id
+    string device_uuid
+    repeated Payment payments
+    repeated BasketItem basket
+        """
+        # Mockup
+        mockupProduct = Product()
+        mockupProduct.price = 8
+        mockupProduct.quantity = 2
+        mockupProduct.name = "Bouteille"
+        mockupProduct.id = 0
+        mockupProduct.code = "BOUBOU"
 
-    def setHost(self, host):
-        self.host = host
+        buying = Buying()
+        buying.date = Timestamp().GetCurrentTime()
+        buying.id = 1
+        buying.label = "label"
+        buying.price = 16
+        buying.refounded = False
+        buying.counterId = 0
+        buying.basketItems = [mockupProduct]
 
-    def setCounterID(self, counterID):
-        self.counterID = counterID
-
-
-configuration = MachineConfig()
-
-# create an instance of the API class
-api_instance = swagger_client.DefaultApi(swagger_client.ApiClient(configuration))
-
-
-def requestBuy(userUID, counterID, computerMAC, basket):
-    # basket format conversion
-
-    if isinstance(basket, dict) is True:
-        fBasket = []
-        for i in basket:
-            tempDict = {}
-            tempDict["product_code"] = i
-            tempDict["quantity"] = basket[i]
-            fBasket.append(tempDict)
-    else:
-        fBasket = basket
-
-    try:
-        body = swagger_client.Body(counterID, computerMAC, fBasket)
-        return api_instance.buy_user_uid_post(body, userUID)
-    except ApiException as e:
-        if e.status == 401:
-            print("User {}: Insufficient balance".format(userUID))
-        elif e.status == 404:
-            print("User {}: Not found".format(userUID))
-        return None
-    except MaxRetryError as e:
-        return None
+        return mockupProduct
 
 
-def requestRefilling(userUID, counterID, computerMAC, amount):
-    try:
-        body = swagger_client.Body1(counterID, computerMAC, amount)
-        return api_instance.refilling_user_uid_post(body, userUID)
-    except MaxRetryError:
-        return None
+    def requestRefilling(self, **kwargs):
+        """
+        string customer_id
+        int64 counter_id
+        string device_uuid
+        PaymentMethod payment_method
+        double amount
+        """
+
+        # Mockup
+        refilling = Refilling()
+        refilling.amount = 42
+        refilling.counterId = 0
+        refilling.date = Timestamp().GetCurrentTime()
+        refilling.id = 2
+        refilling.label = "label"
+        refilling.refounded = False
+
+        return refilling
 
 
-def requestGeneralHistory(historySize):
-    raise NotImplementedError
+    def requestHistory(self, **kwargs):
+        pass
 
 
-def requestUserHistory(userUID, historySize):
-    try:
-        return api_instance.get_user_history_user_uid_history_size_post(historySize, userUID)
-    except ApiException as e:
-        return None
-    except MaxRetryError as e:
-        print("Unable to establish connexion with the server")
-        return None
+    def requestRefund(self, **kwargs):
+        pass
 
 
-def requestCounterHistory(counterID, historySize):
-    try:
-        return api_instance.get_counter_history_counter_id_history_size_post(historySize, counterID)
-    except ApiException as e:
-        return None
-    except MaxRetryError as e:
-        print("Unable to establish connexion with the server")
-        return None
+    def requestCounterProduct(self, **kwargs):
+        """
+        int64 counter_id
+        """
+
+        # Mockup
+        mockupProduct1 = Product()
+        mockupProduct1.name = "Coca"
+        mockupProduct1.price = 1
+        mockupProduct1.quantity = 1
+        mockupProduct1.id = 0
+        mockupProduct1.code = "COCA"
+
+        mockupProduct2 = Product()
+        mockupProduct2.name = "Bièrre"
+        mockupProduct2.price = 2
+        mockupProduct2.quantity = 1
+        mockupProduct2.id = 1
+        mockupProduct2.code = "BIBINE"
+
+        products = {"Soft": mockupProduct1, "Alcool": mockupProduct2}
+
+        return products
 
 
-def requestComputerHistory(computerMAC, historySize):
-    try:
-        return api_instance.get_computer_history_computer_mac_history_size_post(historySize, computerMAC)
-    except ApiException as e:
-        return None
-    except MaxRetryError:
-        return None
+    def requestUserBalance(self, **kwargs):
+        """
+        string customer_id
+        """
+        # Mockup
+        return 30
 
 
-def requestRefund(transactionID, counterID, computerMAC):
-    try:
-        body = swagger_client.Body2(counterID, computerMAC)
-        return api_instance.refund_transaction_id_post(body, transactionID)
-    except ApiException as e:
-        if e.status == 404:
-            print("Refund failed: Transaction not found")
-        return None
-    except MaxRetryError:
-        return None
+    def requestCounterList(self, **kwargs):
+        """No parameters requiered"""
+
+        # Mockup
+        counter = Counter()
+        counter.id = 0
+        counter.name = "BAR 0"
+
+        counterList = [counter]
+        return counterList
 
 
-def requestCounterProduct(counterID):
-    try:
-        return api_instance.get_counter_products_counter_id_post(counterID)
-    except ApiException as e:
-        print("Counter product request failed: Counter not found")
-    except MaxRetryError:
-        return None
-
-
-def requestUserBalance(uid):
-    try:
-        return api_instance.get_user_balance_user_uid_post(uid)
-    except ApiException as e:
-        if e.status == 404:
-            print("User {} not found".format(uid))
-        return None
-    except MaxRetryError as e:
-        return None
-
-
-def requestCounterList():
-    try:
-        return api_instance.get_counter_list_get()
-    except ApiException as e:
-        if e.status == 404:
-            print("No counter found")
-        return None
-    except MaxRetryError as e:
-        return None
-
-
-def requestTransfert(sender, receiver, amount):
-    try:
-        body = swagger_client.Body3(receiver, sender, amount)
-        return api_instance.transfer_money_post(body)
-    except ApiException as e:
-        if e.status == 401:
-            print("Not enough money")
-        elif e.status == 404:
-            print("User not found")
-        return None
-    except MaxRetryError as e:
-        return None
+    def requestTransfert(self, **kwargs):
+        pass
