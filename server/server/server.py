@@ -25,9 +25,27 @@ def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
 def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:
     return decimal.Decimal(
         decimal.DecimalTuple(
-            sign=money.sign, digits=money.digits, exponent=money.exponent
+            sign=money.sign, digits=tuple(money.digits), exponent=money.exponent
         )
     )
+
+
+def get_or_create_machine(_uuid: str) -> models.Machine:
+    machine = db.query(models.Machine).get(_uuid)
+    if machine is None:
+        machine = models.Machine(uuid=_uuid)
+        db.add(machine)
+        db.commit()
+    return machine
+
+
+def get_or_create_customer(_id: str) -> models.Customer:
+    customer = db.query(models.Customer).get(_id)
+    if customer is None:
+        customer = models.Customer(id=_id, balance=0)
+        db.add(customer)
+        db.commit()
+    return customer
 
 
 class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
@@ -42,10 +60,50 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         raise NotImplementedError("Method not implemented!")
 
     def Refill(self, request, context):
-        """Missing associated documentation comment in .proto file"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        """
+            Refill a customer account with money
+        """
+        if not request.customer_id:
+            return com_pb2.RefillingReply(
+                now=pb_now(), status=com_pb2.RefillingReply.MISSING_CUSTOMER
+            )
+        if not request.counter_id:
+            return com_pb2.RefillingReply(
+                now=pb_now(), status=com_pb2.RefillingReply.MISSING_COUNTER
+            )
+        if not request.device_uuid:
+            return com_pb2.RefillingReply(
+                now=pb_now(), status=com_pb2.RefillingReply.MISSING_DEVICE_UUID
+            )
+
+        counter = db.query(models.Counter).get(request.counter_id)
+        if counter is None:
+            return com_pb2.RefillingReply(
+                now=pb_now(), status=com_pb2.RefillingReply.COUNTER_NOT_FOUND
+            )
+
+        customer = get_or_create_customer(request.customer_id)
+        machine = get_or_create_machine(request.device_uuid)
+        amount = pb_money_to_decimal(request.amount)
+
+        customer.balance += amount
+        db.add(customer)
+        db.add(
+            models.Refilling(
+                customer_id=customer.id,
+                payment_method_id=request.payment_method,
+                counter_id=counter.id,
+                machine_id=machine.uuid,
+                amount=amount,
+                cancelled=False,
+            )
+        )
+        db.commit()
+        return com_pb2.RefillingReply(
+            now=pb_now(),
+            status=com_pb2.RefillingReply.SUCCESS,
+            customer_balance=decimal_to_pb_money(customer.balance),
+        )
 
     def RefoundBuying(self, request, context):
         """Missing associated documentation comment in .proto file"""
@@ -73,16 +131,13 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             return com_pb2.BalanceReply(
                 status=com_pb2.BalanceReply.MISSING_CUSTOMER, now=pb_now()
             )
-        customer = db.query(models.Customer).get(request.customer_id)
-        if customer is None:
-            customer = models.Customer(id=request.customer_id, balance=0)
-            db.add(customer)
-            db.commit()
 
         return com_pb2.BalanceReply(
             status=com_pb2.BalanceReply.SUCCESS,
             now=pb_now(),
-            balance=decimal_to_pb_money(customer.balance),
+            balance=decimal_to_pb_money(
+                get_or_create_customer(request.customer_id).balance
+            ),
         )
 
     def History(self, request, context):
