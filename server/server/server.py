@@ -3,6 +3,7 @@
 
 import grpc
 import json
+import decimal
 
 from concurrent import futures
 from google.protobuf.timestamp_pb2 import Timestamp
@@ -11,10 +12,29 @@ from google.protobuf.json_format import Parse
 from server import db, models, com_pb2, com_pb2_grpc
 
 
-def pb_now():
+def pb_now() -> Timestamp:
     timestamp = Timestamp()
     timestamp.GetCurrentTime()
     return timestamp
+
+
+def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
+    tup = dec.as_tuple()
+    return com_pb2.Money(sign=tup.sign, exponent=tup.exponent, digits=tup.digits)
+
+
+def decimal_to_pb_money_dict(dec: decimal.Decimal):
+    tup = dec.as_tuple()
+    print(dec, tup)
+    return {"sign": tup.sign, "exponent": tup.exponent, "digits": list(tup.digits)}
+
+
+def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:
+    return decimal.Decimal(
+        decimal.DecimalTuple(
+            sign=money.sign, digits=money.digits, exponent=money.exponent
+        )
+    )
 
 
 class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
@@ -67,7 +87,9 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             db.commit()
 
         return com_pb2.BalanceReply(
-            status=com_pb2.BalanceReply.SUCCESS, now=pb_now(), balance=customer.balance
+            status=com_pb2.BalanceReply.SUCCESS,
+            now=pb_now(),
+            balance=decimal_to_pb_money(customer.balance),
         )
 
     def History(self, request, context):
@@ -123,7 +145,7 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
                 "id": product.id,
                 "name": product.name,
                 "code": product.code,
-                "default_price": product.default_price,
+                "default_price": decimal_to_pb_money_dict(product.default_price),
                 "happy_hours": [],
             }
 
@@ -137,7 +159,7 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
                     {
                         "start": start.ToJsonString(),
                         "end": end.ToJsonString(),
-                        "price": happy_hour.price,
+                        "price": decimal_to_pb_money_dict(happy_hour.price),
                     }
                 )
             pos["products"].append(p)

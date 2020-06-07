@@ -1,18 +1,33 @@
 # -*- coding:utf-8 -*
 from datetime import datetime
+import decimal
 
 from sqlalchemy import (
     Column,
     Integer,
     String,
-    Float,
     Boolean,
     DateTime,
     ForeignKey,
 )
 from sqlalchemy.orm import relationship, backref
+import sqlalchemy.types as types
 
 from server import Model
+
+
+class Money(types.TypeDecorator):
+    """
+        Store fixed decimal values as strings
+    """
+
+    impl = types.String
+
+    def process_bind_param(self, value, dialect):
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        return decimal.Decimal(value)
 
 
 class Customer(Model):
@@ -23,7 +38,7 @@ class Customer(Model):
 
     __tablename__ = "customers"
     id = Column(String, primary_key=True, unique=True, autoincrement=False)
-    balance = Column(Float)
+    balance = Column(Money)
 
 
 class Machine(Model):
@@ -58,7 +73,7 @@ class Product(Model):
     name = Column(String)  # Real fancy name
     code = Column(String)  # Slugified name
     category = Column(String)  # Dot separated string for the category main.sub.category
-    default_price = Column(Float)
+    default_price = Column(Money)
 
 
 class HappyHour(Model):
@@ -72,7 +87,7 @@ class HappyHour(Model):
     product = relationship(
         "Product", backref=backref("happy_hours", lazy=True), lazy=True
     )
-    price = Column(Float)
+    price = Column(Money)
     start = Column(DateTime(timezone=True))
     end = Column(DateTime(timezone=True))
 
@@ -134,7 +149,7 @@ class Refilling(Model):
         "Machine", backref=backref("refillings", lazy=True), lazy=True
     )
 
-    amount = Column(Float)
+    amount = Column(Money)
     cancelled = Column(Boolean, default=False)
 
 
@@ -177,7 +192,7 @@ class BasketItem(Model):
     )
 
     quantity = Column(Integer)
-    unit_price = Column(Float)  # Unit price of the product at the time of purchase
+    unit_price = Column(Money)  # Unit price of the product at the time of purchase
 
 
 class Payment(Model):
@@ -196,4 +211,4 @@ class Payment(Model):
     buying_id = Column(Integer, ForeignKey("buyings.id"))
     buying = relationship("Buying", backref=backref("payments", lazy=True), lazy=True)
 
-    amount = Column(Float)  # Amount spent by this user in the Buying
+    amount = Column(Money)  # Amount spent by this user in the Buying

@@ -24,23 +24,37 @@ enum PaymentMethod {
   OTHER = 6;
 }
 
+// This is based on the DecimalTuple format available on Python
+message Money {
+  // 0 if positive and 1 if negative
+  int32 sign = 1;
+
+
+  // Exponent to multiply the total number by, if you have 1.17 exponent is -2
+  int64 exponent = 2;
+
+  // Individual digits of the number
+  // Example: for 1.17 it would be [1, 1, 7]
+  repeated uint32 digits = 3;
+}
+
 message Product {
   message HappyHour {
     google.protobuf.Timestamp start = 1;
     google.protobuf.Timestamp end = 2;
-    double price = 3;
+    Money price = 3;
   }
   int64 id = 1;
   string name = 2; //pretty print in trees
   string code = 3; //code for fast search, not necessarily unique
-  float default_price = 4;
+  Money default_price = 4;
   repeated HappyHour happy_hours = 5;
 }
 
 message BasketItem {
   int64 product_id = 1;
   int64 quantity = 2;
-  double unit_price = 3; // Price at buying time, used in History, not mandatory when it's a BuyingRequest
+  Money unit_price = 3; // Price at buying time, used in History, not mandatory when it's a BuyingRequest
 }
 
 message Refilling {
@@ -48,19 +62,19 @@ message Refilling {
   int64 counter_id = 2;
   string device_uuid = 3;
   PaymentMethod payment_method = 4;
-  double amount = 5;
+  Money amount = 5;
   google.protobuf.Timestamp date = 6;
 }
 
 message Payment { //Allow us to handle multiple user buyings, describe who pays and how much.
   string customer_id = 1;
-  double amount = 2;
+  Money amount = 2;
 }
 
 message Buying {
   int64 id = 1;
   string label = 2; // description of the buying, ui purpose only
-  double price = 3; // price the customer(s) actually paid at 'date', sum of Payments
+  Money price = 3; // price the customer(s) actually paid at 'date', sum of Payments
   bool refounded = 4;
   int64 counter_id = 5;
   google.protobuf.Timestamp date = 6;
@@ -96,7 +110,7 @@ message BuyingReply {
   google.protobuf.Timestamp now = 2;
   Buying transaction = 3;
   repeated string customer_ids = 4; //Severeal
-  repeated double customer_balances = 5;
+  repeated Money customer_balances = 5;
 }
 
 message RefillingRequest {
@@ -104,7 +118,7 @@ message RefillingRequest {
   int64 counter_id = 2;
   string device_uuid = 3;
   PaymentMethod payment_method = 4;
-  double amount = 5;
+  Money amount = 5;
 }
 
 message RefillingReply {
@@ -125,7 +139,7 @@ message RefillingReply {
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  double customer_balance = 3;
+  Money customer_balance = 3;
 }
 
 message RefoundBuyingRequest {
@@ -149,8 +163,8 @@ message RefoundBuyingReply {
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  repeated double customer_id = 3; // Multiple customer could be refounded at the same time since multi-payment exist
-  repeated double customer_balance = 4; //So we can have multiple new balances...
+  repeated Money customer_id = 3; // Multiple customer could be refounded at the same time since multi-payment exist
+  repeated Money customer_balance = 4; //So we can have multiple new balances...
 }
 
 message CancelRefillingRequest {
@@ -174,14 +188,14 @@ message CancelRefillingReply {
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  double customer_id = 3;
-  double customer_balance = 4;
+  Money customer_id = 3;
+  Money customer_balance = 4;
 }
 
 message TransfertRequest {
   string origin_id = 1;
   string destination_id = 2;
-  double amount = 3;
+  Money amount = 3;
   int64 counter_id = 4;
   string device_uuid = 5;
 }
@@ -203,8 +217,8 @@ message TransfertReply {
   }
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  double origin_balance = 3;
-  double destination_balance = 4;
+  Money origin_balance = 3;
+  Money destination_balance = 4;
 }
 
 message BalanceRequest {
@@ -220,7 +234,7 @@ message BalanceReply {
   }
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  double balance = 3;
+  Money balance = 3;
 }
 
 message HistoryRequest {
