@@ -36,6 +36,18 @@ def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:
     )
 
 
+def refilling_to_pb(refilling: models.Refilling) -> com_pb2.Refilling:
+    return com_pb2.Refilling(
+        customer_id=refilling.customer_id,
+        counter_id=refilling.counter_id,
+        device_uuid=refilling.machine_id,
+        payment_method=refilling.payment_method.id,
+        amount=decimal_to_pb_money(refilling.amount),
+        cancelled=refilling.cancelled,
+        date=date_to_pb(refilling.date),
+    )
+
+
 def get_or_create_machine(_uuid: str) -> models.Machine:
     machine = db.query(models.Machine).get(_uuid)
     if machine is None:
@@ -108,15 +120,7 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             now=pb_now(),
             status=com_pb2.RefillingReply.SUCCESS,
             customer_balance=decimal_to_pb_money(customer.balance),
-            refilling=com_pb2.Refilling(
-                customer_id=refilling.customer_id,
-                counter_id=refilling.counter_id,
-                device_uuid=refilling.machine_id,
-                payment_method=refilling.payment_method.id,
-                amount=decimal_to_pb_money(refilling.amount),
-                cancelled=refilling.cancelled,
-                date=date_to_pb(refilling.date),
-            ),
+            refilling=refilling_to_pb(refilling),
         )
 
     def RefoundBuying(self, request, context):
@@ -158,10 +162,82 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         )
 
     def Transfert(self, request, context):
-        """Missing associated documentation comment in .proto file"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        """
+            Transfert money from a customer to another
+        """
+        if not request.origin_id:
+            return com_pb2.TransfertReply(
+                now=pb_now(), status=com_pb2.TransfertReply.MISSING_ORIGN
+            )
+
+        if not request.destination_id:
+            return com_pb2.TransfertReply(
+                now=pb_now(), status=com_pb2.TransfertReply.MISSING_DESTINATION
+            )
+
+        if not request.counter_id:
+            return com_pb2.TransfertReply(
+                now=pb_now(), status=com_pb2.TransfertReply.MISSING_COUNTER
+            )
+
+        if not request.device_uuid:
+            return com_pb2.TransfertReply(
+                now=pb_now(), status=com_pb2.TransfertReply.MISSING_DEVICE_UUID,
+            )
+
+        counter = db.query(models.Counter).get(request.counter_id)
+        if counter is None:
+            return com_pb2.TransfertReply(
+                now=pb_now(), status=com_pb2.TransfertReply.COUNTER_NOT_FOUND,
+            )
+
+        amount = pb_money_to_decimal(request.amount)
+
+        # Check origin balance
+        origin_customer = get_or_create_customer(request.origin_id)
+        if origin_customer.balance < amount:
+            return com_pb2.TransfertReply(
+                now=pb_now(), status=com_pb2.TransfertReply.NOT_ENOUGH_MONEY,
+            )
+        destination_customer = get_or_create_customer(request.destination_id)
+        machine = get_or_create_machine(request.device_uuid)
+
+        # Remove money from origin
+        origin_customer.balance -= amount
+        db.add(origin_customer)
+        origin_refilling = models.Refilling(
+            customer_id=origin_customer.id,
+            payment_method_id=com_pb2.TRANSFER,
+            counter_id=counter.id,
+            machine_id=machine.uuid,
+            amount=-amount,
+            cancelled=False,
+        )
+        db.add(origin_refilling)
+
+        # Adding money to destination
+        destination_customer.balance += amount
+        db.add(destination_customer)
+        destination_refilling = models.Refilling(
+            customer_id=destination_customer.id,
+            payment_method_id=com_pb2.TRANSFER,
+            counter_id=counter.id,
+            machine_id=machine.uuid,
+            amount=amount,
+            cancelled=False,
+        )
+        db.add(destination_refilling)
+
+        db.commit()
+
+        return com_pb2.TransfertReply(
+            now=pb_now(),
+            status=com_pb2.TransfertReply.SUCCESS,
+            origin_balance=decimal_to_pb_money(origin_customer.balance),
+            destination_balance=decimal_to_pb_money(destination_customer.balance),
+            origin_refilling=refilling_to_pb(origin_refilling),
+            destination_refilling=refilling_to_pb(destination_refilling),
+        )
 
     def Balance(self, request, context):
         """

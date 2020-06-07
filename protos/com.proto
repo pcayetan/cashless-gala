@@ -217,8 +217,10 @@ message TransfertReply {
   }
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  Money origin_balance = 3;
-  Money destination_balance = 4;
+  Refilling origin_refilling = 3;
+  Refilling destination_refilling = 4;
+  Money origin_balance = 5;
+  Money destination_balance = 6;
 }
 
 message BalanceRequest {
