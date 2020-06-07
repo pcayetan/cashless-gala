@@ -6,8 +6,9 @@ from grpc import RpcError
 import com_pb2
 import com_pb2_grpc
 from google.protobuf.timestamp_pb2 import Timestamp
-
+from google.protobuf.json_format import MessageToDict
 from Atoms import *
+from Console import *
 
 class ClientSingleton(type):
     _instance = {}
@@ -20,9 +21,10 @@ class ClientSingleton(type):
 class Client(metaclass=ClientSingleton):
 
     def __init__(self):
-        self.serverAddress=None
-        self.channel = None
-        self.stub = None
+        self.serverAddress="127.0.0.1:50051"
+        self.channel = grpc.insecure_channel(self.serverAddress)
+        self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
+        self.now = None
 
     def requestBuy(self,**kwargs):
         """
@@ -84,6 +86,19 @@ class Client(metaclass=ClientSingleton):
         """
         int64 counter_id
         """
+        counterProduct = {}
+
+        try:
+            productsRequest = com_pb2.ProductsRequest(counter_id=kwargs['counter_id'])
+            productsReply = self.stub.Products(productsRequest)
+
+            self.now = productsReply.now
+            return MessageToDict(productsReply)['items']
+        except RpcError:
+            printE("Unable to get product list")
+            return None
+
+
 
         # Mockup
         mockupProduct1 = Product()
@@ -115,15 +130,24 @@ class Client(metaclass=ClientSingleton):
 
     def requestCounterList(self, **kwargs):
         """No parameters requiered"""
-
-        # Mockup
-        counter = Counter()
-        counter.id = 0
-        counter.name = "BAR 0"
-
-        counterList = [counter]
-        return counterList
-
+        counterList = []
+        counterListRequest = com_pb2.CounterListRequest()
+        try:
+            counterListReply = self.stub.CounterList(counterListRequest)
+            grpcCounterList = counterListReply.counters #get the payload
+            self.now = counterListReply.now #update the time
+            
+            for i in grpcCounterList:
+                newCounter = Counter()
+                newCounter.setId(i.id)
+                newCounter.setName(i.name)
+                counterList.append(newCounter)
+            return counterList
+            
+        except RpcError:
+            printE("Unable to get counter list")
+            return None
+        
 
     def requestTransfert(self, **kwargs):
         pass

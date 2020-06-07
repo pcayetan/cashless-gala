@@ -9,5 +9,7 @@ from babel.numbers import format_currency
 
 class Eur(Money):
 
-    def __init__(self,amount=0):
+    def __init__(self,amount="0"):
         super().__init__(amount=amount,currency='EUR')
+        if isinstance(amount,float) is True:
+            printW("Eur should not be instancied with a float number, approximation may occure")

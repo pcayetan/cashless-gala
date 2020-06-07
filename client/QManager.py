@@ -129,6 +129,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         #counter initialisation
         printI("Request counter list")
         self.counterList = client.requestCounterList()
+        printI(self.counterList)
         try:
             with open("data/counter", 'r') as file:
                 self.counter = int(file.readline())
@@ -142,5 +143,6 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
                 file.write(str(self.counter))
         printI("Request products availables for this counter")
         self.productDict = client.requestCounterProduct(counter_id=self.counter)
+        print(self.productDict)
         self.productList = parseProductDict(self.productDict)
 
