@@ -48,7 +48,8 @@ message Product {
   string name = 2; //pretty print in trees
   string code = 3; //code for fast search, not necessarily unique
   Money default_price = 4;
-  repeated HappyHour happy_hours = 5;
+  string category = 5; // Dot separated category string (ex: drinks.beer)
+  repeated HappyHour happy_hours = 6;
 }
 
 message BasketItem {
@@ -296,12 +297,8 @@ message ProductsReply {
     COUNTER_NOT_FOUND = 3;
 
   }
-  message Item {
-    map<string, Item> sub = 1; // Sub category
-    repeated Product products = 2;
-  }
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  map<string, Item> items = 3; // The string is the name of the category
+  repeated Product products = 3;
 }

@@ -7,7 +7,6 @@ import decimal
 
 from concurrent import futures
 from google.protobuf.timestamp_pb2 import Timestamp
-from google.protobuf.json_format import Parse
 
 from server import db, models, com_pb2, com_pb2_grpc
 
@@ -21,12 +20,6 @@ def pb_now() -> Timestamp:
 def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
     tup = dec.as_tuple()
     return com_pb2.Money(sign=tup.sign, exponent=tup.exponent, digits=tup.digits)
-
-
-def decimal_to_pb_money_dict(dec: decimal.Decimal):
-    tup = dec.as_tuple()
-    print(dec, tup)
-    return {"sign": tup.sign, "exponent": tup.exponent, "digits": list(tup.digits)}
 
 
 def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:
@@ -126,28 +119,17 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
                 status=com_pb2.ProductsReply.COUNTER_NOT_FOUND, now=pb_now()
             )
 
-        products = {}
+        products = []
         for availability in counter.products_available:
             product = availability.product
 
-            # Navigate in tree to get to the deepest category
-            # Create categories that doesn't exists in the process
-            cat_list = product.category.split(".")
-            main_cat = cat_list.pop(0)
-            products[main_cat] = products.get(main_cat, {"sub": {}, "products": []})
-            pos = products[main_cat]
-            for cat in cat_list:
-                pos["sub"][cat] = pos["sub"].get(cat, {"sub": {}, "products": []})
-                pos = pos["sub"][cat]
-
-            # Add the product at the end
-            p = {
-                "id": product.id,
-                "name": product.name,
-                "code": product.code,
-                "default_price": decimal_to_pb_money_dict(product.default_price),
-                "happy_hours": [],
-            }
+            p = com_pb2.Product(
+                id=product.id,
+                name=product.name,
+                code=product.code,
+                default_price=decimal_to_pb_money(product.default_price),
+                category=product.category,
+            )
 
             # Add happy hours
             for happy_hour in product.happy_hours:
@@ -155,32 +137,18 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
                 start.FromDatetime(happy_hour.start)
                 end = Timestamp()
                 end.FromDatetime(happy_hour.end)
-                p["happy_hours"].append(
-                    {
-                        "start": start.ToJsonString(),
-                        "end": end.ToJsonString(),
-                        "price": decimal_to_pb_money_dict(happy_hour.price),
-                    }
+                p.happy_hours.append(
+                    com_pb2.Product.HappyHour(
+                        start=start,
+                        end=end,
+                        price=decimal_to_pb_money(happy_hour.price),
+                    )
                 )
-            pos["products"].append(p)
+            products.append(p)
 
-        # Here, we do a really ugly thing : we first encode everything to json
-        # and then decode it to a protobuf message before it gets encoded again
-        # THIS IS A TERRIBLE THING TO DO !
-        # Why am I doing that ? The map implementation for python is shitty and left me no choice
-        # This endpoint is realy slow and I don't care, it's not supposed to be called a lot
-        resp = com_pb2.ProductsReply()
-        Parse(
-            json.dumps(
-                {
-                    "status": com_pb2.ProductsReply.SUCCESS,
-                    "now": pb_now().ToJsonString(),
-                    "items": products,
-                }
-            ),
-            resp,
+        return com_pb2.ProductsReply(
+            status=com_pb2.ProductsReply.SUCCESS, now=pb_now(), products=products
         )
-        return resp
 
 
 def serve(address: str, port: int, reflect: bool):
