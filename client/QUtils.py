@@ -12,7 +12,6 @@ from Atoms import *
 
 from Euro import Eur
 
-from Client import *
 
 # Server response emulation
 import uuid

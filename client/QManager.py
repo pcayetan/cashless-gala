@@ -1,4 +1,3 @@
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -11,23 +10,61 @@ import uuid
 
 from Console import * #For colored printing
 
+# /!\ Managers must always be called in Qt context, so no global variable for data manager...
+#     the reason is simple, DataManager needs QAtoms, that need Widgets. Widgets can't be create
+#     if the Qt application did not start yet... It's the best compromise I have found to keep 
+#     the power of QAtoms.
+#     So every time you need a manager in a widget, ensure to call it in the widget e.g
+#     class MyCuteWidget(QWidget):
+#           def __init__(self):
+#               dm = QDataManager()
+#               ...
+#     otherwise you might get a core dump error from Qt
+# /!\ 
 
 
-def parseProductDict(productDict):
-    productList = []
-    if isinstance(productDict, Product) is True:
-        return [productDict]
-    elif isinstance(productDict, dict):
-        for key in productDict:
-            productList += parseProductDict(
-                productDict[key]
-            )  # Concatenate product lists
-    else:
-        # Should not happen...
-        printE("weird product dict")
-        return [None]
+# Need to be seriously tested !
+def parseProductDict(productList: [QProduct]):
 
-    return productList
+    productDict={"root":{},"prod":[]}
+    def addToDictionnary(productDict, product, relativePath):
+        if(len(relativePath) == 0): # End node
+            productDict["prod"].append(product)
+            return productDict
+
+        else:
+            newRelPath = relativePath[1:]
+            categoryName = relativePath[0] 
+            try:
+                productDict[categoryName] = addToDictionnary(productDict[categoryName],product,newRelPath)
+                return productDict
+            except KeyError:
+                productDict[categoryName]={"prod":[]}
+                productDict[categoryName] = addToDictionnary(productDict[categoryName],product,newRelPath)
+                return productDict
+
+    for product in productList:
+        categoryList = product.getCategory().strip().split('.')
+        categoryList.insert(0,"root")
+        productDict = addToDictionnary(productDict,product, categoryList)
+
+    productDict["root"]["prod"] = productDict["prod"] #remove useless root key
+    productDict = productDict["root"]
+    return productDict
+
+
+
+#def parseProductDict(productDict):
+#    productList = []
+#    if isinstance(productDict, Product) is True:
+#        return [productDict]
+#    elif isinstance(productDict, dict):
+#        for key in productDict:
+#            productList += parseProductDict(
+#                productDict[key]
+#            )  # Concatenate product lists
+#
+#    return productList
 
 
 class QUIManagerSingleton(type(QObject)):
@@ -142,7 +179,8 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
             with open("data/counter", "w") as file:
                 file.write(str(self.counter))
         printI("Request products availables for this counter")
-        self.productDict = client.requestCounterProduct(counter_id=self.counter)
-        print(self.productDict)
-        self.productList = parseProductDict(self.productDict)
-
+        self.productList = client.requestCounterProduct(counter_id=self.counter)
+        print(self.productList)
+        self.productDict = parseProductDict(self.productList)
+        print(self.productDict) 
+        print(type(self.productList[0]))

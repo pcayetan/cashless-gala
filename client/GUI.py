@@ -30,9 +30,6 @@ PWD = os.getcwd() + "/"
 #  Get item tree
 # INITIALISATION
 
-dm = QDataManager()
-uim = QUIManager()
-nfcm = QNFCManager()
 
 
 def setFont(Widget, Font):
@@ -70,6 +67,7 @@ class QMainTab(QTabWidget):
 
 
 class QMainMenu(QMainWindow):
+
     def __init__(self):
         super().__init__()
 

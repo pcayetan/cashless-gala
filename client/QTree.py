@@ -1,5 +1,3 @@
-import json
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
@@ -8,22 +6,38 @@ import PyQt5.QtCore
 import PyQt5.QtGui
 
 from QUtils import *
-from Atoms import *
+from QAtoms import *
+from Console import *
 
 
 class TreeItem:
     def __init__(self, data, parent=None):
         self.parentItem = parent
-        self.data = Atom()
-
-        if isinstance(data, Atom) is True:
-            self.data = data
-        elif isinstance(data, list) is True:
-            for i, val in enumerate(data):
-                if isinstance(val, str) is True:
-                    self.data.setText(val, i)
-
         self.childItems = []
+
+        if isinstance(data, QAtom) is True:
+            self.data = data
+        else:
+            self.data = QAtom()
+            if isinstance(data,list) is True:
+                # /!\ We don't check if data can be interpreted as string
+                self.data.setTexts(data)
+       #EXPERIMENTAL: AUTO ADJUST COLUMN (SO TEXT) LENGTH 
+       #Seems to work ...
+        if parent:
+            currentText = self.data.getTexts()
+            while len(currentText) < parent.columnCount():
+                currentText.append("")
+            while len(currentText) > parent.columnCount():
+                del(currentText[-1])
+
+        #ensure data can be printed
+        texts = self.data.getTexts()
+        for index,text in enumerate(texts):
+            texts[index] = str(text)
+
+
+                
 
     def appendChild(self, child):
         self.childItems.append(child)
@@ -46,7 +60,6 @@ class TreeItem:
         except IndexError:
             return None
 
-    # Return the whole data structure, now we can get/set thanks to __getitem__ __setitem__
     def getData(self):
         return self.data
 
@@ -67,7 +80,9 @@ class TreeItem:
 
         for i in range(0, count):
             # note: According the Qt Doc, in TreeModel, items must have the same amount of columns.
-            data = [QVariant()] * columns
+            #data = [QVariant()] * columns
+            data = QAtom()
+            data.setTexts([""]*columns)
             item = TreeItem(data, self)
             self.childItems.insert(position, item)
 
@@ -79,7 +94,7 @@ class TreeItem:
 
         for i in range(0, columns):  # /!\ check Qt5 exemple
             texts = self.data.getTexts()
-            texts.insert(position, QVariant())
+            texts.insert(position, "")
             self.data.setTexts(texts)
 
         for child in self.childItems:
@@ -128,9 +143,9 @@ class QTreeModel(QAbstractItemModel):
 
         super(QTreeModel, self).__init__(parent)
         self.rootItem = TreeItem(headers)
-        self.itemList = []
+#        self.itemList = [] # ????
         if data is not None:
-            self.setupModelData(data, self.rootItem)
+            self.setupModelData(data)
 
     def data(self, index, role):
 
@@ -202,7 +217,7 @@ class QTreeModel(QAbstractItemModel):
 
         return self.createIndex(parentItem.row(), 0, parentItem)
 
-    def setupModelData(self, data, parent):
+    def setupModelData(self, data):
         raise NotImplementedError()
 
     # Mandatory functions for editable tree

@@ -1,4 +1,3 @@
-
 from __future__ import print_function
 
 import grpc
@@ -6,9 +5,43 @@ from grpc import RpcError
 import com_pb2
 import com_pb2_grpc
 from google.protobuf.timestamp_pb2 import Timestamp
-from google.protobuf.json_format import MessageToDict
-from Atoms import *
+from QAtoms import *
 from Console import *
+
+from convert import *
+
+
+
+#def addProduct(product,categoryList):
+#    try:
+#        if isinstance(product,dict):
+#            productDict={categoryList[-1]:product}
+#        else:
+#            productDict={categoryList[-1]:[product]}
+#        return addProduct(productDict,categoryList[:-1])
+#    except IndexError:
+#        return product
+
+
+#def parseProducts(productsReply):
+#    pbProductList = productsReply.products # get protobuff products
+#    for i in pbProductList:
+#        happyHoursList = []
+#        pbHappyHoursList = i.happy_hours
+#        for j in pbHappyHoursList:
+#            newHappyHour = HappyHours()
+#            newHappyHour.setStart(j.start) #Still need to be converted in QTime 
+#            newHappyHour.setEnd(j.end)
+#            newHappyHour.setPrice(pb_money_to_eur(j.price)) # Since we choosed a securised money format we need to convert
+#            happyHoursList.append(newHappyHour)
+#        newProduct = Product()
+#        newProduct.setId(i.id)
+#        newProduct.setName(i.name)
+#        newProduct.setCode(i.code)
+#        newProduct.setPrice(pb_money_to_eur(i.default_price))
+#        newProduct.setHappyHours(happyHoursList)
+#        newProduct.setCategory(i.category)
+#
 
 class ClientSingleton(type):
     _instance = {}
@@ -33,24 +66,7 @@ class Client(metaclass=ClientSingleton):
     repeated Payment payments
     repeated BasketItem basket
         """
-        # Mockup
-        mockupProduct = Product()
-        mockupProduct.price = 8
-        mockupProduct.quantity = 2
-        mockupProduct.name = "Bouteille"
-        mockupProduct.id = 0
-        mockupProduct.code = "BOUBOU"
-
-        buying = Buying()
-        buying.date = Timestamp().GetCurrentTime()
-        buying.id = 1
-        buying.label = "label"
-        buying.price = 16
-        buying.refounded = False
-        buying.counterId = 0
-        buying.basketItems = [mockupProduct]
-
-        return mockupProduct
+        pass
 
 
     def requestRefilling(self, **kwargs):
@@ -61,18 +77,17 @@ class Client(metaclass=ClientSingleton):
         PaymentMethod payment_method
         double amount
         """
-
-        # Mockup
-        refilling = Refilling()
-        refilling.amount = 42
-        refilling.counterId = 0
-        refilling.date = Timestamp().GetCurrentTime()
-        refilling.id = 2
-        refilling.label = "label"
-        refilling.refounded = False
-
-        return refilling
-
+        try:
+            refillingRequest = com_pb2.RefillingRequest(**kwargs)
+            refillingReply = self.stub.Refill(refillingRequest)
+            self.now = refillingReply.now
+            newBalance = unpackMoney(refillingReply.amount)
+            refilling = unpackRefilling(refillingReply.refilling)
+            refilling.setNewBalance(newBalance)
+            return refilling
+        except RpcError:
+            printE("Unable to refill")
+            return None
 
     def requestHistory(self, **kwargs):
         pass
@@ -86,68 +101,65 @@ class Client(metaclass=ClientSingleton):
         """
         int64 counter_id
         """
-        counterProduct = {}
-
+        productList = []
         try:
-            productsRequest = com_pb2.ProductsRequest(counter_id=kwargs['counter_id'])
+            productsRequest = com_pb2.ProductsRequest(**kwargs)
             productsReply = self.stub.Products(productsRequest)
-
             self.now = productsReply.now
-            return MessageToDict(productsReply)['items']
+
+            # Fill product List 
+            pbProductList = productsReply.products # get protobuff products
+            for pb_product in pbProductList:
+                newProduct = unpackProduct(pb_product)
+                productList.append(newProduct)
+            return productList
+
         except RpcError:
             printE("Unable to get product list")
             return None
 
-
-
-        # Mockup
-        mockupProduct1 = Product()
-        mockupProduct1.name = "Coca"
-        mockupProduct1.price = 1
-        mockupProduct1.quantity = 1
-        mockupProduct1.id = 0
-        mockupProduct1.code = "COCA"
-
-        mockupProduct2 = Product()
-        mockupProduct2.name = "Bièrre"
-        mockupProduct2.price = 2
-        mockupProduct2.quantity = 1
-        mockupProduct2.id = 1
-        mockupProduct2.code = "BIBINE"
-
-        products = {"Soft": mockupProduct1, "Alcool": mockupProduct2}
-
-        return products
+        return None
+        
 
 
     def requestUserBalance(self, **kwargs):
         """
         string customer_id
         """
-        # Mockup
-        return 30
+        try:
+            balanceRequest = com_pb2.BalanceRequest(customer_id = kwargs['customer_id'])
+            balanceReply = self.stub.Balance(balanceRequest)
+            self.now = balanceReply.now
+            return unpackMoney(balanceReply.balance)
+        except RpcError:
+            printE("Unable to get customer balance")
+            return None
+
+        return None
 
 
     def requestCounterList(self, **kwargs):
         """No parameters requiered"""
         counterList = []
-        counterListRequest = com_pb2.CounterListRequest()
         try:
+            counterListRequest = com_pb2.CounterListRequest()
             counterListReply = self.stub.CounterList(counterListRequest)
-            grpcCounterList = counterListReply.counters #get the payload
+            pbCounterList = counterListReply.counters #get the payload
             self.now = counterListReply.now #update the time
             
-            for i in grpcCounterList:
-                newCounter = Counter()
-                newCounter.setId(i.id)
-                newCounter.setName(i.name)
+            for pb_counter in pbCounterList:
+                newCounter = unpackCounter(pb_counter)
                 counterList.append(newCounter)
             return counterList
             
         except RpcError:
             printE("Unable to get counter list")
             return None
+
+        return None
         
 
     def requestTransfert(self, **kwargs):
         pass
+
+        

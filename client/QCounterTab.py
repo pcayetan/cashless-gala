@@ -15,9 +15,6 @@ from QItemTree import *
 
 from Client import *
 
-dm = QDataManager()
-nfcm=QNFCManager()
-uim=QUIManager()
 
 
 class QAutoCompleteLineEdit(QLineEdit):
@@ -66,7 +63,7 @@ class QCounterTab(QWidget):
         #Left pannel
         self.productSelectionLayout = QVBoxLayout()
         self.searchBar = QSearchBar()
-        self.itemSelector = None
+        self.itemSelector = QProductSelector()
 
         #Mid pannel
         self.basket = None
@@ -117,6 +114,7 @@ class QCounterTab(QWidget):
 class QNFCInfo(QWidget):
 
     def __init__(self,parent=None):
+        nfcm=QNFCManager()
         super().__init__(parent)
         
         #Definition
@@ -139,7 +137,7 @@ class QNFCInfo(QWidget):
 
         #Settings
         self.rowInfo.addRow("UID",nfcm.getCardUID())
-        self.rowInfo.addRow("Solde",Eur(0).format('fr_FR'))
+        self.rowInfo.addRow("Solde",Eur(0))
         self.userHistoryButton.setText("Historique utilisateur")
         self.groupBox.setTitle("Info utilisateur")
 
