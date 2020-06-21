@@ -2,14 +2,18 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-from Atoms import *
-
 from Client import *
-from QNFC import *
+#for Data manager, create random machine uid
 import uuid
+
+# for QUIManager, find file in ressources
+import os 
 
 from Console import * #For colored printing
 
+#TEST
+import pickle
+from pickle import PickleError
 # /!\ Managers must always be called in Qt context, so no global variable for data manager...
 #     the reason is simple, DataManager needs QAtoms, that need Widgets. Widgets can't be create
 #     if the Qt application did not start yet... It's the best compromise I have found to keep 
@@ -22,9 +26,22 @@ from Console import * #For colored printing
 #     otherwise you might get a core dump error from Qt
 # /!\ 
 
+#EDIT: NOW MANAGERS ARE NOT DEPENDENT TO QATOMS ANYMORE SO THE TEXT ABOVE IS IRELEVANT BUT IT MUST BE TESTED
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# ________  _____ ______   ________  ________   ________  ________  _______   ________     
+#|\   __  \|\   _ \  _   \|\   __  \|\   ___  \|\   __  \|\   ____\|\  ___ \ |\   __  \    
+#\ \  \|\  \ \  \\\__\ \  \ \  \|\  \ \  \\ \  \ \  \|\  \ \  \___|\ \   __/|\ \  \|\  \   
+# \ \  \\\  \ \  \\|__| \  \ \   __  \ \  \\ \  \ \   __  \ \  \  __\ \  \_|/_\ \   _  _\  
+#  \ \  \\\  \ \  \    \ \  \ \  \ \  \ \  \\ \  \ \  \ \  \ \  \|\  \ \  \_|\ \ \  \\  \| 
+#   \ \_____  \ \__\    \ \__\ \__\ \__\ \__\\ \__\ \__\ \__\ \_______\ \_______\ \__\\ _\ 
+#    \|___| \__\|__|     \|__|\|__|\|__|\|__| \|__|\|__|\|__|\|_______|\|_______|\|__|\|__|
+#          \|__|                                                                            
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+
 
 # Need to be seriously tested !
-def parseProductDict(productList: [QProduct]):
+def parseProductDict(productList: [Product]):
 
     productDict={"root":{},"prod":[]}
     def addToDictionnary(productDict, product, relativePath):
@@ -67,58 +84,6 @@ def parseProductDict(productList: [QProduct]):
 #    return productList
 
 
-class QUIManagerSingleton(type(QObject)):
-    _instance = {}
-
-    def __call__(cls):
-        if cls not in cls._instance:
-            cls._instance[cls] = super(QUIManagerSingleton, cls).__call__()
-        return cls._instance[cls]
-
-
-class QUIManager(QObject, metaclass=QUIManagerSingleton):
-    def __init__(self):
-        self.theme = "default"
-        self.themeRelPath = "ressources/themes/" + self.theme + "/"
-
-
-class QNFCManagerSingleton(type(QObject)):
-    _instance = {}
-
-    def __call__(cls):
-        if cls not in cls._instance:
-            cls._instance[cls] = super(QNFCManagerSingleton, cls).__call__()
-        return cls._instance[cls]
-
-class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
-
-    cardInserted = pyqtSignal() #It's a copy of the cardObserver signal.. but wrapped in a manager
-    cardRemoved  = pyqtSignal()
-
-    readerInserted = pyqtSignal()
-    readerRemoved = pyqtSignal()
-
-    def __init__(self):
-
-        self.cardMonitor = CardMonitor()
-        self.cardObserver = QCardObserver()
-        self.cardMonitor.addObserver(self.cardObserver)
-        
-        self.readermonitor = ReaderMonitor()
-        self.readerUpdater = ReaderUpdater()
-        self.readermonitor.addObserver(self.readerUpdater)
-
-        self.cardObserver.cardInserted.connect(self.wrapperCardInserted)
-        self.cardObserver.cardRemoved.connect(self.wrapperCardRemoved)
-
-    def getCardUID(self):
-        return self.cardObserver.getCardUID()
-
-    def wrapperCardInserted(self): #basicaly, it's just the same that the cardObserver event but wrapped here
-        self.cardInserted.emit()
-
-    def wrapperCardRemoved(self):
-        self.cardRemoved.emit()
 
 
 
@@ -142,7 +107,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         self.counterList = []
 
         self.clock = QTime()
-        self.counter = None # unsigned int
+        self.counter = None # Atomic Counter
         self.uid = None #string uid machine
         self.serverAddress = None #string format ipv4 e.g 192.168.0.1:50051
 
@@ -166,21 +131,34 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         #counter initialisation
         printI("Request counter list")
         self.counterList = client.requestCounterList()
-        printI(self.counterList)
         try:
-            with open("data/counter", 'r') as file:
-                self.counter = int(file.readline())
-        except (ValueError):
-            printE("Counter file corrupted, trying to set a default counter")
-        except (FileNotFoundError):
-            printI("Counter file not found, trying to set a default counter")
-        finally:
-            self.counter = self.counterList[0].id
-            with open("data/counter", "w") as file:
-                file.write(str(self.counter))
+            with open('data/counter','rb') as file: #open read/write/binary file
+                try:
+                    loadedCounter = pickle.load(file)
+                    if loadedCounter in self.counterList:
+                        printI('Loaded counter from memory')
+                        self.counter = loadedCounter
+                    else:
+                        printW('Unable to find the loaded counter in the existing list')
+                        printN('Setting a new default counter')
+                        self.counter = self.counterList[0]
+                except:
+                    printW('Unable to read a counter in memory')
+                    printN('Setting a new default counter')
+                    self.counter = self.counterList[0]
+        except FileNotFoundError:
+            printW('Counter file not found')
+            printN('Setting a new default counter')
+            self.counter = self.counterList[0]
+
+        with open('data/counter','wb') as file:
+            pickle.dump(self.counter,file)
+
         printI("Request products availables for this counter")
-        self.productList = client.requestCounterProduct(counter_id=self.counter)
-        print(self.productList)
+        self.productList = client.requestCounterProduct(counter_id=self.counter.getId())
         self.productDict = parseProductDict(self.productList)
-        print(self.productDict) 
-        print(type(self.productList[0]))
+        
+
+    def getPrice(self, product):
+        pass
+

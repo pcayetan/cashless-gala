@@ -56,8 +56,11 @@ class UIProperties:
         return self.toolTip
 
 class Atom:
-    def __init__(self):
+    def __init__(self,texts=[], icon=""):
         self.ui = UIProperties()
+        self.setTexts(texts)
+        self.setIcon(icon)
+        self.id = None  #id used in db  
 
     def setTexts(self, text):
         self.ui.setTexts(text)
@@ -104,6 +107,17 @@ class Atom:
     def getUI(self):
         return self.ui
 
+    def getId(self):
+        return self.id
+
+    def setId(self, id):
+        self.id = id
+        return self
+
+
+    def __eq__(self, key):
+        raise NotImplementedError('__eq__ not implemented for this class.')
+
 class HappyHours(Atom):
     
     def __init__(self):
@@ -140,9 +154,6 @@ class User(Atom):
         self.balance = None
         self.canDrink = None
 
-    def setId(self, id):
-        self.id = id
-        return self
 
     def setBalance(self, balance):
         self.balance = balance
@@ -151,9 +162,6 @@ class User(Atom):
     def setCanDrink(self, canDrink):
         self.canDrink = canDrink
         return self
-
-    def getId(self):
-        return self.id
 
     def getBalance(self):
         return self.balance
@@ -165,7 +173,6 @@ class User(Atom):
 class Product(Atom):
     def __init__(self):
         super().__init__()
-        self.id = None  # int64, used in db
         self.name = None  # pretty print
         self.code = None  # short name
         self.price = None  # The price is either updated when it's in a the selctor, either retreived from database when it's in history
@@ -173,16 +180,14 @@ class Product(Atom):
         self.happyHours = None # List of happy hours
         self.category = None # string e.g "Drinks.Alcool.Wine"
 
-    def setId(self, id):
-        self.id = id
-        return self
-
     def setName(self, name):
         self.name = name
         return self
 
     def setCode(self, code):
         self.code = code
+        self.setIcon(self.code) # /!\ Maybe this should not hardcoded here 
+        self.setToolTip(self.code) #Same remark
         return self
 
     def setPrice(self, price): # price is never a float but something inherited from Decimal (Money.Eur)
@@ -200,9 +205,6 @@ class Product(Atom):
     def setCategory(self, category):
         self.category = category
         return self
-
-    def getId(self):
-        return self.id
 
     def getName(self):
         return self.name
@@ -222,6 +224,14 @@ class Product(Atom):
     def getCategory(self):
         return self.category
 
+
+    def __eq__(self, key):
+        result = True
+        result = result and self.getId() == key.getId()
+#        result = result and self.getName() == key.getName()
+#        result = result and self.getCode() == key.getCode()
+#        result = result and self.getPrice() == key.getPrice()
+        return result
     def __repr__(self):
         return "Product({0}, {1})".format(self.id,self.name)
 
@@ -232,16 +242,11 @@ class Product(Atom):
 class Operation(Atom):
     def __init__(self):
         super().__init__()
-        self.id = None
         self.label = None  # human readable description gave by the server
         self.refounded = None
         # Could be usefull to show where the product has been bought
         self.counterId = None
         self.date = None
-
-    def setId(self, id):
-        self.id = id
-        return self
 
     def setLabel(self, label):
         self.label = label
@@ -258,9 +263,6 @@ class Operation(Atom):
     def setDate(self, date):
         self.date = date
         return self
-
-    def getId(self):
-        return self.id
 
     def getLabel(self):
         return self.label
@@ -328,19 +330,11 @@ class Refilling(Operation):
 class Counter(Atom):
     def __init__(self):
         super().__init__()
-        self.id = None
         self.name = None
-
-    def setId(self, id):
-        self.id = id
-        return self
 
     def setName(self, name):
         self.name = name
         return self
-
-    def getId(self):
-        return self.id
 
     def getName(self):
         return self.name
@@ -350,6 +344,9 @@ class Counter(Atom):
 
     def __str__(self):
         return "{0}: {1}".format(self.id,self.name)
+    
+    def __eq__(self, key):
+        return key.getId() == self.getId() and key.getName() == self.getName()
 
 class Distribution(Atom):
     def __init__(self):

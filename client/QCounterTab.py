@@ -5,15 +5,14 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-import PyQt5.QtCore
-import PyQt5.QtGui
 
-from QManager import *
-from QNFC import *
+from QDataManager import QDataManager
+from QNFCManager import QNFCManager
+from QUIManager import QUIManager
+
 from QUtils import *
 from QItemTree import *
 
-from Client import *
 
 
 
@@ -66,7 +65,7 @@ class QCounterTab(QWidget):
         self.itemSelector = QProductSelector()
 
         #Mid pannel
-        self.basket = None
+        self.basket =  QBasket()
         
         #Right pannel
         self.rightPannelLayout = QVBoxLayout() # find a better name ~
@@ -109,6 +108,7 @@ class QCounterTab(QWidget):
         
 
         #signals
+        self.itemSelector.itemSelected[Product].connect(self.basket.addProduct)
 
 
 class QNFCInfo(QWidget):

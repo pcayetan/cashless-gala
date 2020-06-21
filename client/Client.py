@@ -5,43 +5,27 @@ from grpc import RpcError
 import com_pb2
 import com_pb2_grpc
 from google.protobuf.timestamp_pb2 import Timestamp
-from QAtoms import *
 from Console import *
 
 from convert import *
 
+# OPTINAL FOR PINGING THE SERVER AND ENSURE IT'S AVAILABLE
+import platform    # For getting the operating system name
+import subprocess  # For executing a shell command
 
+def ping(host):
+    """
+    Returns True if host (str) responds to a ping request.
+    Remember that a host may not respond to a ping (ICMP) request even if the host name is valid.
+    """
 
-#def addProduct(product,categoryList):
-#    try:
-#        if isinstance(product,dict):
-#            productDict={categoryList[-1]:product}
-#        else:
-#            productDict={categoryList[-1]:[product]}
-#        return addProduct(productDict,categoryList[:-1])
-#    except IndexError:
-#        return product
+    # Option for the number of packets as a function of
+    param = '-n' if platform.system().lower()=='windows' else '-c'
 
+    # Building the command. Ex: "ping -c 1 google.com"
+    command = ['ping', param, '1', host]
 
-#def parseProducts(productsReply):
-#    pbProductList = productsReply.products # get protobuff products
-#    for i in pbProductList:
-#        happyHoursList = []
-#        pbHappyHoursList = i.happy_hours
-#        for j in pbHappyHoursList:
-#            newHappyHour = HappyHours()
-#            newHappyHour.setStart(j.start) #Still need to be converted in QTime 
-#            newHappyHour.setEnd(j.end)
-#            newHappyHour.setPrice(pb_money_to_eur(j.price)) # Since we choosed a securised money format we need to convert
-#            happyHoursList.append(newHappyHour)
-#        newProduct = Product()
-#        newProduct.setId(i.id)
-#        newProduct.setName(i.name)
-#        newProduct.setCode(i.code)
-#        newProduct.setPrice(pb_money_to_eur(i.default_price))
-#        newProduct.setHappyHours(happyHoursList)
-#        newProduct.setCategory(i.category)
-#
+    return subprocess.call(command) == 0
 
 class ClientSingleton(type):
     _instance = {}
@@ -58,6 +42,13 @@ class Client(metaclass=ClientSingleton):
         self.channel = grpc.insecure_channel(self.serverAddress)
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
         self.now = None
+    
+    def setServerAddress(self, address):
+        self.serverAddress = address
+        #TODO: add ping test here
+        #TODO: Test address format
+        self.channel = grpc.insecure_channel(self.serverAddress)
+        self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
 
     def requestBuy(self,**kwargs):
         """

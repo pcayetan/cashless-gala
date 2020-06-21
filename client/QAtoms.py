@@ -4,6 +4,18 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from QUtils import *
 
+from QUIManager import QUIManager
+
+# TODO:SOLVE THIS ARCHITECTURE PROBLEM
+# /!\ ARCHITECTURE PROBLEM... MANAGER CAN'T BE CALLED HERE SINCE QATOMS IS IMPORTED IN QMANAGER
+#     PROPOSAL: MERGE QATOMS AND QMANAGER
+#     PROPOSAL2: DEFINE UIMANAGER IN QATOMS
+
+
+########################
+####### QT WIDGETS#####
+######################
+
 
 class QDelButton(QToolButton):
 
@@ -11,10 +23,16 @@ class QDelButton(QToolButton):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+
+        uim = QUIManager()
         self.row = -1
         self.clicked.connect(self.delete)
 
-        self.setIcon(QIcon("ressources/icones/delete.png"))
+        # So normally ui manager should be used here
+        # but because of the cycle import problem I can't import the ui manager here unless
+        # I merge QAtoms with QManager...
+#        self.setIcon(QIcon("ressources/themes/default/ui-icons/delete.png"))
+        self.setIcon(uim.getIcon("delete"))
         self.setIconSize(QSize(32, 32))
         self.setFixedSize(QSize(48, 48))
 
@@ -32,7 +50,7 @@ class QQuantity(QWidget):
 
     quantityChanged = pyqtSignal()
 
-    def __init__(self, parent=None):
+    def __init__(self, product, parent=None):
         super().__init__(parent)
 
         # Definition
@@ -40,12 +58,13 @@ class QQuantity(QWidget):
         self.minusButton = QToolButton()
         self.quantityEditLine = QLineEdit()
         self.plusButton = QToolButton()
-        self.quantity = 1
+        self.quantity = product.getQuantity()
+        self.product = product
 
         # Settings
         self.minusButton.setText("-")
 
-        self.quantityEditLine.setText("1")
+        self.quantityEditLine.setText(str(self.quantity))
         self.quantityEditLine.setAlignment(Qt.AlignHCenter)
         self.quantityEditLine.setFixedWidth(50)
 
@@ -65,24 +84,27 @@ class QQuantity(QWidget):
         self.quantityEditLine.editingFinished.connect(self.__noBlank)
 
     def incQuantity(self):
-        self.quantity += 1
+        self.product.incQuantity()
+        self.quantity = self.product.getQuantity()
         self.quantityEditLine.setText(str(self.quantity))
         self.quantityEditLine.editingFinished.emit()
-        # self.quantityChanged.emit()
+        self.quantityChanged.emit()
 
     def decQuantity(self):
-        self.quantity -= 1
+        self.product.decQuantity()
+        self.quantity = self.product.getQuantity()
         if self.quantity > 0:
             self.quantityEditLine.setText(str(self.quantity))
             self.quantityEditLine.editingFinished.emit()
         else:
-            self.quantity = 1
+            self.product.setQuantity(1)
 
     def editingFinished(self):
         try:
-            self.quantity = int(self.quantityEditLine.text())
+            self.product.setQuantity(int(self.quantityEditLine.text()))
         except:
-            self.quantity = 1
+            self.product.setQuantity(1)
+            self.quantity = self.product.getQuantity()
             if self.quantityEditLine.text() != "":
                 self.quantityEditLine.setText("1")
 
@@ -90,7 +112,7 @@ class QQuantity(QWidget):
             self.quantityChanged.emit()
         else:
             self.quantityEditLine.setText("1")
-            self.quantity = 1
+            self.product.setQuantity(1)
             popUp = QErrorDialog(
                 "Erreur de saisie",
                 "Quantité invalide",
@@ -109,16 +131,98 @@ class QQuantity(QWidget):
 
     def setQuantity(self, qty):
         try:
-            self.quantity = int(qty)
+            self.product.setQuantity(int(qty))
             self.quantityEditLine.setText(str(qty))
             self.quantityChanged.emit()
         except ValueError:
-            print("ERROR: ", qte, " is not a number")
+            print("ERROR: ", qty, " is not a number")
+    
+    def update(self):
+        self.quantityEditLine.setText(str(self.product.getQuantity()))
+class QUserInfo(QWidget):
 
-class QAtom(QObject, Atom):
+    def __init___(self, parent=None):
+        super().__init__(parent)
+        uim = QUIManager()
 
-    def __init__(self):
-        super().__init__()
+        center(self)
+        self.setWindowTitle("Informations utilisateur")
+        self.setWindowIcon(uim.getIcon("group"))
+
+class QProductInfo(QWidget):
+
+    def __init__(self,product, parent=None):
+        super().__init__(parent)
+        uim = QUIManager()
+
+        #Definition
+        self.mainLayout = QVBoxLayout()
+        self.rowInfo = QRowInfo()
+        #Layout
+        self.mainLayout.addWidget(self.rowInfo)
+        self.setLayout(self.mainLayout)
+
+        #Settings
+
+        self.rowInfo.addRow("Prix", product.getPrice())
+        self.rowInfo.addRow("Nom", product.getName())
+        self.rowInfo.addRow("Code", product.getCode())
+        self.rowInfo.addRow("Id", product.getId())
+        self.setFixedSize(300,100)
+
+
+        self.setWindowTitle("Informations produit")
+        self.setWindowIcon(uim.getWindowIcon("product"))
+        center(self)
+
+
+
+
+
+
+
+####################################
+###########    QATOMS    ##########
+##################################
+class QAtom(QObject,Atom):
+
+    def __init__(self,atom = None): 
+        super().__init__()   
+        self.atomKeys = []
+        if atom:
+            self.setAtom(atom)
+        self.actionDict = {}
+
+    def setAtom(self, atom):
+        if isinstance(atom, Atom):
+            self.atomKeys = list(vars(atom).keys())
+        else:
+            self.atomKeys = atom.getAtomKeys()
+
+        selfDict = vars(self) # get the dictionnary representation of the QAtom
+        for key in self.atomKeys: #for each attribute of the incomming atom 
+            selfDict[key] = vars(atom)[key] #copy it in the QAtom
+
+    def getAtom(self):
+        atom = (type(self).__bases__[1])() #Create an atom that match the base class
+                                     #note that it involve that the base class must always be the 2nd base
+        atomDict = vars(atom)
+        selfDict = vars(self) #/!\ THIS INVOLVE THAT THIS FUNCTION DON'T RETURN A COPY BUT THE ACTUAL ATOM /!\ 
+                              #    IT'S COOL BECAUSE IT MEANS THAT WE CAN EITHER WORK WITH A COPY OR A POINTER
+                              #    BUT WE HAVE TO BE CAREFULL WITH THIS AND USE DEEPCOPY OR NOT...
+        for key in self.atomKeys:
+            atomDict[key] = selfDict[key]
+        #We return actually a copy of the data contained in QAtom
+        return atom
+
+    def getAtomKeys(self):
+        return self.atomKeys
+
+    def getActionDict(self):
+        return self.actionDict
+
+    def setActionDict(self, actionDict):
+        self.actionDict = actionDict
 
 
 class QUser(QAtom, User):
@@ -129,16 +233,52 @@ class QUser(QAtom, User):
         
 class QProduct(QAtom, Product):
 
-    def __init__(self):
-        super().__init__()
+    deleted = pyqtSignal()
+    updated = pyqtSignal()
+
+    def __init__(self,product):
+        super().__init__(product)
 
         self.infoPannel = None
         self.editPannel = None
-        self.quantityPannel = QQuantity()
+        self.quantityPannel = QQuantity(self)
         self.delButton = QDelButton()
 
-class QCounter(QAtom, Counter):
+        self.quantityPannel.quantityChanged.connect(self.update)
+        self.delButton.clicked.connect(self.delete)
 
+        self.actionDict={"Informations produit":{"fct":self.showInfoPannel,"icon":"product"}}
+
+
+    def showInfoPannel(self):
+        self.infoPannel = QProductInfo(self)
+        self.infoPannel.show()
+
+    def getQuantityPannel(self):
+        return self.quantityPannel
+
+    def getDelButton(self):
+        return self.delButton
+
+    def incQuantity(self):
+        self.setQuantity(self.getQuantity()+1)
+        self.update()
+        return self.getQuantity()
+
+    def decQuantity(self):
+        if self.getQuantity()>1:
+            self.setQuantity(self.getQuantity()-1)
+            self.update()
+        return self.getQuantity()
+
+    def update(self):
+        self.quantityPannel.update()
+        self.updated.emit()
+
+    def delete(self):
+        self.deleted.emit()
+
+class QCounter(QAtom, Counter):
     def __init__(self):
         super().__init__()
         self.infoPannel = None
@@ -152,7 +292,6 @@ class QRefilling(QAtom, Refilling):
     def __init__(self):
         super().__init__()
         self.infoPannel = None
-
 
 class QDistribution(QAtom, Distribution):
     def __init__(self):

@@ -137,7 +137,7 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
 
 
 # Allow the user to connect and disconect the reader whenerver he wants
-class ReaderUpdater(ReaderObserver):
+class ReaderUpdater(QObject, ReaderObserver):
     """A simple reader observer that is notified
     when readers are added/removed from the system and
     prints the list of readers

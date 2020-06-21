@@ -8,7 +8,10 @@ import PyQt5.QtGui
 from QUtils import *
 from QAtoms import *
 from Console import *
+from QDataManager import QDataManager
+from QUIManager import QUIManager
 
+import copy
 
 class TreeItem:
     def __init__(self, data, parent=None):
@@ -22,28 +25,20 @@ class TreeItem:
             if isinstance(data,list) is True:
                 # /!\ We don't check if data can be interpreted as string
                 self.data.setTexts(data)
-       #EXPERIMENTAL: AUTO ADJUST COLUMN (SO TEXT) LENGTH 
-       #Seems to work ...
-        if parent:
-            currentText = self.data.getTexts()
-            while len(currentText) < parent.columnCount():
-                currentText.append("")
-            while len(currentText) > parent.columnCount():
-                del(currentText[-1])
-
-        #ensure data can be printed
-        texts = self.data.getTexts()
-        for index,text in enumerate(texts):
-            texts[index] = str(text)
 
 
-                
+        self.__formatText()
+        #self.__parseMagicString()
+
 
     def appendChild(self, child):
         self.childItems.append(child)
 
     def child(self, row):
         return self.childItems[row]
+
+    def getChild(self): #TODO: remplace it by getChildren ...
+        return self.childItems
 
     def childCount(self):
         return len(self.childItems)
@@ -52,16 +47,25 @@ class TreeItem:
         return len(self.data.getTexts())
 
     def getText(self, column=None):
+        parsedTextList = self.__parseMagicString() 
         try:
             if column is None:
-                return self.data.getText(column)
+                return None
             else:
-                return self.data.getText(column)
+                return parsedTextList[column]
         except IndexError:
             return None
 
     def getData(self):
         return self.data
+
+    def setData(self, data):
+        if isinstance(data,Atom):
+            self.data = data
+            self.__formatText()
+            return True
+        else:
+            return False
 
     def row(self):  # ChildNumber in the Qt5 exemple
         if self.parentItem:
@@ -69,7 +73,7 @@ class TreeItem:
 
         return 0
 
-    def parent(self):
+    def parent(self): #TODO: Standartize this into getParent()
         return self.parentItem
 
     # Usefull method for dynamic Tree
@@ -83,10 +87,11 @@ class TreeItem:
             #data = [QVariant()] * columns
             data = QAtom()
             data.setTexts([""]*columns)
-            item = TreeItem(data, self)
+            item = type(self)(data, self) # the type(self) is usefull to get dynamically the type of class
             self.childItems.insert(position, item)
 
         return True
+    
 
     def insertColumns(self, position, columns):
         if position < 0 or position > len(self.data.getTexts()):
@@ -137,28 +142,67 @@ class TreeItem:
         self.data.setText(str(data), column)
         return True
 
+    def __formatText(self):
+       #EXPERIMENTAL: AUTO ADJUST COLUMN (SO TEXT) LENGTH 
+       #Seems to work ...
+       #Format text format according to the parent
+        if self.parentItem:
+            currentText = self.data.getTexts()
+            while len(currentText) < self.parentItem.columnCount():
+                currentText.append("")
+            while len(currentText) > self.parentItem.columnCount():
+                del(currentText[-1])
+            self.data.setTexts(currentText) #Not necessary because of python shity behavior but clearer this way
+        #ensure data can be printed
+        texts = self.data.getTexts()
+        for index,text in enumerate(texts):
+            texts[index] = str(text)
+
+    def __parseMagicString(self):
+
+        atomDict = vars(self.data)  #python built-in function to turn an object into dictionary
+        texts = self.data.getTexts()
+        parsedTextList = copy.deepcopy(texts)
+        for index,text in enumerate(texts):
+            if len(text)>0:
+                if '=' == text[0] or '@' == text[0]: # I can't decide I like both ... T_T
+                    expression = text.replace('=','').replace('@','')
+                    try:
+                        parsedTextList[index] = str(eval(expression,atomDict)) #no rage still pythoninc <3
+                    except:
+                        printW("Failed to parse the expression {}".format(expression))
+        return parsedTextList
+
 
 class QTreeModel(QAbstractItemModel):
     def __init__(self, headers, data=None, parent=None):
 
-        super(QTreeModel, self).__init__(parent)
+        super().__init__(parent)
         self.rootItem = TreeItem(headers)
-#        self.itemList = [] # ????
-        if data is not None:
-            self.setupModelData(data)
 
     def data(self, index, role):
 
+        uim = QUIManager()
         if not index.isValid():
             return None
+        item = index.internalPointer()
+        data = item.getData()
+        if role == Qt.DecorationRole:
+            #only show icons in first column
+            if index.column() == 0:
+                return uim.getIcon(data.getIcon())
+            else:
+                return None
+
+        if role == Qt.ToolTipRole:
+            return data.getToolTip()
 
         if role != Qt.DisplayRole:
             return None
 
-        item = index.internalPointer()
         return item.getText(index.column())
 
-    def rowCount(self, parent):
+    def rowCount(self, parent=QModelIndex()):
 
         if parent.column() > 0:
             return 0
@@ -170,7 +214,7 @@ class QTreeModel(QAbstractItemModel):
 
         return parentItem.childCount()
 
-    def columnCount(self, parent):
+    def columnCount(self, parent=QModelIndex()):
 
         if parent.isValid():
             return parent.internalPointer().columnCount()
@@ -272,11 +316,15 @@ class QTreeModel(QAbstractItemModel):
             return False
 
         item = self.getItem(index)
-        result = item.setText(index.column(), value)
+
+        if isinstance(value, str):
+            result = item.setText(index.column(), value)
+        else:
+            result = item.setData(value) #Value should be QAtomic
 
         if result:
+            parent = index.parent()
             self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
-
         return result
 
     # Tool
@@ -288,6 +336,13 @@ class QTreeModel(QAbstractItemModel):
                 return item
 
         return self.rootItem
+
+    def insertAtom(self, position, Atom, parent=QModelIndex()):
+        self.insertRow(position,QModelIndex())
+        newIndex = self.index(position,0)
+        self.setData(newIndex,Atom)
+
+
 
 
 class QTree(QWidget):

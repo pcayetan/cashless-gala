@@ -1,30 +1,18 @@
-import sys
-import os
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-import PyQt5.QtCore
-import PyQt5.QtGui
-
-from QManager import *
-from QNFC import *
+from QDataManager import QDataManager
 from QUtils import *
 from QItemTree import *
 
-from Client import *
 
 from QRefillerTab import *
 from QCounterTab import *
 
-
-import json
-
 # de transaction
 
 #  Shared variables
-PWD = os.getcwd() + "/"
 
 
 #  Get item tree

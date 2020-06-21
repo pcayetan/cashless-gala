@@ -13,7 +13,7 @@ import decimal
 
 #Help to convert google timestamp into QTime ...
 from datetime import datetime
-from QAtoms import *
+from Atoms import *
 
 #Cute print in the terminal
 from Console import *
@@ -23,13 +23,13 @@ from Console import *
 # 'unpacking' describes the fact of converting the grpc
 # message into an atom that UI can use.
 
-def packProduct(product: QProduct) -> com_pb2.BasketItem:
+def packProduct(product: Product) -> com_pb2.BasketItem:
     pb_price = packMoney(product.getPrice())
     newPbProduct = com_pb2.BasketItem(product_id=product.getId(),quantity=product.getQuantity(),unit_price=pb_price)
     return newPbProduct
 
 
-def unpackProduct(pb_product: com_pb2.Product) -> QProduct:
+def unpackProduct(pb_product: com_pb2.Product) -> Product:
 
     happyHoursList = []
     pbHappyHoursList = pb_product.happy_hours
@@ -39,7 +39,7 @@ def unpackProduct(pb_product: com_pb2.Product) -> QProduct:
         newHappyHour.setEnd(j.end)
         newHappyHour.setPrice(unpackMoney(j.price)) # Since we choosed a securised money format we need to convert
         happyHoursList.append(newHappyHour)
-    newProduct = QProduct()
+    newProduct = Product()
     newProduct.setId(pb_product.id)
     newProduct.setName(pb_product.name)
     newProduct.setCode(pb_product.code)
@@ -64,16 +64,16 @@ def unpackMoney(money: com_pb2.Money) -> Eur:
         )
     return Eur(pb_money_to_decimal(money))
 
-def packCounter(counter: QCounter) -> com_pb2.CounterListReply.Counter:
+def packCounter(counter: Counter) -> com_pb2.CounterListReply.Counter:
     pass #should not be usefull
 
-def unpackCounter(pb_counter: com_pb2.CounterListReply.Counter) -> QCounter:
-    newCounter = QCounter()
+def unpackCounter(pb_counter: com_pb2.CounterListReply.Counter) -> Counter:
+    newCounter = Counter()
     newCounter.setId(pb_counter.id)
     newCounter.setName(pb_counter.name)
     return newCounter
 
-def packDistribution(distrib: QDistribution) -> [com_pb2.Payment]:
+def packDistribution(distrib: Distribution) -> [com_pb2.Payment]:
     paymentList = []
     for user in distrib.getUserList():
         amount = distrib.getUserAmount(user)
@@ -81,8 +81,8 @@ def packDistribution(distrib: QDistribution) -> [com_pb2.Payment]:
         paymentList.append(newPayement)
     return paymentList
 
-def unpackRefilling(pb_refilling: com_pb2.Refilling) -> QRefilling:
-    newRefilling = QRefilling()
+def unpackRefilling(pb_refilling: com_pb2.Refilling) -> Refilling:
+    newRefilling = Refilling()
     newRefilling.setId(pb_refilling.id)
     newRefilling.setCounterId(pb_refilling.counter_id)
     newRefilling.setAmount(unpackMoney(pb_refilling.amount))

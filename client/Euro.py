@@ -21,7 +21,6 @@ class Eur(Money):
     
     
     def __str__(self): # Overloaded function ... allow me to use XX.YY€ instead of EUR XX.YY
-        print('__str__')
         try:
             return self.format('fr_FR')
         except:
@@ -29,3 +28,10 @@ class Eur(Money):
 
     def __unicode__(self):
         return u"{} {:,.2f}".format(self._currency, self._amount)
+
+    def __mul__(self, other):
+        if isinstance(other, Eur):
+            raise TypeError("multiplication is unsupported between "
+                            "two money objects")
+        amount = self._amount * other
+        return self.__class__(amount)
