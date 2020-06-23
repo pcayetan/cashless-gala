@@ -9,9 +9,12 @@ from PyQt5.QtGui import *
 from QDataManager import QDataManager
 from QNFCManager import QNFCManager
 from QUIManager import QUIManager
+from Client import Client
+
 
 from QUtils import *
 from QItemTree import *
+
 
 
 
@@ -111,33 +114,4 @@ class QCounterTab(QWidget):
         self.itemSelector.itemSelected[Product].connect(self.basket.addProduct)
 
 
-class QNFCInfo(QWidget):
-
-    def __init__(self,parent=None):
-        nfcm=QNFCManager()
-        super().__init__(parent)
-        
-        #Definition
-        self.mainLayout = QVBoxLayout()
-        
-        self.groupBox = QGroupBox()
-        self.groupBoxLayout = QVBoxLayout()
-        self.rowInfo = QRowInfo()
-        self.userHistoryButton = QPushButton()
-
-        #Layout
-
-        self.groupBox.setLayout(self.groupBoxLayout)
-        self.groupBoxLayout.addWidget(self.rowInfo)
-        self.groupBoxLayout.addWidget(self.userHistoryButton)
-
-        #main layout
-        self.mainLayout.addWidget(self.groupBox)
-        self.setLayout(self.mainLayout)
-
-        #Settings
-        self.rowInfo.addRow("UID",nfcm.getCardUID())
-        self.rowInfo.addRow("Solde",Eur(0))
-        self.userHistoryButton.setText("Historique utilisateur")
-        self.groupBox.setTitle("Info utilisateur")
 

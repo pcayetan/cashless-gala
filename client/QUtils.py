@@ -11,8 +11,8 @@ import json
 from Atoms import *
 from Euro import Eur
 
-
-
+from QNFCManager import QNFCManager
+from Client import Client
 
 #def euro(price):
 #    return format_currency(price, "EUR", locale="fr_FR")
@@ -63,7 +63,7 @@ class QRowInfo(QWidget):
         )
 
     def setRow(self, i, j, String):
-        self.row[i][j].setText(String)
+        self.row[i][j].setText(str(String))
 
 
 class QErrorDialog(QMessageBox):
@@ -90,6 +90,37 @@ class QErrorDialog(QMessageBox):
         super().resizeEvent(event)
         self.setFixedWidth(600)
         self.setFixedHeight(100)
+
+
+class QWarningDialog(QMessageBox):
+    def __init__(
+        self,
+        title="Erreur",
+        message="Erreur",
+        info="Une erreur est survenue",
+        icon=QMessageBox.Warning,
+        parent=None,
+    ):
+        super().__init__(parent)
+
+        self.setText(message)
+        self.setInformativeText(info)
+        self.setStandardButtons(QMessageBox.Ok)
+        self.setIcon(icon)
+        self.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
+
+        #        self.setWindowIcon()
+        self.setWindowTitle(title)
+        self.setBaseSize(QSize(800, 600))
+        center(self)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.setFixedWidth(600)
+        self.setFixedHeight(100)
+
+
+
 
 
 class QAbstractInputDialog(QWidget):
@@ -202,3 +233,48 @@ class QNotImplemented(QLabel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setText("NOT IMPLEMENTED")
+
+class QNFCInfo(QWidget):
+
+    def __init__(self,parent=None):
+        nfcm=QNFCManager()
+        super().__init__(parent)
+        
+        #Definition
+        self.mainLayout = QVBoxLayout()
+        
+        self.groupBox = QGroupBox()
+        self.groupBoxLayout = QVBoxLayout()
+        self.rowInfo = QRowInfo()
+        self.userHistoryButton = QPushButton()
+
+        #Layout
+
+        self.groupBox.setLayout(self.groupBoxLayout)
+        self.groupBoxLayout.addWidget(self.rowInfo)
+        self.groupBoxLayout.addWidget(self.userHistoryButton)
+
+        #main layout
+        self.mainLayout.addWidget(self.groupBox)
+        self.setLayout(self.mainLayout)
+
+        #Settings
+        self.rowInfo.addRow("UID",nfcm.getCardUID())
+        self.rowInfo.addRow("Solde",Eur(0))
+        self.userHistoryButton.setText("Historique utilisateur")
+        self.groupBox.setTitle("Info utilisateur")
+
+        nfcm.cardInserted.connect(self.cardInserted)
+        nfcm.cardRemoved.connect(self.cardRemoved)
+
+    def cardInserted(self):
+        nfcm = QNFCManager()
+        client = Client()
+        cardUID = nfcm.getCardUID()
+        balance = client.requestUserBalance(customer_id=cardUID)
+        self.rowInfo.setRow(1,1,balance)
+        self.rowInfo.setRow(0,1,cardUID)
+    
+    def cardRemoved(self):
+        self.rowInfo.setRow(1,1,Eur(0))
+        self.rowInfo.setRow(0,1,"00 00 00 00")

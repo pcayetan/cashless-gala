@@ -12,11 +12,11 @@ import money
 
 class Eur(Money):
 
-    def __init__(self,amount="0"):
+    def __init__(self,amount="0",currency='EUR'): #the currency parameter is here just to make this class compatible with money __add__ __sub__...
         super().__init__(amount=amount,currency='EUR')
         if isinstance(amount,float) is True:
             printW("Eur should not be instancied with a float number, approximation may occure")
-            if 100*amount != 100*int(amount):
+            if self.as_tuple().exponent < -2:
                 printWW("Money with more than two decimals. Unforseen behavior may occure")
     
     
@@ -35,3 +35,9 @@ class Eur(Money):
                             "two money objects")
         amount = self._amount * other
         return self.__class__(amount)
+
+    def as_tuple(self):
+        return self._amount.as_tuple()
+
+    def getExponent(self):
+        return self.as_tuple().exponent

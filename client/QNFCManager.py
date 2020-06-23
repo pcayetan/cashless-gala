@@ -20,7 +20,7 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
     readerRemoved = pyqtSignal()
 
     def __init__(self):
-
+        super().__init__()
         self.cardMonitor = CardMonitor()
         self.cardObserver = QCardObserver()
         self.cardMonitor.addObserver(self.cardObserver)
@@ -32,6 +32,7 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
         self.cardObserver.cardInserted.connect(self.wrapperCardInserted)
         self.cardObserver.cardRemoved.connect(self.wrapperCardRemoved)
 
+
     def getCardUID(self):
         return self.cardObserver.getCardUID()
 
@@ -40,3 +41,6 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
 
     def wrapperCardRemoved(self):
         self.cardRemoved.emit()
+
+    def hasCard(self):
+        return self.cardObserver.hasCard()

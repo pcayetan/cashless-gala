@@ -162,3 +162,9 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
     def getPrice(self, product):
         pass
 
+    def getCounter(self):
+        return self.counter
+
+    def getUID(self):
+        return self.uid
+

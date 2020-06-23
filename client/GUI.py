@@ -41,17 +41,17 @@ class QMainTab(QTabWidget):
         super().__init__(parent)
 
         # Initialization
-        self.TabCounter = QCounterTab()
-        self.TabStock = QRefillerTab()
+        self.tabCounter = QCounterTab()
+        self.tabRefiller= QRefillerTab()
         self.TabStat = QWidget()
 
         # Add tabs
-        self.addTab(self.TabCounter, "Comptoir")
+        self.addTab(self.tabCounter, "Comptoir")
+        self.addTab(self.tabRefiller, "Rechargement")
         # self.addTab(self.TabStock, "Rechargements")
 
         # self.addTab(self.TabStat, "Stats")
 
-        self.resize(1200, 800)
 
 
 class QMainMenu(QMainWindow):
@@ -60,7 +60,7 @@ class QMainMenu(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("Gala.Manager.Core")
-        self.resize(1200, 800)
+        self.resize(1600, 1000)
         self.setWindowIcon(QIcon("icon.ico"))
 
         center(self)

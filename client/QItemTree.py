@@ -15,6 +15,9 @@ class QAutoSelectLineEdit(QLineEdit):
         super().focusInEvent(event)
         QTimer.singleShot(0, self.selectAll)
 
+    def setText(self, string):
+        super().setText(str(string))
+
 
 class QSuperTreeView(QTreeView):
     def __init__(self, parent=None):

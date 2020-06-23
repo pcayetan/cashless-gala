@@ -54,6 +54,7 @@ def packMoney(euro: Eur) -> com_pb2.Money:
     def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
         tup = dec.as_tuple()
         return com_pb2.Money(sign=tup.sign, exponent=tup.exponent, digits=tup.digits)
+    return decimal_to_pb_money(euro._amount)
 
 def unpackMoney(money: com_pb2.Money) -> Eur:
     def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:

@@ -66,9 +66,21 @@ class Client(metaclass=ClientSingleton):
         int64 counter_id
         string device_uuid
         PaymentMethod payment_method
-        double amount
+        Eur amount
         """
         try:
+            paymentMethodList = [com_pb2.UNKNOWN,
+                                 com_pb2.CASH,
+                                 com_pb2.CARD,
+                                 com_pb2.CHECK,
+                                 com_pb2.AE,
+                                 com_pb2.TRANSFER,
+                                 com_pb2.OTHER]
+            kwargs['payment_method'] = paymentMethodList[kwargs['payment_method']]
+            kwargs['amount'] = packMoney(kwargs['amount'])
+            print(kwargs)
+            print(type(kwargs['payment_method']))
+            print(type(kwargs['amount']))
             refillingRequest = com_pb2.RefillingRequest(**kwargs)
             refillingReply = self.stub.Refill(refillingRequest)
             self.now = refillingReply.now
