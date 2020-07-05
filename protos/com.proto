@@ -26,16 +26,9 @@ enum PaymentMethod {
 
 // This is based on the DecimalTuple format available on Python
 message Money {
-  // 0 if positive and 1 if negative
-  int32 sign = 1;
-
-
-  // Exponent to multiply the total number by, if you have 1.17 exponent is -2
-  int64 exponent = 2;
-
-  // Individual digits of the number
-  // Example: for 1.17 it would be [1, 1, 7]
-  repeated uint32 digits = 3;
+  // String in format +/-xx.xx
+  // If malformed, considered as 0
+  string amount = 1;
 }
 
 message Product {
@@ -59,13 +52,14 @@ message BasketItem {
 }
 
 message Refilling {
-  string customer_id = 1;
-  uint64 counter_id = 2;
-  string device_uuid = 3;
-  PaymentMethod payment_method = 4;
-  Money amount = 5;
-  bool cancelled = 6;
-  google.protobuf.Timestamp date = 7;
+  uint64 id = 1;
+  string customer_id = 2;
+  uint64 counter_id = 3;
+  string device_uuid = 4;
+  PaymentMethod payment_method = 5;
+  Money amount = 6;
+  bool cancelled = 7;
+  google.protobuf.Timestamp date = 8;
 }
 
 message Payment { //Allow us to handle multiple user buyings, describe who pays and how much.

@@ -24,20 +24,19 @@ def date_to_pb(date) -> Timestamp:
 
 
 def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
-    tup = dec.as_tuple()
-    return com_pb2.Money(sign=tup.sign, exponent=tup.exponent, digits=tup.digits)
+    return com_pb2.Money(amount=str(dec))
 
 
 def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:
-    return decimal.Decimal(
-        decimal.DecimalTuple(
-            sign=money.sign, digits=tuple(money.digits), exponent=money.exponent
-        )
-    )
+    try:
+        return decimal.Decimal(money.amount)
+    except:
+        return decimal.Decimal(0)
 
 
 def refilling_to_pb(refilling: models.Refilling) -> com_pb2.Refilling:
     return com_pb2.Refilling(
+        id=refilling.id,
         customer_id=refilling.customer_id,
         counter_id=refilling.counter_id,
         device_uuid=refilling.machine_id,
@@ -72,10 +71,125 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
     """
 
     def Buy(self, request, context):
-        """Missing associated documentation comment in .proto file"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        """
+            Validate a given basket and roll payments for customer
+            according to the money repartition given by the client
+        """
+        # Some basic checks
+        if not request.counter_id:
+            return com_pb2.BuyingReply(
+                now=pb_now(), status=com_pb2.BuyingReply.MISSING_COUNTER
+            )
+        if not request.device_uuid:
+            return com_pb2.BuyingReply(
+                now=pb_now(), status=com_pb2.BuyingReply.MISSING_DEVICE_UUID
+            )
+
+        counter = db.query(models.Counter).get(request.counter_id)
+        if counter is None:
+            return com_pb2.BuyingReply(
+                now=pb_now(), status=com_pb2.BuyingReply.COUNTER_NOT_FOUND
+            )
+        machine = get_or_create_machine(request.device_uuid)
+
+        total_payment = decimal.Decimal("0")  # Total payment of customers
+        real_price_sum = decimal.Decimal(
+            "0"
+        )  # Used to check if total_payment is correct
+        payments = []  # Contains tuple (customer, amount_for_customer)
+        for payment in request.payments:
+            customer = get_or_create_customer(payment.customer_id)
+            amount = pb_money_to_decimal(payment.amount)
+            if amount > customer.balance:
+                return com_pb2.BuyingReply(
+                    now=pb_now(), status=com_pb2.BuyingReply.NOT_ENOUGH_MONEY
+                )
+            total_payment += amount
+            payments.append((customer, amount))
+
+        basket = []  # Contains tuple (product, quantity, real_unit_price)
+        # When here, we know that every one have enough money
+        # Time to check if the total price matchs items in basket
+        for item in request.basket:
+            product = db.query(models.Product).get(item.product_id)
+            if product is None:
+                return com_pb2.BuyingReply(
+                    now=pb_now(), status=com_pb2.BuyingReply.ITEM_NOT_FOUND
+                )
+            real_unit_price = product.real_unit_price
+            quantity = item.quantity
+            basket.append((product, quantity, real_unit_price))
+            real_price_sum += real_unit_price * quantity
+
+        # If the two sums differs, it means the client either forgot someone in the payment list
+        # Or surely did not take happy hours into account
+        if total_payment != real_price_sum:
+            return com_pb2.BuyingReply(
+                now=pb_now(), status=com_pb2.BuyingReply.MISSING_AMOUNT_IN_PAYMENT
+            )
+
+        # Here, we know that every product exists and that prices matches
+        # We roll payments
+        reply_customer_ids = []  # Used for response
+        reply_customer_balances = []  # Used for response
+        reply_payments = []  # Used for response
+        reply_items = []  # Used for response
+        buying = models.Buying(
+            counter_id=counter.id, machine_id=machine.uuid, refounded=False,
+        )
+        db.add(buying)
+        db.commit()
+        for item in basket:
+            db.add(
+                models.BasketItem(
+                    buying_id=buying.id,
+                    product_id=item[0].id,
+                    quantity=item[1],
+                    unit_price=item[2],
+                )
+            )
+            reply_items.append(
+                com_pb2.BasketItem(
+                    product_id=item[0].id,
+                    quantity=item[1],
+                    unit_price=decimal_to_pb_money(item[2]),
+                )
+            )
+        for payment in payments:
+            customer = payment[0]
+            customer.balance -= payment[1]
+            db.add(customer)
+            db.add(
+                models.Payment(
+                    customer_id=customer.id, buying_id=buying.id, amount=payment[1]
+                )
+            )
+            reply_customer_ids.append(customer.id)
+            reply_customer_balances.append(decimal_to_pb_money(customer.balance))
+            reply_payments.append(
+                com_pb2.Payment(
+                    customer_id=customer.id, amount=decimal_to_pb_money(payment[1])
+                )
+            )
+        db.commit()
+        buying.generate_label()
+        db.add(buying)
+        db.commit()
+
+        return com_pb2.BuyingReply(
+            now=pb_now(),
+            status=com_pb2.BuyingReply.SUCCESS,
+            customer_ids=reply_customer_ids,
+            customer_balances=reply_customer_balances,
+            transaction=com_pb2.Buying(
+                id=buying.id,
+                label=buying.label,
+                price=decimal_to_pb_money(total_payment),
+                date=date_to_pb(buying.date),
+                items=reply_items,
+                payments=reply_payments,
+            ),
+        )
 
     def Refill(self, request, context):
         """

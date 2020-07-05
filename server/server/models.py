@@ -75,6 +75,19 @@ class Product(Model):
     category = Column(String)  # Dot separated string for the category main.sub.category
     default_price = Column(Money)
 
+    @property
+    def real_unit_price(self) -> decimal.Decimal:
+        """
+            Return real unit price at the moment it's invoked
+            Takes happy hours into account
+            If multiple happy hours matches, it gets the first found one
+        """
+        now = datetime.now()
+        for hap in self.happy_hours:
+            if now >= hap.start and now <= hap.end:
+                return hap.price
+        return self.default_price
+
 
 class HappyHour(Model):
     """
@@ -172,6 +185,14 @@ class Buying(Model):
     label = Column(String)
     date = Column(DateTime(timezone=True), default=datetime.utcnow)
     refounded = Column(Boolean, default=False)
+
+    def generate_label(self):
+        self.label = ",".join(
+            [
+                "%s x %d" % (item.product.name, item.unit_price)
+                for item in self.basket_items
+            ]
+        )
 
 
 class BasketItem(Model):
