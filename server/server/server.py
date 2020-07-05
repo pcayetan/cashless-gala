@@ -408,10 +408,105 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         )
 
     def History(self, request, context):
-        """Missing associated documentation comment in .proto file"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        """
+            Retrieve history
+        """
+
+        # Prepare default values
+        counter = db.query(models.Counter).get(request.counter_id)
+        customer = None
+        device = None
+        history_size = request.max_history_size  # Default is 0
+        refounded = None
+
+        if request.customer_id:
+            customer = get_or_create_customer(request.customer_id)
+
+        if request.device_uuid:
+            device = get_or_create_machine(request.device_uuid)
+
+        if request.refounded == com_pb2.HistoryRequest.NOT_REFOUNDED:
+            refounded = False
+        if request.refounded == com_pb2.HistoryRequest.REFOUNDED:
+            refounded = True
+
+        m = None
+        if request.type == com_pb2.HistoryRequest.BUYINGS:
+            m = models.Buying
+        if request.type == com_pb2.HistoryRequest.REFILLINGS:
+            m = models.Refilling
+
+        if m is None:
+            return com_pb2.HistoryReply(
+                now=pb_now(), status=com_pb2.HistoryReply.MISSING_TYPE
+            )
+
+        # Create request and apply filters
+        req = db.query(m)
+        if counter is not None:
+            req = req.filter(m.counter_id == counter.id)
+        if device is not None:
+            req = req.filter(m.machine_id == device.uuid)
+        if customer is not None:
+            if request.type == com_pb2.HistoryRequest.BUYINGS:
+                req = req.join(models.Payment).filter(
+                    models.Payment.customer_id == customer.id
+                )
+            if request.type == com_pb2.HistoryRequest.REFILLINGS:
+                req = req.filter(m.customer_id == customer.id)
+        if refounded is not None:
+            if request.type == com_pb2.HistoryRequest.BUYINGS:
+                req = req.filter(m.refounded == refounded)
+            if request.type == com_pb2.HistoryRequest.REFILLINGS:
+                req = req.filter(m.cancelled == refounded)
+        if history_size > 0:
+            req = req.limit(history_size)
+
+        refillings = []
+        buyings = []
+
+        for element in req.all():
+            if request.type == com_pb2.HistoryRequest.BUYINGS:
+                total_price = decimal.Decimal(0)
+                payments = []
+                basket = []
+                for payment in element.payments:
+                    total_price += payment.amount
+                    payments.append(
+                        com_pb2.Payment(
+                            customer_id=payment.customer_id,
+                            amount=decimal_to_pb_money(payment.amount),
+                        )
+                    )
+                for item in element.basket_items:
+                    basket.append(
+                        com_pb2.BasketItem(
+                            product_id=item.product_id,
+                            quantity=item.quantity,
+                            unit_price=decimal_to_pb_money(item.unit_price),
+                        )
+                    )
+
+                buyings.append(
+                    com_pb2.Buying(
+                        id=element.id,
+                        label=element.label,
+                        refounded=element.refounded,
+                        date=date_to_pb(element.date),
+                        price=decimal_to_pb_money(total_price),
+                        payments=payments,
+                        items=basket,
+                    )
+                )
+            if request.type == com_pb2.HistoryRequest.REFILLINGS:
+                refillings.append(refilling_to_pb(element))
+
+        return com_pb2.HistoryReply(
+            now=pb_now(),
+            status=com_pb2.HistoryReply.SUCCESS,
+            refillings=refillings,
+            buyings=buyings,
+        )
 
     def CounterList(self, request, context):
         """

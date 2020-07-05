@@ -166,6 +166,21 @@ class Refilling(Model):
     date = Column(DateTime(timezone=True), default=datetime.utcnow)
     cancelled = Column(Boolean, default=False)
 
+    def __str__(self):
+        return (
+            "id: %d, cancelled: %d, customer: %s, payment_method: %s, counter: %s, machine: %s, amount: %s, date: %s"
+            % (
+                self.id,
+                self.cancelled,
+                self.customer_id,
+                self.payment_method,
+                self.counter.name,
+                self.machine_id,
+                self.amount,
+                self.date,
+            )
+        )
+
 
 class Buying(Model):
     """
@@ -192,6 +207,20 @@ class Buying(Model):
                 "%s x %d" % (item.product.name, item.unit_price)
                 for item in self.basket_items
             ]
+        )
+
+    def __str__(self):
+        return (
+            "id: %d, refounded: %d, counter: %s, machine: %s, label: %s, payments: %s, date: %s"
+            % (
+                self.id,
+                self.refounded,
+                self.counter.name,
+                self.machine_id,
+                self.label,
+                [str(payment) for payment in self.payments],
+                self.date,
+            )
         )
 
 
@@ -234,3 +263,10 @@ class Payment(Model):
     buying = relationship("Buying", backref=backref("payments", lazy=True), lazy=True)
 
     amount = Column(Money)  # Amount spent by this user in the Buying
+
+    def __str__(self):
+        return "id: %d, customer: %s, amount: %s" % (
+            self.id,
+            self.customer_id,
+            self.amount,
+        )

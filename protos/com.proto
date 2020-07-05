@@ -233,13 +233,19 @@ message HistoryRequest {
     BUYINGS = 0;
     REFILLINGS = 1;
   }
+  enum RefoundStatus {
+    NOT_SPECIFIED = 0;
+    NOT_REFOUNDED = 1;
+    REFOUNDED = 2;
+  }
   HistoryType type = 1; // Only one required
 
   // Optional fields
-  uint64 counter = 2;
+  uint64 counter_id = 2;
   string customer_id = 3;
   string device_uuid = 4;
-  uint64 max_history_size = 5;
+  uint64 max_history_size = 5; // 0 means no limit
+  RefoundStatus refounded = 6; // To know if refounded or not
 }
 
 message HistoryReply {
