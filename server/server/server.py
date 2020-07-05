@@ -238,10 +238,46 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         )
 
     def RefoundBuying(self, request, context):
-        """Missing associated documentation comment in .proto file"""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details("Method not implemented!")
-        raise NotImplementedError("Method not implemented!")
+        """
+            Refound users involved in a buying
+        """
+        # Check missing fields
+        if not request.buying_id:
+            return com_pb2.RefoundBuyingReply(
+                now=pb_now(), status=com_pb2.RefoundBuyingReply.MISSING_TRANSACTION
+            )
+
+        # Check buying validity
+        buying = db.query(models.Buying).get(request.buying_id)
+        if buying is None:
+            return com_pb2.RefoundBuyingReply(
+                now=pb_now(), status=com_pb2.RefoundBuyingReply.TRANSACTION_NOT_FOUND
+            )
+        if buying.refounded:
+            return com_pb2.RefoundBuyingReply(
+                now=pb_now(), status=com_pb2.RefoundBuyingReply.ALREADY_REFOUNDED
+            )
+
+        customer_ids = []
+        customer_balances = []
+        # Refound users
+        for payment in buying.payments:
+            customer = payment.customer
+            customer.balance += payment.amount
+            customer_ids.append(customer.id)
+            customer_balances.append(decimal_to_pb_money(customer.balance))
+            db.add(customer)
+
+        buying.refounded = True
+        db.add(buying)
+        db.commit()
+
+        return com_pb2.RefoundBuyingReply(
+            now=pb_now(),
+            status=com_pb2.RefoundBuyingReply.SUCCESS,
+            customer_ids=customer_ids,
+            customer_balances=customer_balances,
+        )
 
     def CancelRefilling(self, request, context):
         """
@@ -251,15 +287,16 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             return com_pb2.CancelRefillingReply(
                 now=pb_now(), status=com_pb2.CancelRefillingReply.MISSING_TRANSACTION
             )
-        if not request.device_uuid:
-            return com_pb2.CancelRefillingReply(
-                now=pb_now(), status=com_pb2.CancelRefillingReply.MISSING_DEVICE_UUID
-            )
 
         refilling = db.query(models.Refilling).get(request.refilling_id)
         if refilling is None:
             return com_pb2.CancelRefillingReply(
                 now=pb_now(), status=com_pb2.CancelRefillingReply.TRANSACTION_NOT_FOUND
+            )
+
+        if refilling.cancelled:
+            return com_pb2.CancelRefillingReply(
+                now=pb_now(), status=com_pb2.CancelRefillingReply.ALREADY_CANCELLED
             )
 
         refilling.cancelled = True

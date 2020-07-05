@@ -140,9 +140,7 @@ message RefillingReply {
 }
 
 message RefoundBuyingRequest {
-  uint64 transaction_id = 1;
-  uint64 counter_id = 3;
-  string device_uuid = 4;
+  uint64 buying_id = 1;
 }
 
 message RefoundBuyingReply {
@@ -151,22 +149,19 @@ message RefoundBuyingReply {
     INTERNAL_SERVER_ERROR = 1;
 
     MISSING_TRANSACTION = 2;
-    MISSING_COUNTER = 3;
-    MISSING_DEVICE_UUID = 4;
 
-    TRANSACTION_NOT_FOUND = 5;
-    COUNTER_NOT_FOUND = 6;
+    TRANSACTION_NOT_FOUND = 3;
+    ALREADY_REFOUNDED = 4;
   }
 
   Status status = 1;
   google.protobuf.Timestamp now = 2;
-  repeated string customer_id = 3; // Multiple customer could be refounded at the same time since multi-payment exist
-  repeated Money customer_balance = 4; //So we can have multiple new balances...
+  repeated string customer_ids = 3; // Multiple customer could be refounded at the same time since multi-payment exist
+  repeated Money customer_balances = 4; //So we can have multiple new balances...
 }
 
 message CancelRefillingRequest {
   uint64 refilling_id = 1;
-  string device_uuid = 4;
 }
 
 message CancelRefillingReply {
@@ -175,9 +170,9 @@ message CancelRefillingReply {
     INTERNAL_SERVER_ERROR = 1;
 
     MISSING_TRANSACTION = 2;
-    MISSING_DEVICE_UUID = 4;
 
-    TRANSACTION_NOT_FOUND = 5;
+    TRANSACTION_NOT_FOUND = 3;
+    ALREADY_CANCELLED = 4;
   }
 
   Status status = 1;
