@@ -28,25 +28,25 @@ from pickle import PickleError
 
 #EDIT: NOW MANAGERS ARE NOT DEPENDENT TO QATOMS ANYMORE SO THE TEXT ABOVE IS IRELEVANT BUT IT MUST BE TESTED
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
-# ________  _____ ______   ________  ________   ________  ________  _______   ________     
-#|\   __  \|\   _ \  _   \|\   __  \|\   ___  \|\   __  \|\   ____\|\  ___ \ |\   __  \    
-#\ \  \|\  \ \  \\\__\ \  \ \  \|\  \ \  \\ \  \ \  \|\  \ \  \___|\ \   __/|\ \  \|\  \   
-# \ \  \\\  \ \  \\|__| \  \ \   __  \ \  \\ \  \ \   __  \ \  \  __\ \  \_|/_\ \   _  _\  
-#  \ \  \\\  \ \  \    \ \  \ \  \ \  \ \  \\ \  \ \  \ \  \ \  \|\  \ \  \_|\ \ \  \\  \| 
-#   \ \_____  \ \__\    \ \__\ \__\ \__\ \__\\ \__\ \__\ \__\ \_______\ \_______\ \__\\ _\ 
-#    \|___| \__\|__|     \|__|\|__|\|__|\|__| \|__|\|__|\|__|\|_______|\|_______|\|__|\|__|
-#          \|__|                                                                            
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#________/\\\________/\\\\____________/\\\\____________________________________________________________________________________________________        
+# _____/\\\\/\\\\____\/\\\\\\________/\\\\\\____________________________________________________________________________________________________       
+#  ___/\\\//\////\\\__\/\\\//\\\____/\\\//\\\_______________________________________________/\\\\\\\\____________________________________________      
+#   __/\\\______\//\\\_\/\\\\///\\\/\\\/_\/\\\__/\\\\\\\\\_____/\\/\\\\\\____/\\\\\\\\\_____/\\\////\\\_____/\\\\\\\\___/\\/\\\\\\\___/\\\\\\\\\\_     
+#    _\//\\\______/\\\__\/\\\__\///\\\/___\/\\\_\////////\\\___\/\\\////\\\__\////////\\\___\//\\\\\\\\\___/\\\/////\\\_\/\\\/////\\\_\/\\\//////__    
+#     __\///\\\\/\\\\/___\/\\\____\///_____\/\\\___/\\\\\\\\\\__\/\\\__\//\\\___/\\\\\\\\\\___\///////\\\__/\\\\\\\\\\\__\/\\\___\///__\/\\\\\\\\\\_   
+#      ____\////\\\//_____\/\\\_____________\/\\\__/\\\/////\\\__\/\\\___\/\\\__/\\\/////\\\___/\\_____\\\_\//\\///////___\/\\\_________\////////\\\_  
+#       _______\///\\\\\\__\/\\\_____________\/\\\_\//\\\\\\\\/\\_\/\\\___\/\\\_\//\\\\\\\\/\\_\//\\\\\\\\___\//\\\\\\\\\\_\/\\\__________/\\\\\\\\\\_ 
+#        _________\//////___\///______________\///___\////////\//__\///____\///___\////////\//___\////////_____\//////////__\///__________\//////////__
+
 
 
 # Need to be seriously tested !
 def parseProductDict(productList: [Product]):
 
-    productDict={"root":{},"prod":[]}
+    productDict={"root":{},"Product":[]}
     def addToDictionnary(productDict, product, relativePath):
         if(len(relativePath) == 0): # End node
-            productDict["prod"].append(product)
+            productDict["Product"].append(product)
             return productDict
 
         else:
@@ -56,7 +56,7 @@ def parseProductDict(productList: [Product]):
                 productDict[categoryName] = addToDictionnary(productDict[categoryName],product,newRelPath)
                 return productDict
             except KeyError:
-                productDict[categoryName]={"prod":[]}
+                productDict[categoryName]={"Product":[]}
                 productDict[categoryName] = addToDictionnary(productDict[categoryName],product,newRelPath)
                 return productDict
 
@@ -65,7 +65,7 @@ def parseProductDict(productList: [Product]):
         categoryList.insert(0,"root")
         productDict = addToDictionnary(productDict,product, categoryList)
 
-    productDict["root"]["prod"] = productDict["prod"] #remove useless root key
+    productDict["root"]["Product"] = productDict["Product"] #remove useless root key
     productDict = productDict["root"]
     return productDict
 
@@ -97,7 +97,9 @@ class QDataManagerSingleton(type(QObject)):
 
 
 class QDataManager(QObject, metaclass=QDataManagerSingleton):
+    priceUpdated = pyqtSignal(Product)
     def __init__(self,parent=None):
+        super().__init__(parent)
         client = Client()
         # Definition
         self.productList = []  # list of "Products"
@@ -106,10 +108,16 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         self.refillingList = []
         self.counterList = []
 
-        self.clock = QTime()
+        self.clock = QDateTime.currentDateTimeUtc()
+        self.timer = QTimer(self)
         self.counter = None # Atomic Counter
         self.uid = None #string uid machine
         self.serverAddress = None #string format ipv4 e.g 192.168.0.1:50051
+
+        self.timer.timeout.connect(self.update)
+        self.timer.start(500)
+
+        self.clock.time().start()
 
         # Initialisation
         printI("Data initialization")
@@ -123,10 +131,12 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
             printW("uid file corrupted, a new uid will be generated")
         except FileNotFoundError:
             printW("uid file not found in ./data, a new uid will be generated")
-        finally:
+
+        if not self.uid:
             with open("data/uid",'w') as file:
                 self.uid = str(uuid.uuid4())
                 file.write(self.uid)
+                printI("New machine uid generated")
 
         #counter initialisation
         printI("Request counter list")
@@ -160,11 +170,22 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         
 
     def getPrice(self, product):
-        pass
+        for prod in self.productList:
+            if product.getId() == prod.getId():
+                return prod.getPrice()
 
     def getCounter(self):
         return self.counter
 
     def getUID(self):
         return self.uid
+
+    def update(self):
+        currentTime = self.clock.toPyDateTime()
+        for product in self.productList:
+            for happyHour in product.getHappyHours():
+                if happyHour.getStart() < currentTime and currentTime < happyHour.getEnd():
+                    printN("Happy hour sur {0}, {1} au lieu de {2}".format(product, happyHour.getPrice(), product.getDefaultPrice()))
+                    product.setPrice(happyHour.getPrice())
+                    self.priceUpdated.emit(product)
 

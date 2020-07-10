@@ -58,6 +58,7 @@ class QSearchBar(QWidget):
 class QCounterTab(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        dm = QDataManager()
 
         #Definition
         self.mainLayout = QHBoxLayout()
@@ -65,7 +66,7 @@ class QCounterTab(QWidget):
         #Left pannel
         self.productSelectionLayout = QVBoxLayout()
         self.searchBar = QSearchBar()
-        self.itemSelector = QProductSelector()
+        self.itemSelector = QProductSelector(dm.productDict)
 
         #Mid pannel
         self.basket =  QBasket()

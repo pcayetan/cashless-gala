@@ -41,7 +41,7 @@ class Client(metaclass=ClientSingleton):
         self.serverAddress="127.0.0.1:50051"
         self.channel = grpc.insecure_channel(self.serverAddress)
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
-        self.now = None
+        self.now = None #datetime
     
     def setServerAddress(self, address):
         self.serverAddress = address
@@ -83,8 +83,8 @@ class Client(metaclass=ClientSingleton):
             print(type(kwargs['amount']))
             refillingRequest = com_pb2.RefillingRequest(**kwargs)
             refillingReply = self.stub.Refill(refillingRequest)
-            self.now = refillingReply.now
-            newBalance = unpackMoney(refillingReply.amount)
+            self.now = unpackTime(refillingReply.now)
+            newBalance = unpackMoney(refillingReply.customer_balance)
             refilling = unpackRefilling(refillingReply.refilling)
             refilling.setNewBalance(newBalance)
             return refilling
@@ -108,7 +108,7 @@ class Client(metaclass=ClientSingleton):
         try:
             productsRequest = com_pb2.ProductsRequest(**kwargs)
             productsReply = self.stub.Products(productsRequest)
-            self.now = productsReply.now
+            self.now = unpackTime(productsReply.now)
 
             # Fill product List 
             pbProductList = productsReply.products # get protobuff products
@@ -132,7 +132,7 @@ class Client(metaclass=ClientSingleton):
         try:
             balanceRequest = com_pb2.BalanceRequest(customer_id = kwargs['customer_id'])
             balanceReply = self.stub.Balance(balanceRequest)
-            self.now = balanceReply.now
+            self.now = unpackTime(balanceReply.now)
             return unpackMoney(balanceReply.balance)
         except RpcError:
             printE("Unable to get customer balance")
@@ -148,7 +148,7 @@ class Client(metaclass=ClientSingleton):
             counterListRequest = com_pb2.CounterListRequest()
             counterListReply = self.stub.CounterList(counterListRequest)
             pbCounterList = counterListReply.counters #get the payload
-            self.now = counterListReply.now #update the time
+            self.now = unpackTime(counterListReply.now) #update the time
             
             for pb_counter in pbCounterList:
                 newCounter = unpackCounter(pb_counter)

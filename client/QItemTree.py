@@ -74,7 +74,7 @@ class QItemTree(QWidget):
 class QProductSelector(QItemTree):
 
     itemSelected = pyqtSignal(Product)
-    def __init__(self, parent=None):
+    def __init__(self, productDict=None, parent=None):
         super().__init__(parent)
 
         dm = QDataManager()
@@ -82,7 +82,10 @@ class QProductSelector(QItemTree):
         #Definition
         self.mainLayout = QVBoxLayout()
         self.treeView = QSuperTreeView()
-        self.treeModel = QProductSelectorModel(["Produits","Prix"], dm.productDict)
+        if productDict:
+            self.treeModel = QProductSelectorModel(["Produits","Prix"], dm.productDict)
+        else:
+            self.treeModel = None
 
         
         #Layout
@@ -128,3 +131,27 @@ class QBasket(QItemTree):
         newProduct.setTexts(['@name','','@quantity * price','']) #The price should be handled inside basket model
         self.treeModel.addProduct(newProduct, self.treeView) #Insert the atom to the top. (No choice but give the treeview to add indexWidget...)
         self.forceRefresh() #Resize column to content for each columns
+
+
+class QHistory(QItemTree):
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        
+        #Definition
+        self.mainLayout = QVBoxLayout()
+        self.treeView = QSuperTreeView()
+        self.treeModel = QHistoryModel(["Utilisateur","Montant"])
+
+        #Layout
+        self.mainLayout.addWidget(self.treeView)
+        self.treeView.setModel(self.treeModel)
+        self.setLayout(self.mainLayout)
+
+    def addOperation(self, operation:Operation):
+        newOperation = copy.deepcopy(operation)
+        if isinstance(operation,Refilling):
+            newOperation.setTexts(["@customerId","@amount"])
+            self.treeModel.addOperation(newOperation)
+            self.forceRefresh()
+        else:
+            pass

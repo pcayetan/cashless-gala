@@ -13,6 +13,7 @@ import decimal
 
 #Help to convert google timestamp into QTime ...
 from datetime import datetime
+
 from Atoms import *
 
 #Cute print in the terminal
@@ -35,15 +36,17 @@ def unpackProduct(pb_product: com_pb2.Product) -> Product:
     pbHappyHoursList = pb_product.happy_hours
     for j in pbHappyHoursList:
         newHappyHour = HappyHours()
-        newHappyHour.setStart(j.start) #Still need to be converted in QTime 
-        newHappyHour.setEnd(j.end)
+        newHappyHour.setStart(unpackTime(j.start)) 
+        newHappyHour.setEnd(unpackTime(j.end))
         newHappyHour.setPrice(unpackMoney(j.price)) # Since we choosed a securised money format we need to convert
         happyHoursList.append(newHappyHour)
+
     newProduct = Product()
     newProduct.setId(pb_product.id)
     newProduct.setName(pb_product.name)
     newProduct.setCode(pb_product.code)
     newProduct.setPrice(unpackMoney(pb_product.default_price))
+    newProduct.setDefaultPrice(unpackMoney(pb_product.default_price))
     newProduct.setHappyHours(happyHoursList)
     newProduct.setCategory(pb_product.category)
     newProduct.setQuantity(1)
@@ -84,8 +87,12 @@ def packDistribution(distrib: Distribution) -> [com_pb2.Payment]:
 
 def unpackRefilling(pb_refilling: com_pb2.Refilling) -> Refilling:
     newRefilling = Refilling()
-    newRefilling.setId(pb_refilling.id)
+    #newRefilling.setId() #Not implemented by server yet
+    newRefilling.setCustomerId(pb_refilling.customer_id)
     newRefilling.setCounterId(pb_refilling.counter_id)
     newRefilling.setAmount(unpackMoney(pb_refilling.amount))
     newRefilling.setRefounded(pb_refilling.cancelled)
     return newRefilling
+
+def unpackTime(timestamp : Timestamp) -> datetime:
+    return Timestamp.ToDatetime(timestamp)

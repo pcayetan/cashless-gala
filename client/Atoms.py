@@ -176,6 +176,7 @@ class Product(Atom):
         self.name = None  # pretty print
         self.code = None  # short name
         self.price = None  # The price is either updated when it's in a the selctor, either retreived from database when it's in history
+        self.defaultPrice = None # Unit price without any happy hours
         self.quantity = None  # When product is used as selector, quantity is 1 and when used in a basket, it may vary
         self.happyHours = None # List of happy hours
         self.category = None # string e.g "Drinks.Alcool.Wine"
@@ -191,7 +192,15 @@ class Product(Atom):
         return self
 
     def setPrice(self, price): # price is never a float but something inherited from Decimal (Money.Eur)
+        if isinstance(price, float):
+            printWW("Price should not be float !")
         self.price = price
+        return self
+    
+    def setDefaultPrice(self, price):
+        if isinstance(price, float):
+            printWW("Price should not be float !")
+        self.defaultPrice = price
         return self
 
     def setQuantity(self, quantity):
@@ -214,6 +223,9 @@ class Product(Atom):
 
     def getPrice(self):
         return self.price
+
+    def getDefaultPrice(self):
+        return self.defaultPrice
 
     def getQuantity(self):
         return self.quantity
@@ -242,7 +254,6 @@ class Product(Atom):
 class Operation(Atom):
     def __init__(self):
         super().__init__()
-        self.label = None  # human readable description gave by the server
         self.refounded = None
         # Could be usefull to show where the product has been bought
         self.counterId = None
@@ -283,6 +294,7 @@ class Buying(Operation):
         self.price = None  # price the customer(s) actually paid
         self.payments = None  # List of all payment for this order since several users maybe concerned
         self.basketItems = None  # List of "Product", their unit price should be download from the history
+        self.label = None  # human readable description gave by the server
 
     def setPrice(self, price):
         self.price = price
@@ -309,6 +321,7 @@ class Buying(Operation):
 class Refilling(Operation):
     def __init__(self):
         super().__init__()
+        self.customerId = None
         self.amount = None
         self.newBalance = None
 
@@ -325,6 +338,13 @@ class Refilling(Operation):
     
     def getNewBalance(self):
         return self.newBalance
+
+    def setCustomerId(self, uid):
+        self.customerId = uid
+        return self
+    
+    def getCustomerId(self):
+        return self.customerId
 
 
 class Counter(Atom):

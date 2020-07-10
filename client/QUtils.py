@@ -278,3 +278,10 @@ class QNFCInfo(QWidget):
     def cardRemoved(self):
         self.rowInfo.setRow(1,1,Eur(0))
         self.rowInfo.setRow(0,1,"00 00 00 00")
+
+    def update(self):
+        nfcm = QNFCManager()
+        client = Client()
+        cardUID = nfcm.getCardUID()
+        balance = client.requestUserBalance(customer_id=cardUID)
+        self.rowInfo.setRow(1,1,balance)

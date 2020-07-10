@@ -232,6 +232,7 @@ class QCheckPayment(QCreditCardPayment):
 
 
 class QRefillerTab(QWidget):
+    balanceUpdated = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -265,7 +266,7 @@ class QRefillerTab(QWidget):
         self.rightLayout = QVBoxLayout()
 
         self.nfcInfo = QNFCInfo()
-        self.history = None
+        self.history = QHistory()
 
         #layout
         #Left pannel
@@ -285,6 +286,10 @@ class QRefillerTab(QWidget):
         self.paymentLayout.addWidget(self.aePayment)
         self.paymentLayout.addWidget(self.transfertPayement)
         self.paymentLayout.addWidget(self.otherPayment)
+
+        #Right pannel
+        self.rightLayout.addWidget(self.nfcInfo)
+        self.rightLayout.addWidget(self.history)
 
 
 
@@ -313,6 +318,7 @@ class QRefillerTab(QWidget):
 
         self.mainLayout.addWidget(self.paymentMethodGroupBox)
         self.mainLayout.addLayout(self.paymentLayout)
+        self.mainLayout.addLayout(self.rightLayout)
         self.setLayout(self.mainLayout)
 
         self.cashPaymentRadio.toggled.connect(self.selectCash)
@@ -326,6 +332,8 @@ class QRefillerTab(QWidget):
         self.checkPayment.credited[Eur].connect(self.credit)
         self.otherPayment.credited[Eur].connect(self.credit)
         self.aePayment.credited[Eur].connect(self.credit)
+
+        self.balanceUpdated.connect(self.nfcInfo.update)
 
     def selectCreditCard(self):
         if self.cardPaymentRadio.isChecked():
@@ -357,5 +365,7 @@ class QRefillerTab(QWidget):
             counterId = dm.getCounter().getId()
             machineUID = dm.getUID()
             paymentMethod = self.sender().getPaymentMethod()
-            client.requestRefilling(customer_id=uid,counter_id=counterId,device_uuid = machineUID,payment_method=paymentMethod,amount=amount)
+            refilling = client.requestRefilling(customer_id=uid,counter_id=counterId,device_uuid = machineUID,payment_method=paymentMethod,amount=amount)
             printI("User {} credited of {}".format(uid,amount))
+            self.balanceUpdated.emit()
+            self.history.addOperation(refilling)

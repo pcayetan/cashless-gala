@@ -342,6 +342,22 @@ class QTreeModel(QAbstractItemModel):
         newIndex = self.index(position,0)
         self.setData(newIndex,Atom)
 
+    def searchQAtom(self, qAtom:QAtom, parent = QModelIndex()):
+        n_row = self.rowCount()
+        for i in range(n_row):
+            item = self.getItem(self.index(i,0,parent))
+            data = item.getData()
+            if data == qAtom: # == means same id
+                return self.index(i,0),item,data
+
+    def getQAtomList(self,parent=QModelIndex()):
+        qAtomList = []
+        n_row = self.rowCount()
+        for i in range(n_row):
+            item = self.getItem(self.index(i,0,parent))
+            data = item.getData()
+            qAtomList.append(data)
+        return qAtomList
 
 
 

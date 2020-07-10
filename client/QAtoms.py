@@ -3,6 +3,7 @@ from Atoms import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from QUtils import *
+from QItemTree import *
 
 from QUIManager import QUIManager
 
@@ -15,6 +16,45 @@ from QUIManager import QUIManager
 ########################
 ####### QT WIDGETS#####
 ######################
+
+
+class QBuyingInfo(QWidget):
+    def __init__(self, productDict = None, parent=None):
+        super().__init__(parent)
+        # Définitons
+        self.mainLayout = QGridLayout()
+        self.productTree = QProductSelector(productDict)
+
+        self.userInfoGroupBox = QGroupBox()
+        self.userInfoLayout = QVBoxLayout()
+        self.userRowInfo = QRowInfo()
+
+        self.buttonLayout = QHBoxLayout()
+        self.editButton = QPushButton()
+        self.deleteButton = QPushButton()
+        self.okButton = QPushButton()
+
+
+        #Layout
+        self.mainLayout.addWidget(self.productTree, 0,0)
+        self.mainLayout.addWidget(self.userInfoGroupBox,0,1)
+        self.mainLayout.addLayout(self.buttonLayout,1,0,1,2)
+
+
+        self.userRowInfo.addRow("UID",)
+
+        self.buttonLayout.addWidget(self.editButton)
+        self.buttonLayout.addWidget(self.deleteButton)
+        self.buttonLayout.addWidget(self.okButton)
+
+        self.setLayout(self.mainLayout)
+
+        #Settings
+        self.editButton.setText("Éditer")
+        self.deleteButton.setText("Rembourser")
+        self.okButton.setText("Retour")
+
+
 
 
 class QDelButton(QToolButton):
@@ -177,13 +217,19 @@ class QProductInfo(QWidget):
 
 
 
+#________/\\\___________/\\\\\\\\\_________________________________________________________________        
+# _____/\\\\/\\\\______/\\\\\\\\\\\\\_______________________________________________________________       
+#  ___/\\\//\////\\\___/\\\/////////\\\_____/\\\_____________________________________________________      
+#   __/\\\______\//\\\_\/\\\_______\/\\\__/\\\\\\\\\\\_____/\\\\\_______/\\\\\__/\\\\\____/\\\\\\\\\\_     
+#    _\//\\\______/\\\__\/\\\\\\\\\\\\\\\_\////\\\////____/\\\///\\\___/\\\///\\\\\///\\\_\/\\\//////__    
+#     __\///\\\\/\\\\/___\/\\\/////////\\\____\/\\\_______/\\\__\//\\\_\/\\\_\//\\\__\/\\\_\/\\\\\\\\\\_   
+#      ____\////\\\//_____\/\\\_______\/\\\____\/\\\_/\\__\//\\\__/\\\__\/\\\__\/\\\__\/\\\_\////////\\\_  
+#       _______\///\\\\\\__\/\\\_______\/\\\____\//\\\\\____\///\\\\\/___\/\\\__\/\\\__\/\\\__/\\\\\\\\\\_ 
+#        _________\//////___\///________\///______\/////_______\/////_____\///___\///___\///__\//////////__
+#
 
 
 
-
-####################################
-###########    QATOMS    ##########
-##################################
 class QAtom(QObject,Atom):
 
     def __init__(self,atom = None): 
@@ -227,8 +273,8 @@ class QAtom(QObject,Atom):
 
 class QUser(QAtom, User):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, user):
+        super().__init__(user)
         self.infoPannel = None
         
 class QProduct(QAtom, Product):
@@ -279,21 +325,25 @@ class QProduct(QAtom, Product):
         self.deleted.emit()
 
 class QCounter(QAtom, Counter):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, counter):
+        super().__init__(counter)
         self.infoPannel = None
 
-class QBuying(QAtom, Buying):
-    def __init__(self):
-        super().__init__()
+class QOperation(QAtom, Operation):
+    def __init__(self, operation):
+        super().__init__(operation)
+
+class QBuying(QOperation, Buying):
+    def __init__(self, buying):
+        super().__init__(buying)
         self.infoPannel = None
 
-class QRefilling(QAtom, Refilling):
-    def __init__(self):
-        super().__init__()
+class QRefilling(QOperation, Refilling):
+    def __init__(self, refilling):
+        super().__init__(refilling)
         self.infoPannel = None
 
 class QDistribution(QAtom, Distribution):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, distribution):
+        super().__init__(distribution)
         self.infoPannel = None

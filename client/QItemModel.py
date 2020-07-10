@@ -10,29 +10,42 @@ class QProductSelectorModel(QTreeModel):
 
     def __init__(self, headers, data=None, parent=None):
         super().__init__(headers, data=data, parent=parent)
+        dm = QDataManager()
+        self.qProductList =  []
         if data is not None:
             self.setupModelData(data)
+        dm.priceUpdated[Product].connect(self.updatePrice)
 
     def setupModelData(self, data):
         dm = QDataManager()
         #print(data)
-        # productDict look like this {"root":{"cat1:{"prod":[]}","prod":[]},"prod":[]}
+        # productDict look like this {"root":{"cat1:{"Product":[]}","Product":[]},"Product":[]}
         def exploreDict(productDict, parent:TreeItem):
             # add new categories
             for key in productDict:
-                if key != 'prod':
+                if key != "Product":
                     atom = Atom([key],key)
                     child = TreeItem( QAtom(atom),parent)
                     parent.appendChild(child)
                     exploreDict(productDict[key],child)
             # add products
-            for product in productDict['prod']:
+            for product in productDict["Product"]:
                 product.setTexts([product.getName(),product.getPrice()])
                 #print(product.getCode())
-                child = TreeItem(QProduct(product),parent)
+                qProduct = QProduct(product)
+                self.qProductList.append(qProduct)
+                child = TreeItem(qProduct,parent)
                 parent.appendChild(child)
         
         exploreDict(dm.productDict, self.rootItem)
+
+    def updatePrice(self, product): 
+        #We could play with memory tricks so that when it's updated in the manager it's updated here but Master Foo's Zen says:
+        # explicit is better that implicit ...
+        # So the manager will explicity send update signals to Widgets...
+        qProduct = QProduct(product)
+        index = self.qProductList.index(qProduct)
+        # ???
 
 
 class QBasketModel(QTreeModel):
@@ -54,7 +67,7 @@ class QBasketModel(QTreeModel):
         if product in productList:
             #I use my own reseach function because the 'match' function from Qt bases it research on the text field
             #by default, I should reimplement 'match', but I prefer use my own search function
-            index,item,data = self.searchQProduct(qProduct)
+            index,item,data = self.searchQAtom(qProduct)
             data.incQuantity()
 
 
@@ -92,27 +105,29 @@ class QBasketModel(QTreeModel):
             pass
         else:
             qProduct = self.sender()
-        index,item,data = self.searchQProduct(qProduct)
+        index,item,data = self.searchQAtom(qProduct)
         self.removeRow(index.row())
 
-    def searchQProduct(self, qProduct:QProduct):
-        n_row = self.rowCount()
-        for i in range(n_row):
-            item = self.getItem(self.index(i,0))
-            data = item.getData()
-            if data == qProduct: # == means same id
-                return self.index(i,0),item,data
+class QUserModel(QTreeModel):
 
-    def getQProductList(self):
-        qProductList = []
-        n_row = self.rowCount()
-        for i in range(n_row):
-            item = self.getItem(self.index(i,0))
-            data = item.getData()
-            qProductList.append(data)
-        return qProductList
+    def __init__(self, headers, data =None, parent = None):
+        super().__init__(headers, data, parent)
+        
 
+class QHistoryModel(QTreeModel):
 
+    def __init__(self, headers, data = None, parent = None):
+        super().__init__(headers, data, parent)
+    
+    def addOperation(self, operation):
+        if isinstance(operation, Refilling):
+            qRefilling= QRefilling(operation)
+            self.insertAtom(0,qRefilling)
+        else:
+            pass
+
+    def setupModelData(self):
+        pass
 
 
     
