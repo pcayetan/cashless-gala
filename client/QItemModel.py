@@ -64,7 +64,7 @@ class QBasketModel(QTreeModel):
         for child in childList:
             productList.append(child.getData())
         #if the product is already in the basket
-        if product in productList:
+        if qProduct in productList:
             #I use my own reseach function because the 'match' function from Qt bases it research on the text field
             #by default, I should reimplement 'match', but I prefer use my own search function
             index,item,data = self.searchQAtom(qProduct)

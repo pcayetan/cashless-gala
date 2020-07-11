@@ -12,6 +12,7 @@ from Atoms import *
 from Euro import Eur
 
 from QNFCManager import QNFCManager
+from QUIManager import QUIManager 
 from Client import Client
 
 #def euro(price):
@@ -26,7 +27,38 @@ def center(self):
     self.move(qr.topLeft())
 
 
+class QNFCDialog(QDialog):
+    cardInserted  = pyqtSignal()
+    
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        uim = QUIManager()
+        nfcm =  QNFCManager()
+        #Definition
+        self.mainLayout = QVBoxLayout()
+        self.label = QLabel()
+        self.setFixedSize(450,400)
 
+        #Layout
+        self.mainLayout.addWidget(self.label)
+        self.setLayout(self.mainLayout)
+
+        nfcm.cardInserted.connect(self.proceed)
+
+        #Setup
+        movie = uim.getAnimation("show-card-animation")
+        self.label.setMovie(movie)
+        movie.start()
+
+        self.setWindowTitle("Veuillez présenter une carte devant le lecteur")
+        self.setWindowIcon(uim.getIcon("nfc-icon"))
+
+
+        center(self)
+    
+    def proceed(self):
+        self.cardInserted.emit()
+        self.done(0)
 
 class QRowInfo(QWidget):
     def __init__(self, parent=None):

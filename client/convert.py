@@ -53,20 +53,13 @@ def unpackProduct(pb_product: com_pb2.Product) -> Product:
     return newProduct
 
 def packMoney(euro: Eur) -> com_pb2.Money:
+    strEuro = str(euro).replace('€','').replace(' ','').replace(',','.')
+    money = com_pb2.Money(amount = strEuro)
+    return money
 
-    def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
-        tup = dec.as_tuple()
-        return com_pb2.Money(sign=tup.sign, exponent=tup.exponent, digits=tup.digits)
-    return decimal_to_pb_money(euro._amount)
 
 def unpackMoney(money: com_pb2.Money) -> Eur:
-    def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:
-        return decimal.Decimal(
-            decimal.DecimalTuple(
-                sign=money.sign, digits=money.digits, exponent=money.exponent
-            )
-        )
-    return Eur(pb_money_to_decimal(money))
+    return Eur(money.amount)
 
 def packCounter(counter: Counter) -> com_pb2.CounterListReply.Counter:
     pass #should not be usefull
@@ -80,19 +73,38 @@ def unpackCounter(pb_counter: com_pb2.CounterListReply.Counter) -> Counter:
 def packDistribution(distrib: Distribution) -> [com_pb2.Payment]:
     paymentList = []
     for user in distrib.getUserList():
-        amount = distrib.getUserAmount(user)
+        amount = packMoney(distrib.getUserAmount(user))
         newPayement = com_pb2.Payment(customer_id = user, amount=amount)
         paymentList.append(newPayement)
     return paymentList
 
+def unpackDistribution(payments: [com_pb2.Payment]) -> Distribution:
+    distribution = Distribution()
+    for payment in payments:
+        distribution.addUser(payment.customer_id)
+        distribution.addAmount(unpackMoney(payment.amount))
+    return distribution
+
 def unpackRefilling(pb_refilling: com_pb2.Refilling) -> Refilling:
     newRefilling = Refilling()
-    #newRefilling.setId() #Not implemented by server yet
+    newRefilling.setId(pb_refilling.id) 
     newRefilling.setCustomerId(pb_refilling.customer_id)
     newRefilling.setCounterId(pb_refilling.counter_id)
     newRefilling.setAmount(unpackMoney(pb_refilling.amount))
     newRefilling.setRefounded(pb_refilling.cancelled)
     return newRefilling
+
+def unpackBuying(pb_buying: com_pb2.Buying) -> Buying:
+    buying = Buying()
+    buying.setId(pb_buying.id)
+    buying.setLabel(pb_buying.label)
+    buying.setPrice(unpackMoney(pb_buying.price))
+    buying.setRefounded(pb_buying.refounded)
+    buying.setCounterId(pb_buying.counter_id)
+    buying.setDate(unpackTime(pb_buying.date))
+    buying.setDistribution(unpackDistribution(pb_buying.payments))
+
+    return buying
 
 def unpackTime(timestamp : Timestamp) -> datetime:
     return Timestamp.ToDatetime(timestamp)

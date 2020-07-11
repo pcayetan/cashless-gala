@@ -204,7 +204,7 @@ class Buying(Model):
     def generate_label(self):
         self.label = ",".join(
             [
-                "%s x %d" % (item.product.name, item.unit_price)
+                "%s x %d" % (item.product.name, item.quantity)
                 for item in self.basket_items
             ]
         )

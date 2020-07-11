@@ -115,8 +115,6 @@ class QBasket(QItemTree):
         self.mainLayout = QVBoxLayout()
         self.treeView = QSuperTreeView()
         self.treeModel = QBasketModel(["Article","Quantité","Prix",""])
-        
-
 
         #Layout
         self.mainLayout.addWidget(self.treeView)
@@ -131,6 +129,14 @@ class QBasket(QItemTree):
         newProduct.setTexts(['@name','','@quantity * price','']) #The price should be handled inside basket model
         self.treeModel.addProduct(newProduct, self.treeView) #Insert the atom to the top. (No choice but give the treeview to add indexWidget...)
         self.forceRefresh() #Resize column to content for each columns
+
+    def getProductList(self):
+        return self.treeModel.getQAtomList()
+    
+    def clear(self):
+        n_row = self.treeModel.rowCount()
+        for i in range(n_row):
+            self.treeModel.removeRow(0)
 
 
 class QHistory(QItemTree):

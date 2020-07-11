@@ -26,8 +26,10 @@ class QAbstractPayment(QGroupBox):
         self.paymentMethod = None
         self.strictPositive = True
         self.inputLine = QAutoSelectLineEdit()
+        self.okButton = QPushButton()
 
         self.credited.connect(self.clear)
+        self.inputLine.returnPressed.connect(self.setFocusOnOk)
 
     def getPaymentMethod(self):
         return self.paymentMethod
@@ -88,7 +90,12 @@ class QAbstractPayment(QGroupBox):
     def clear(self):
         self.inputLine.setText(Eur(0))
 
+    def setFocusOnOk(self):
+        self.okButton.setFocus()
+
 class QCreditCardPayment(QAbstractPayment):
+    enterPressed = pyqtSignal()
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.paymentMethod = 2
@@ -101,7 +108,6 @@ class QCreditCardPayment(QAbstractPayment):
         self.mainGridLayout = QGridLayout()
 
         self.label = QLabel()
-        self.okButton = QPushButton()
 
 
         # Settings
@@ -128,9 +134,11 @@ class QCreditCardPayment(QAbstractPayment):
         self.inputLine.returnPressed.connect(self.formatInput)
 
 
+
 class QCashPayment(QAbstractPayment):
     def __init__(self, parent=None):
         super().__init__(parent)
+        #Definition
         self.paymentMethod = 1
         self.mainGridLayout = QGridLayout()
         self.mainVBoxLayout = QVBoxLayout()
@@ -143,7 +151,6 @@ class QCashPayment(QAbstractPayment):
         self.setTitle("Paiement par espèce")
 
         self.label = QLabel()
-        self.okButton = QPushButton()
 
         # Settings
 
@@ -159,7 +166,7 @@ class QCashPayment(QAbstractPayment):
         self.moneyIn.setAlignment(Qt.AlignCenter)
         self.moneyInLabel.setText("Argent reçu:")
 
-        # Link
+        # Layout
 
         self.mainGridLayout.addWidget(self.label, 0, 0, Qt.AlignLeft)
         self.mainGridLayout.addWidget(self.inputLine, 0, 1, Qt.AlignLeft)
@@ -354,6 +361,7 @@ class QRefillerTab(QWidget):
     def selectOther(self):
         if self.otherPaymentRadio.isChecked():
             self.paymentLayout.setCurrentWidget(self.otherPayment)
+    
 
     def credit(self, amount):
         nfcm = QNFCManager()

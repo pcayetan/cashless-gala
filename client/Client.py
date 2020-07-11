@@ -57,7 +57,38 @@ class Client(metaclass=ClientSingleton):
     repeated Payment payments
     repeated BasketItem basket
         """
-        pass
+        try:
+            payments = kwargs['payments']
+            basket = kwargs['basket']
+            newPayments = []
+            newBasket = []
+
+            for qProduct in basket:
+                product = qProduct.getAtom()
+                newBasket.append(packProduct(product))
+
+            kwargs['basket'] = newBasket
+            kwargs['payments'] = packDistribution(kwargs['payments'])
+
+            buyingRequest = com_pb2.BuyingRequest(**kwargs)
+            buyingReply = self.stub.Buy(buyingRequest)
+            self.now = unpackTime(buyingReply.now)
+            if buyingReply.status == com_pb2.BuyingReply.SUCCESS :
+                transaction = buyingReply.transaction
+                buying = unpackBuying(transaction)
+            elif buyingReply.status == com_pb2.BuyingReply.NOT_ENOUGH_MONEY:
+                printW("Not enough money")
+                return None
+
+
+
+
+            return buying
+
+
+        except RpcError:
+            pass
+
 
 
     def requestRefilling(self, **kwargs):
@@ -78,9 +109,6 @@ class Client(metaclass=ClientSingleton):
                                  com_pb2.OTHER]
             kwargs['payment_method'] = paymentMethodList[kwargs['payment_method']]
             kwargs['amount'] = packMoney(kwargs['amount'])
-            print(kwargs)
-            print(type(kwargs['payment_method']))
-            print(type(kwargs['amount']))
             refillingRequest = com_pb2.RefillingRequest(**kwargs)
             refillingReply = self.stub.Refill(refillingRequest)
             self.now = unpackTime(refillingReply.now)

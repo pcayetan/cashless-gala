@@ -261,8 +261,9 @@ class QTreeModel(QAbstractItemModel):
 
         return self.createIndex(parentItem.row(), 0, parentItem)
 
-    def setupModelData(self, data):
-        raise NotImplementedError()
+    def setupModelData(self, atomList):
+        for atom in atomList:
+            self.insertAtom(0,atom)
 
     # Mandatory functions for editable tree
 

@@ -41,7 +41,7 @@ class QBuyingInfo(QWidget):
         self.mainLayout.addLayout(self.buttonLayout,1,0,1,2)
 
 
-        self.userRowInfo.addRow("UID",)
+        #self.userRowInfo.addRow("UID",)
 
         self.buttonLayout.addWidget(self.editButton)
         self.buttonLayout.addWidget(self.deleteButton)

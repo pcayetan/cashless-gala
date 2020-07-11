@@ -113,6 +113,42 @@ class QCounterTab(QWidget):
 
         #signals
         self.itemSelector.itemSelected[Product].connect(self.basket.addProduct)
+        self.singleUserButton.clicked.connect(self.showNFCDialog)
+
+    def showNFCDialog(self):
+        nfcm = QNFCManager()
+        if not nfcm.hasCard():
+            nfcDialog = QNFCDialog()
+            nfcDialog.setModal(True)
+            nfcDialog.cardInserted.connect(self.singleUserPay)
+            nfcDialog.exec_()
+        else:
+            self.singleUserPay()
+
+    def singleUserPay(self):
+        printI("payment")
+        client = Client()
+        dm = QDataManager()
+        nfcm = QNFCManager()
+
+        productList = self.basket.getProductList()
+        totalPrice = Eur(0)
+        for product in productList:
+            totalPrice += product.getPrice()*product.getQuantity()
+
+        distribution = Distribution()
+        distribution.addUser(nfcm.getCardUID())
+        distribution.addAmount(totalPrice)
+
+        try:
+            response = client.requestBuy(counter_id=dm.getCounter().getId(),device_uuid=dm.getUID(),payments=distribution,basket=productList)
+            if response:
+                self.basket.clear()
+            else:
+                QWarningDialog("Solde insuffisant","Le solde utilisateur est insufisant","Veuillez recharger votre carte")
+        except:
+            printE("Something happen, transaction failed. Please try again")
+
 
 
 

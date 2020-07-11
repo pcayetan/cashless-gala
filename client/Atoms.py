@@ -238,12 +238,11 @@ class Product(Atom):
 
 
     def __eq__(self, key):
-        result = True
-        result = result and self.getId() == key.getId()
-#        result = result and self.getName() == key.getName()
-#        result = result and self.getCode() == key.getCode()
-#        result = result and self.getPrice() == key.getPrice()
-        return result
+        if type(self) == type(key):
+            return self.getId() == key.getId()
+        else:
+            return False
+
     def __repr__(self):
         return "Product({0}, {1})".format(self.id,self.name)
 
@@ -287,12 +286,17 @@ class Operation(Atom):
     def getDate(self):
         return self.date
 
+    def __eq__(self, key):
+        if type(self) == type(key):
+            return self.getId() == key.getId()
+        else:
+            return False
 
 class Buying(Operation):
     def __init__(self):
         super().__init__()
         self.price = None  # price the customer(s) actually paid
-        self.payments = None  # List of all payment for this order since several users maybe concerned
+        self.distribution = None  # List of all payment for this order since several users maybe concerned
         self.basketItems = None  # List of "Product", their unit price should be download from the history
         self.label = None  # human readable description gave by the server
 
@@ -300,8 +304,8 @@ class Buying(Operation):
         self.price = price
         return self
 
-    def setPayment(self, payments):
-        self.payments = payments
+    def setDistribution(self, distribution):
+        self.distribution = distribution
         return self
 
     def setBasketItems(self, basketItems):
@@ -311,8 +315,8 @@ class Buying(Operation):
     def getPrice(self):
         return self.price
 
-    def getPayments(self):
-        return self.payments
+    def getDistribution(self):
+        return self.distribution
 
     def getBasketItems(self):
         return self.basketItems
@@ -366,7 +370,10 @@ class Counter(Atom):
         return "{0}: {1}".format(self.id,self.name)
     
     def __eq__(self, key):
-        return key.getId() == self.getId() and key.getName() == self.getName()
+        if type(self) == type(key):
+            return key.getId() == self.getId() and key.getName() == self.getName()
+        else:
+            return False
 
 class Distribution(Atom):
     def __init__(self):
@@ -385,6 +392,10 @@ class Distribution(Atom):
 
     def addUser(self,uid):
         self.userList.append(uid)
+        return self
+    
+    def addAmount(self, amount):
+        self.amount.append(amount)
         return self
 
     def removeUser(self,uid):
