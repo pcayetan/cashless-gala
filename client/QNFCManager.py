@@ -44,3 +44,15 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
 
     def hasCard(self):
         return self.cardObserver.hasCard()
+
+    def virtualCardInsert(self,uid):
+        cardObserver = QCardObserver() 
+        cardObserver.cardUID = uid
+        cardObserver.setCardState(True)
+        cardObserver.cardInserted.emit()
+
+    def virtualCardRemove(self):
+        cardObserver = QCardObserver() 
+        cardObserver.cardUID = toHexString([0, 0, 0, 0])
+        cardObserver.setCardState(False)
+        cardObserver.cardRemoved.emit()

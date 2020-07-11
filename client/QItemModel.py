@@ -5,6 +5,7 @@ from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtCore import *
 from Euro import *
 
+# Specialized models ...
 
 class QProductSelectorModel(QTreeModel):
 

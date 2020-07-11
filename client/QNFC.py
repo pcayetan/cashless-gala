@@ -67,16 +67,15 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
 
     cardInserted = pyqtSignal()
     cardRemoved = pyqtSignal()
-    __hasCard = False
-    cardUID = toHexString([0,0,0,0]) # now it's always a string
     errorCode = []
-    cardBalance = None
 
     def __init__(self):
         # should it be super(QObject), super(CardObserver) ?
         QObject.__init__(self)
         CardObserver.__init__(self)        
         self.cardReader = getReader()
+        self.cardUID = toHexString([0,0,0,0]) # now it's always a string
+        self.__hasCard = False
 
 
     def update(self, observable, actions):
@@ -125,15 +124,11 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
     def hasCard(self):
         return self.__hasCard
 
-    def virtualCardInsert(self):
-        self.cardUID = toHexString([0x1, 0x2, 0x3, 0x4])
-        self.__hasCard = True
-        self.cardInserted.emit()
+    #DEBUG
+    #For virtual card...
+    def setCardState(self,state):
+        self.__hasCard = state
 
-    def virtualCardRemove(self):
-        self.cardUID = toHexString([0, 0, 0, 0])
-        self.__hasCard = False
-        self.cardRemoved.emit()
 
 
 # Allow the user to connect and disconect the reader whenerver he wants

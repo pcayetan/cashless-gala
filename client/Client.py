@@ -111,13 +111,17 @@ class Client(metaclass=ClientSingleton):
             kwargs['amount'] = packMoney(kwargs['amount'])
             refillingRequest = com_pb2.RefillingRequest(**kwargs)
             refillingReply = self.stub.Refill(refillingRequest)
-            self.now = unpackTime(refillingReply.now)
-            newBalance = unpackMoney(refillingReply.customer_balance)
-            refilling = unpackRefilling(refillingReply.refilling)
-            refilling.setNewBalance(newBalance)
-            return refilling
+            if refillingReply.status == com_pb2.RefillingReply.SUCCESS:
+                self.now = unpackTime(refillingReply.now)
+                newBalance = unpackMoney(refillingReply.customer_balance)
+                refilling = unpackRefilling(refillingReply.refilling)
+                refilling.setNewBalance(newBalance)
+                return refilling
+            else:
+                printE("Unable to refill")
+                return None
         except RpcError:
-            printE("Unable to refill")
+            printE("RPC: Unable to refill")
             return None
 
     def requestHistory(self, **kwargs):
@@ -136,17 +140,20 @@ class Client(metaclass=ClientSingleton):
         try:
             productsRequest = com_pb2.ProductsRequest(**kwargs)
             productsReply = self.stub.Products(productsRequest)
-            self.now = unpackTime(productsReply.now)
-
-            # Fill product List 
-            pbProductList = productsReply.products # get protobuff products
-            for pb_product in pbProductList:
-                newProduct = unpackProduct(pb_product)
-                productList.append(newProduct)
-            return productList
+            if productsReply.status == com_pb2.ProductsReply.SUCCESS:
+                self.now = unpackTime(productsReply.now)
+                # Fill product List 
+                pbProductList = productsReply.products # get protobuff products
+                for pb_product in pbProductList:
+                    newProduct = unpackProduct(pb_product)
+                    productList.append(newProduct)
+                return productList
+            else:
+                printE("Unable to get product list")
+                return None
 
         except RpcError:
-            printE("Unable to get product list")
+            printE("RPC: Unable to get product list")
             return None
 
         return None

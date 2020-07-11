@@ -13,7 +13,30 @@ from QUIManager import QUIManager
 
 import copy
 
+
+# Basicaly, this file is the heart of the GUI since there are trees everywhere
+# The tree model/view paradigm is NOT easy to handle at first, but the most difficult
+# functions are already implemented...
+
+#The key to understand what's going here is to check the Qt's Model/View paradigm 
+#https://doc.qt.io/qt-5/model-view-programming.html
+#It's a really powerfull way to handle trees in UIs
+
+#IN A FEW WORDS
+#The main idea behind model/view paradigm, is break the tree into two main parts:
+#The model (What's inside my tree ?) and View (How does it look ?)
+#Both are completly INDEPENDENTS and exchange information through some standards functions
+#It's a client/server relationship, the tree ask elements to the model and the model respond
+#Because both are independants, you can use the same model for different treeView or the other way
+
+#Pay attention to the object you're handling, basicaly there are three layers from the UI to the data:
+# QModelIndex index  -> What the view (and the model) handle 
+# ItemTree    item   -> What the model (and only the model) handle internally 
+# QAtom      qAtom   -> What the user handle (and the dev)
+
 class TreeItem:
+    """ This class is is in charge to store the architecture/data inside the QT Tree Model.
+        It behave like a basic chained list where each node is a QAtom"""
     def __init__(self, data, parent=None):
         self.parentItem = parent
         self.childItems = []
@@ -118,7 +141,6 @@ class TreeItem:
 
         return True
 
-    # never tested, should works ....
     # remove n_columns from position
     def removeColumns(self, position, n_columns):
         if position < 0 or position + n_columns > len(self.data.getTexts()):
@@ -159,6 +181,11 @@ class TreeItem:
             texts[index] = str(text)
 
     def __parseMagicString(self):
+        """Magic strings are strings that must be evaluated as a mathematical expressions
+           All magic strings start with either '=' or '@'
+           The variable used in the expression must be part of the QAtoms's attributes
+           for instance with a product '@ (2*price)**2' return (2 x price)² where price is
+           an a property existing in the product."""
 
         atomDict = vars(self.data)  #python built-in function to turn an object into dictionary
         texts = self.data.getTexts()
@@ -169,18 +196,29 @@ class TreeItem:
                     expression = text.replace('=','').replace('@','')
                     try:
                         parsedTextList[index] = str(eval(expression,atomDict)) #no rage still pythoninc <3
+                        #eval(expr,dict), basically it searchs variable defined in 'dict' and replace them in expr.
                     except:
                         printW("Failed to parse the expression {}".format(expression))
         return parsedTextList
 
 
 class QTreeModel(QAbstractItemModel):
+    """Base class for all tree models
+       QTreeModel inherit from QAbstractItemModel which is a pure Qt class.
+       Abstract means that we need to overload some standard function in order to make
+       it works correctly.
+       Most of the method implemented below are standard methods the TreeView need to work"""
+    
     def __init__(self, headers, data=None, parent=None):
-
         super().__init__(parent)
         self.rootItem = TreeItem(headers)
 
     def data(self, index, role):
+        """A model don't store only the text to display, it can also store the colors,
+        Icons etc...
+        Depending on what the View want to know, the model must provide the correct information,
+        hence the 'role'...
+        """
 
         uim = QUIManager()
         if not index.isValid():
@@ -234,6 +272,9 @@ class QTreeModel(QAbstractItemModel):
         return None
 
     def index(self, row, column, parent=QModelIndex()):
+        """index is a Qt object that represent a particular node in the model.
+        Despite a tree is technically a 2D object (row/column) an index has actually
+        3 coordinates. The 3rd one is the parent of the node. """
 
         if not self.hasIndex(row, column, parent):
             return QModelIndex()
@@ -313,6 +354,11 @@ class QTreeModel(QAbstractItemModel):
         return result
 
     def setData(self, index, value, role=Qt.EditRole):
+        """You should use this method as much as possible to modify your tree's contend.
+        Notice the use of 'dataChanged.emit' this notify the 'view' that it should be updated.
+        If you don't use this method, ensure that dataChanged is correctly emited, otherwise you'll never
+        see anything"""
+
         if role != Qt.EditRole:
             return False
 
@@ -329,6 +375,7 @@ class QTreeModel(QAbstractItemModel):
         return result
 
     # Tool
+    # Basicaly, all these functions are not required by Qt, but are requiered by our own needs..
 
     def getItem(self, index):
         if index.isValid():
