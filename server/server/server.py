@@ -9,42 +9,13 @@ from concurrent import futures
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from server import db, models, com_pb2, com_pb2_grpc
-
-
-def pb_now() -> Timestamp:
-    timestamp = Timestamp()
-    timestamp.GetCurrentTime()
-    return timestamp
-
-
-def date_to_pb(date) -> Timestamp:
-    timestamp = Timestamp()
-    timestamp.FromDatetime(date)
-    return timestamp
-
-
-def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
-    return com_pb2.Money(amount=str(dec))
-
-
-def pb_money_to_decimal(money: com_pb2.Money) -> decimal.Decimal:
-    try:
-        return decimal.Decimal(money.amount)
-    except:
-        return decimal.Decimal(0)
-
-
-def refilling_to_pb(refilling: models.Refilling) -> com_pb2.Refilling:
-    return com_pb2.Refilling(
-        id=refilling.id,
-        customer_id=refilling.customer_id,
-        counter_id=refilling.counter_id,
-        device_uuid=refilling.machine_id,
-        payment_method=refilling.payment_method.id,
-        amount=decimal_to_pb_money(refilling.amount),
-        cancelled=refilling.cancelled,
-        date=date_to_pb(refilling.date),
-    )
+from server.pbutils import (
+    pb_now,
+    date_to_pb,
+    decimal_to_pb_money,
+    pb_money_to_decimal,
+    refilling_to_pb,
+)
 
 
 def get_or_create_machine(_uuid: str) -> models.Machine:

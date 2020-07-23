@@ -31,6 +31,20 @@ def runserver(host, port, reflect):
     server.serve(host, port, reflect)
 
 
+@default_group.command(name="test", help="Run tests")
+@click.argument("name", type=str, required=False)
+def test(name=None):
+    import unittest
+
+    loader = unittest.TestLoader()
+
+    if name is None:
+        suite = loader.discover("", pattern="tests.py")
+    else:
+        suite = loader.loadTestsFromName("server.tests.%s" % name)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+
+
 @default_group.command(name="protoc", help="Generate protoc files")
 def protoc():
     from subprocess import Popen
