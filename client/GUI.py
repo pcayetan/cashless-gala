@@ -19,7 +19,6 @@ from QCounterTab import *
 # INITIALISATION
 
 
-
 def setFont(Widget, Font):
 
     for child in Widget.children():
@@ -42,7 +41,7 @@ class QMainTab(QTabWidget):
 
         # Initialization
         self.tabCounter = QCounterTab()
-        self.tabRefiller= QRefillerTab()
+        self.tabRefiller = QRefillerTab()
         self.TabStat = QWidget()
 
         # Add tabs
@@ -53,9 +52,7 @@ class QMainTab(QTabWidget):
         # self.addTab(self.TabStat, "Stats")
 
 
-
 class QMainMenu(QMainWindow):
-
     def __init__(self):
         super().__init__()
 
@@ -66,7 +63,6 @@ class QMainMenu(QMainWindow):
         center(self)
         self.MainTab = QMainTab()
         self.setCentralWidget(self.MainTab)
-
 
         font = QFont()  # TODO: Dirty trick to set the whole app font size
         font.setPointSize(16)

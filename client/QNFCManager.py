@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 
 from QNFC import *
 
+
 class QNFCManagerSingleton(type(QObject)):
     _instance = {}
 
@@ -11,10 +12,11 @@ class QNFCManagerSingleton(type(QObject)):
             cls._instance[cls] = super(QNFCManagerSingleton, cls).__call__()
         return cls._instance[cls]
 
+
 class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
 
-    cardInserted = pyqtSignal() #It's a copy of the cardObserver signal.. but wrapped in a manager
-    cardRemoved  = pyqtSignal()
+    cardInserted = pyqtSignal()  # It's a copy of the cardObserver signal.. but wrapped in a manager
+    cardRemoved = pyqtSignal()
 
     readerInserted = pyqtSignal()
     readerRemoved = pyqtSignal()
@@ -24,7 +26,7 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
         self.cardMonitor = CardMonitor()
         self.cardObserver = QCardObserver()
         self.cardMonitor.addObserver(self.cardObserver)
-        
+
         self.readermonitor = ReaderMonitor()
         self.readerUpdater = ReaderUpdater()
         self.readermonitor.addObserver(self.readerUpdater)
@@ -32,11 +34,10 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
         self.cardObserver.cardInserted.connect(self.wrapperCardInserted)
         self.cardObserver.cardRemoved.connect(self.wrapperCardRemoved)
 
-
     def getCardUID(self):
         return self.cardObserver.getCardUID()
 
-    def wrapperCardInserted(self): #basicaly, it's just the same that the cardObserver event but wrapped here
+    def wrapperCardInserted(self,):  # basicaly, it's just the same that the cardObserver event but wrapped here
         self.cardInserted.emit()
 
     def wrapperCardRemoved(self):
@@ -45,14 +46,14 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
     def hasCard(self):
         return self.cardObserver.hasCard()
 
-    def virtualCardInsert(self,uid):
-        cardObserver = QCardObserver() 
+    def virtualCardInsert(self, uid):
+        cardObserver = QCardObserver()
         cardObserver.cardUID = uid
         cardObserver.setCardState(True)
         cardObserver.cardInserted.emit()
 
     def virtualCardRemove(self):
-        cardObserver = QCardObserver() 
+        cardObserver = QCardObserver()
         cardObserver.cardUID = toHexString([0, 0, 0, 0])
         cardObserver.setCardState(False)
         cardObserver.cardRemoved.emit()

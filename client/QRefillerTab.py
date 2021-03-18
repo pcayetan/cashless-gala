@@ -8,7 +8,6 @@ from PyQt5.QtGui import *
 import PyQt5.QtCore
 import PyQt5.QtGui
 
-from QNFC import *
 from QUtils import *
 from QItemTree import *
 
@@ -34,53 +33,58 @@ class QAbstractPayment(QGroupBox):
     def getPaymentMethod(self):
         return self.paymentMethod
 
-
     def credit(self):
         amountText = self.inputLine.text()
-        if self.formatValid(amountText, self.strictPositive,isCredit=True):
+        if self.formatValid(amountText, self.strictPositive, isCredit=True):
             nfcm = QNFCManager()
+            uim = QUIManager()
             if nfcm.hasCard():
                 amount = self.textToEur(amountText)
                 self.credited.emit(amount)
+                uim.balanceUpdated.emit()
             else:
-                warningDialog = QWarningDialog("Aucun utilisateur","Veuillez placer le tag nfc sur le lecteur.")
+                warningDialog = QWarningDialog("Aucun utilisateur", "Veuillez placer le tag nfc sur le lecteur.")
                 warningDialog.exec_()
 
+    def formatValid(self, text, strictPositive=True, isCredit=False):
 
-    def formatValid(self, text, strictPositive = True, isCredit = False):
-
-        try: #can it be red as money ?
+        try:  # can it be red as money ?
             amount = self.textToEur(text)
         except:
-            warningDialog = QWarningDialog("Format invalide","Veuillez saisir un nombre")
+            warningDialog = QWarningDialog("Format invalide", "Veuillez saisir un nombre")
             warningDialog.exec_()
             return False
 
-        if amount.getExponent() >= -2: #Less or two digits before the comma ?
-            if not isCredit and amount == Eur(0): #0 is an acceptable number as long as it's not a validation
+        if amount.getExponent() >= -2:  # Less or two digits before the comma ?
+            if not isCredit and amount == Eur(0):  # 0 is an acceptable number as long as it's not a validation
                 return True
             elif amount > Eur(0) or not strictPositive:
                 return True
             else:
-                warningDialog = QWarningDialog("Format Invalide","Veuillez saisir un nombre strictement positif")
+                warningDialog = QWarningDialog("Format Invalide", "Veuillez saisir un nombre strictement positif")
                 warningDialog.exec_()
                 return False
         else:
-            warningDialog = QWarningDialog("Format Invalide","Veuillez saisir un nombre avec au plus deux chiffres après la virgule.")
+            warningDialog = QWarningDialog(
+                "Format Invalide", "Veuillez saisir un nombre avec au plus deux chiffres après la virgule.",
+            )
             warningDialog.exec_()
             return False
 
-
     def textToEur(self, text):
         return Eur(text.replace("€", "").replace(",", ".").replace(" ", "").strip())
-
 
     def formatInput(self):
         inputLine = self.sender()
         text = inputLine.text()
 
         inputLine.blockSignals(True)
-        if self.formatValid(text,self.strictPositive):
+        try:
+            text = str(eval(text))
+        except:
+            # Can't be parsed as mathematical expression
+            pass
+        if self.formatValid(text, self.strictPositive):
             amount = self.textToEur(text)
             inputLine.setText(amount)
         else:
@@ -92,6 +96,7 @@ class QAbstractPayment(QGroupBox):
 
     def setFocusOnOk(self):
         self.okButton.setFocus()
+
 
 class QCreditCardPayment(QAbstractPayment):
     enterPressed = pyqtSignal()
@@ -108,7 +113,6 @@ class QCreditCardPayment(QAbstractPayment):
         self.mainGridLayout = QGridLayout()
 
         self.label = QLabel()
-
 
         # Settings
 
@@ -134,11 +138,10 @@ class QCreditCardPayment(QAbstractPayment):
         self.inputLine.returnPressed.connect(self.formatInput)
 
 
-
 class QCashPayment(QAbstractPayment):
     def __init__(self, parent=None):
         super().__init__(parent)
-        #Definition
+        # Definition
         self.paymentMethod = 1
         self.mainGridLayout = QGridLayout()
         self.mainVBoxLayout = QVBoxLayout()
@@ -189,11 +192,10 @@ class QCashPayment(QAbstractPayment):
         self.inputLine.editingFinished.connect(self.updateMoneyBack)
         self.moneyIn.editingFinished.connect(self.updateMoneyBack)
 
-
     def updateMoneyBack(self):
         creditText = self.inputLine.text()
         moneyInText = self.moneyIn.text()
-        #if self.formatValid(creditText) and self.formatValid(moneyInText):
+        # if self.formatValid(creditText) and self.formatValid(moneyInText):
         try:
             credit = self.textToEur(creditText)
         except:
@@ -203,7 +205,6 @@ class QCashPayment(QAbstractPayment):
         except:
             moneyIn = Eur(0)
         self.moneyBack.setText(str(moneyIn - credit))
-
 
 
 class QAEPayment(QCreditCardPayment):
@@ -245,38 +246,38 @@ class QRefillerTab(QWidget):
         super().__init__(parent)
         uim = QUIManager()
 
-        #Definitions
+        # Definitions
         self.mainLayout = QHBoxLayout()
 
-        #Left pannel
+        # Left pannel
         self.paymentMethodGroupBox = QGroupBox()
         self.paymentMethodLayout = QVBoxLayout()
 
         self.cashPaymentRadio = QRadioButton()
         self.cardPaymentRadio = QRadioButton()
         self.checkPaymentRadio = QRadioButton()
-        self.aePaymentRadio  = QRadioButton()
+        self.aePaymentRadio = QRadioButton()
         self.transfertPayementRadio = QRadioButton()
         self.otherPaymentRadio = QRadioButton()
 
-        #Middle pannel
+        # Middle pannel
         self.paymentLayout = QStackedLayout()
         self.cashPayment = QCashPayment()
         self.cardPayment = QCreditCardPayment()
         self.checkPayment = QCheckPayment()
-        self.aePayment  = QAEPayment() 
+        self.aePayment = QAEPayment()
         self.transfertPayement = QNFCPayment()
         self.otherPayment = QOtherPayment()
 
-        #Right Pannel
+        # Right Pannel
 
         self.rightLayout = QVBoxLayout()
 
         self.nfcInfo = QNFCInfo()
-        self.history = QHistory()
+        self.history = QRefillingHistory()
 
-        #layout
-        #Left pannel
+        # layout
+        # Left pannel
         self.paymentMethodGroupBox.setLayout(self.paymentMethodLayout)
         self.paymentMethodLayout.addWidget(self.cashPaymentRadio)
         self.paymentMethodLayout.addWidget(self.cardPaymentRadio)
@@ -285,7 +286,7 @@ class QRefillerTab(QWidget):
         self.paymentMethodLayout.addWidget(self.transfertPayementRadio)
         self.paymentMethodLayout.addWidget(self.otherPaymentRadio)
 
-        #midpannel
+        # midpannel
 
         self.paymentLayout.addWidget(self.cashPayment)
         self.paymentLayout.addWidget(self.cardPayment)
@@ -294,34 +295,31 @@ class QRefillerTab(QWidget):
         self.paymentLayout.addWidget(self.transfertPayement)
         self.paymentLayout.addWidget(self.otherPayment)
 
-        #Right pannel
+        # Right pannel
         self.rightLayout.addWidget(self.nfcInfo)
         self.rightLayout.addWidget(self.history)
 
-
-
-        #Settings
+        # Settings
         self.paymentMethodGroupBox.setTitle("Moyen de paiement")
         self.cashPaymentRadio.setText("Liquide")
-        self.cashPaymentRadio.setIcon(uim.getIcon('cash'))
+        self.cashPaymentRadio.setIcon(uim.getIcon("cash"))
 
         self.cardPaymentRadio.setText("Carte")
-        self.cardPaymentRadio.setIcon(uim.getIcon('card'))
+        self.cardPaymentRadio.setIcon(uim.getIcon("card"))
 
         self.checkPaymentRadio.setText("Chèque")
-        self.checkPaymentRadio.setIcon(uim.getIcon('check'))
+        self.checkPaymentRadio.setIcon(uim.getIcon("check"))
 
         self.aePaymentRadio.setText("Compte AE")
-        self.aePaymentRadio.setIcon(uim.getIcon('ae'))
+        self.aePaymentRadio.setIcon(uim.getIcon("ae"))
 
         self.transfertPayementRadio.setText("Transfert")
-        self.transfertPayementRadio.setIcon(uim.getIcon('transfert'))
+        self.transfertPayementRadio.setIcon(uim.getIcon("transfert"))
 
         self.otherPaymentRadio.setText("Autre")
-        self.otherPaymentRadio.setIcon(uim.getIcon('other'))
+        self.otherPaymentRadio.setIcon(uim.getIcon("other"))
 
         self.cashPaymentRadio.setChecked(True)
-
 
         self.mainLayout.addWidget(self.paymentMethodGroupBox)
         self.mainLayout.addLayout(self.paymentLayout)
@@ -330,7 +328,7 @@ class QRefillerTab(QWidget):
 
         self.cashPaymentRadio.toggled.connect(self.selectCash)
         self.cardPaymentRadio.toggled.connect(self.selectCreditCard)
-        self.aePaymentRadio .toggled.connect(self.selectAE)
+        self.aePaymentRadio.toggled.connect(self.selectAE)
         self.transfertPayementRadio.toggled.connect(self.selectTransfert)
         self.otherPaymentRadio.toggled.connect(self.selectOther)
 
@@ -361,7 +359,6 @@ class QRefillerTab(QWidget):
     def selectOther(self):
         if self.otherPaymentRadio.isChecked():
             self.paymentLayout.setCurrentWidget(self.otherPayment)
-    
 
     def credit(self, amount):
         nfcm = QNFCManager()
@@ -373,7 +370,13 @@ class QRefillerTab(QWidget):
             counterId = dm.getCounter().getId()
             machineUID = dm.getUID()
             paymentMethod = self.sender().getPaymentMethod()
-            refilling = client.requestRefilling(customer_id=uid,counter_id=counterId,device_uuid = machineUID,payment_method=paymentMethod,amount=amount)
-            printI("User {} credited of {}".format(uid,amount))
+            refilling = client.requestRefilling(
+                customer_id=uid,
+                counter_id=counterId,
+                device_uuid=machineUID,
+                payment_method=paymentMethod,
+                amount=amount,
+            )
+            printI("User {} credited of {}".format(uid, amount))
             self.balanceUpdated.emit()
-            self.history.addOperation(refilling)
+            self.history.addRefilling(refilling)

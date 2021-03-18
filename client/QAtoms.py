@@ -19,29 +19,31 @@ from QUIManager import QUIManager
 
 
 class QBuyingInfo(QWidget):
-    def __init__(self, productDict = None, parent=None):
+    def __init__(self, qBuying, parent=None):
         super().__init__(parent)
+        productList = qBuying.getBasketItems()
         # Définitons
         self.mainLayout = QGridLayout()
-        self.productTree = QProductSelector(productDict)
+        self.productTree = QTree([],)
 
         self.userInfoGroupBox = QGroupBox()
         self.userInfoLayout = QVBoxLayout()
-        self.userRowInfo = QRowInfo()
+        self.userInfoTree = QUserList()
 
         self.buttonLayout = QHBoxLayout()
         self.editButton = QPushButton()
         self.deleteButton = QPushButton()
         self.okButton = QPushButton()
 
+        # Layout
+        self.userInfoGroupBox.setLayout(self.userInfoLayout)
+        self.userInfoLayout.addWidget(self.userInfoTree)
 
-        #Layout
-        self.mainLayout.addWidget(self.productTree, 0,0)
-        self.mainLayout.addWidget(self.userInfoGroupBox,0,1)
-        self.mainLayout.addLayout(self.buttonLayout,1,0,1,2)
+        self.mainLayout.addWidget(self.productTree, 0, 0)
+        self.mainLayout.addWidget(self.userInfoGroupBox, 0, 1)
+        self.mainLayout.addLayout(self.buttonLayout, 1, 0, 1, 2)
 
-
-        #self.userRowInfo.addRow("UID",)
+        # self.userRowInfo.addRow("UID",)
 
         self.buttonLayout.addWidget(self.editButton)
         self.buttonLayout.addWidget(self.deleteButton)
@@ -49,12 +51,11 @@ class QBuyingInfo(QWidget):
 
         self.setLayout(self.mainLayout)
 
-        #Settings
+        # Settings
+        self.userInfoGroupBox.setTitle("Clients")
         self.editButton.setText("Éditer")
         self.deleteButton.setText("Rembourser")
         self.okButton.setText("Retour")
-
-
 
 
 class QDelButton(QToolButton):
@@ -71,7 +72,7 @@ class QDelButton(QToolButton):
         # So normally ui manager should be used here
         # but because of the cycle import problem I can't import the ui manager here unless
         # I merge QAtoms with QManager...
-#        self.setIcon(QIcon("ressources/themes/default/ui-icons/delete.png"))
+        #        self.setIcon(QIcon("ressources/themes/default/ui-icons/delete.png"))
         self.setIcon(uim.getIcon("delete"))
         self.setIconSize(QSize(32, 32))
         self.setFixedSize(QSize(48, 48))
@@ -154,9 +155,7 @@ class QQuantity(QWidget):
             self.quantityEditLine.setText("1")
             self.product.setQuantity(1)
             popUp = QErrorDialog(
-                "Erreur de saisie",
-                "Quantité invalide",
-                "Veuillez saisir un nombre entier positif non nul",
+                "Erreur de saisie", "Quantité invalide", "Veuillez saisir un nombre entier positif non nul",
             )
             # center(popUp)
             popUp.exec()
@@ -176,11 +175,12 @@ class QQuantity(QWidget):
             self.quantityChanged.emit()
         except ValueError:
             print("ERROR: ", qty, " is not a number")
-    
+
     def update(self):
         self.quantityEditLine.setText(str(self.product.getQuantity()))
-class QUserInfo(QWidget):
 
+
+class QUserInfo(QWidget):
     def __init___(self, parent=None):
         super().__init__(parent)
         uim = QUIManager()
@@ -189,51 +189,47 @@ class QUserInfo(QWidget):
         self.setWindowTitle("Informations utilisateur")
         self.setWindowIcon(uim.getIcon("group"))
 
-class QProductInfo(QWidget):
 
-    def __init__(self,product, parent=None):
+class QProductInfo(QWidget):
+    def __init__(self, product, parent=None):
         super().__init__(parent)
         uim = QUIManager()
 
-        #Definition
+        # Definition
         self.mainLayout = QVBoxLayout()
         self.rowInfo = QRowInfo()
-        #Layout
+        # Layout
         self.mainLayout.addWidget(self.rowInfo)
         self.setLayout(self.mainLayout)
 
-        #Settings
+        # Settings
 
         self.rowInfo.addRow("Prix", product.getPrice())
         self.rowInfo.addRow("Nom", product.getName())
         self.rowInfo.addRow("Code", product.getCode())
         self.rowInfo.addRow("Id", product.getId())
-        self.setFixedSize(300,100)
-
+        self.setFixedSize(300, 100)
 
         self.setWindowTitle("Informations produit")
         self.setWindowIcon(uim.getWindowIcon("product"))
         center(self)
 
 
-
-#________/\\\___________/\\\\\\\\\_________________________________________________________________        
-# _____/\\\\/\\\\______/\\\\\\\\\\\\\_______________________________________________________________       
-#  ___/\\\//\////\\\___/\\\/////////\\\_____/\\\_____________________________________________________      
-#   __/\\\______\//\\\_\/\\\_______\/\\\__/\\\\\\\\\\\_____/\\\\\_______/\\\\\__/\\\\\____/\\\\\\\\\\_     
-#    _\//\\\______/\\\__\/\\\\\\\\\\\\\\\_\////\\\////____/\\\///\\\___/\\\///\\\\\///\\\_\/\\\//////__    
-#     __\///\\\\/\\\\/___\/\\\/////////\\\____\/\\\_______/\\\__\//\\\_\/\\\_\//\\\__\/\\\_\/\\\\\\\\\\_   
-#      ____\////\\\//_____\/\\\_______\/\\\____\/\\\_/\\__\//\\\__/\\\__\/\\\__\/\\\__\/\\\_\////////\\\_  
-#       _______\///\\\\\\__\/\\\_______\/\\\____\//\\\\\____\///\\\\\/___\/\\\__\/\\\__\/\\\__/\\\\\\\\\\_ 
+# ________/\\\___________/\\\\\\\\\_________________________________________________________________
+# _____/\\\\/\\\\______/\\\\\\\\\\\\\_______________________________________________________________
+#  ___/\\\//\////\\\___/\\\/////////\\\_____/\\\_____________________________________________________
+#   __/\\\______\//\\\_\/\\\_______\/\\\__/\\\\\\\\\\\_____/\\\\\_______/\\\\\__/\\\\\____/\\\\\\\\\\_
+#    _\//\\\______/\\\__\/\\\\\\\\\\\\\\\_\////\\\////____/\\\///\\\___/\\\///\\\\\///\\\_\/\\\//////__
+#     __\///\\\\/\\\\/___\/\\\/////////\\\____\/\\\_______/\\\__\//\\\_\/\\\_\//\\\__\/\\\_\/\\\\\\\\\\_
+#      ____\////\\\//_____\/\\\_______\/\\\____\/\\\_/\\__\//\\\__/\\\__\/\\\__\/\\\__\/\\\_\////////\\\_
+#       _______\///\\\\\\__\/\\\_______\/\\\____\//\\\\\____\///\\\\\/___\/\\\__\/\\\__\/\\\__/\\\\\\\\\\_
 #        _________\//////___\///________\///______\/////_______\/////_____\///___\///___\///__\//////////__
 #
 
 
-
-class QAtom(QObject,Atom):
-
-    def __init__(self,atom = None): 
-        super().__init__()   
+class QAtom(QObject, Atom):
+    def __init__(self, atom=None):
+        super().__init__()
         self.atomKeys = []
         if atom:
             self.setAtom(atom)
@@ -245,20 +241,21 @@ class QAtom(QObject,Atom):
         else:
             self.atomKeys = atom.getAtomKeys()
 
-        selfDict = vars(self) # get the dictionnary representation of the QAtom
-        for key in self.atomKeys: #for each attribute of the incomming atom 
-            selfDict[key] = vars(atom)[key] #copy it in the QAtom
+        selfDict = vars(self)  # get the dictionnary representation of the QAtom
+        for key in self.atomKeys:  # for each attribute of the incomming atom
+            selfDict[key] = vars(atom)[key]  # copy it in the QAtom
 
     def getAtom(self):
-        atom = (type(self).__bases__[1])() #Create an atom that match the base class
-                                     #note that it involve that the base class must always be the 2nd base
+        atom = (type(self).__bases__[1])()  # Create an atom that match the base class
+        # note that it involve that the base class must always be the 2nd base
         atomDict = vars(atom)
-        selfDict = vars(self) #/!\ THIS INVOLVE THAT THIS FUNCTION DON'T RETURN A COPY BUT THE ACTUAL ATOM /!\ 
-                              #    IT'S COOL BECAUSE IT MEANS THAT WE CAN EITHER WORK WITH A COPY OR A POINTER
-                              #    BUT WE HAVE TO BE CAREFULL WITH THIS AND USE DEEPCOPY OR NOT...
+        selfDict = vars(self)
+        # /!\ THIS INVOLVE THAT THIS FUNCTION DOES NOT RETURN A COPY BUT THE ACTUAL ATOM /!\
+        #    IT'S COOL BECAUSE IT MEANS THAT WE CAN EITHER WORK WITH A COPY OR A POINTER
+        #    BUT WE HAVE TO BE CAREFULL WITH THIS AND USE DEEPCOPY OR NOT...
         for key in self.atomKeys:
             atomDict[key] = selfDict[key]
-        #We return actually a copy of the data contained in QAtom
+        # We return actually a copy of the data contained in QAtom
         return atom
 
     def getAtomKeys(self):
@@ -272,17 +269,17 @@ class QAtom(QObject,Atom):
 
 
 class QUser(QAtom, User):
-
     def __init__(self, user):
         super().__init__(user)
         self.infoPannel = None
-        
+
+
 class QProduct(QAtom, Product):
 
     deleted = pyqtSignal()
     updated = pyqtSignal()
 
-    def __init__(self,product):
+    def __init__(self, product):
         super().__init__(product)
 
         self.infoPannel = None
@@ -293,8 +290,7 @@ class QProduct(QAtom, Product):
         self.quantityPannel.quantityChanged.connect(self.update)
         self.delButton.clicked.connect(self.delete)
 
-        self.actionDict={"Informations produit":{"fct":self.showInfoPannel,"icon":"product"}}
-
+        self.actionDict = {"Informations produit": {"fct": self.showInfoPannel, "icon": "product"}}
 
     def showInfoPannel(self):
         self.infoPannel = QProductInfo(self)
@@ -307,13 +303,13 @@ class QProduct(QAtom, Product):
         return self.delButton
 
     def incQuantity(self):
-        self.setQuantity(self.getQuantity()+1)
+        self.setQuantity(self.getQuantity() + 1)
         self.update()
         return self.getQuantity()
 
     def decQuantity(self):
-        if self.getQuantity()>1:
-            self.setQuantity(self.getQuantity()-1)
+        if self.getQuantity() > 1:
+            self.setQuantity(self.getQuantity() - 1)
             self.update()
         return self.getQuantity()
 
@@ -324,24 +320,52 @@ class QProduct(QAtom, Product):
     def delete(self):
         self.deleted.emit()
 
+
 class QCounter(QAtom, Counter):
     def __init__(self, counter):
         super().__init__(counter)
         self.infoPannel = None
 
+
 class QOperation(QAtom, Operation):
     def __init__(self, operation):
         super().__init__(operation)
 
+
 class QBuying(QOperation, Buying):
+    sRefounded = pyqtSignal()  # The attribute "refounded" already exists
+
     def __init__(self, buying):
         super().__init__(buying)
-        self.infoPannel = None
+        self.actionDict["Rembourser"] = {"fct": self.refound, "icon": "delete"}
+
+    def refound(self):
+        client = Client()
+        nfcm = QNFCManager()
+        userList = self.getDistribution().getUserList()
+        if nfcm.getCardUID() in userList:
+            reply = QMessageBox.question(
+                None, "Rembourser transaction", "Rembourser cette transaction ?", QMessageBox.Yes, QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                if client.requestRefund(buying_id=self.getId()) is None:
+                    printE("Error during refounding")
+                else:
+                    self.sRefounded.emit()
+        else:
+            warningDialog = QWarningDialog("Mauvais utilisateur","L'utilisateur n'est pas concerné par cette transaction","Veuillez présenter une carte concernée par la transaction")
+            center(warningDialog)
+            warningDialog.exec()
+
+
+#        self.infoPannel = QBuyingInfo(self)
+
 
 class QRefilling(QOperation, Refilling):
     def __init__(self, refilling):
         super().__init__(refilling)
         self.infoPannel = None
+
 
 class QDistribution(QAtom, Distribution):
     def __init__(self, distribution):

@@ -1,13 +1,9 @@
-
 from Console import *
 
-    
 
 class UIProperties:
     def __init__(self):
-        self.text = (
-            []
-        )  # A list because there is several things we may want to show from an Atom (name,price,...)
+        self.text = []  # A list because there is several things we may want to show from an Atom (name,price,...)
         self.foreground = None
         self.background = None
         self.icon = None
@@ -55,19 +51,20 @@ class UIProperties:
     def getToolTip(self):
         return self.toolTip
 
+
 class Atom:
-    def __init__(self,texts=[], icon=""):
+    def __init__(self, texts=[], icon=""):
         self.ui = UIProperties()
         self.setTexts(texts)
         self.setIcon(icon)
-        self.id = None  #id used in db  
+        self.id = None  # id used in db
 
     def setTexts(self, text):
         self.ui.setTexts(text)
         return self
 
     def setText(self, text, index):
-        self.ui.setText(text,index)
+        self.ui.setText(text, index)
         return self
 
     def setForeground(self, foreground):
@@ -84,6 +81,10 @@ class Atom:
 
     def setToolTip(self, toolTip):
         self.ui.setToolTip(toolTip)
+        return self
+
+    def setId(self, id):
+        self.id = id
         return self
 
     def getTexts(self):
@@ -110,23 +111,18 @@ class Atom:
     def getId(self):
         return self.id
 
-    def setId(self, id):
-        self.id = id
-        return self
-
-
     def __eq__(self, key):
-        raise NotImplementedError('__eq__ not implemented for this class.')
+        raise NotImplementedError("__eq__ not implemented for this class.")
+
 
 class HappyHours(Atom):
-    
     def __init__(self):
         super().__init__()
-        self.start = None # QTime
-        self.end = None   # QTime
-        self.price = None # Eur
-    
-    def setStart(self,start):
+        self.start = None  # QTime
+        self.end = None  # QTime
+        self.price = None  # Eur
+
+    def setStart(self, start):
         self.start = start
         return self
 
@@ -147,13 +143,13 @@ class HappyHours(Atom):
     def getPrice(self):
         return self.price
 
+
 class User(Atom):
     def __init__(self):
         super().__init__()
         self.id = None  # UID of the nfc card
         self.balance = None
         self.canDrink = None
-
 
     def setBalance(self, balance):
         self.balance = balance
@@ -176,10 +172,10 @@ class Product(Atom):
         self.name = None  # pretty print
         self.code = None  # short name
         self.price = None  # The price is either updated when it's in a the selctor, either retreived from database when it's in history
-        self.defaultPrice = None # Unit price without any happy hours
+        self.defaultPrice = None  # Unit price without any happy hours
         self.quantity = None  # When product is used as selector, quantity is 1 and when used in a basket, it may vary
-        self.happyHours = None # List of happy hours
-        self.category = None # string e.g "Drinks.Alcool.Wine"
+        self.happyHours = None  # List of happy hours
+        self.category = None  # string e.g "Drinks.Alcool.Wine"
 
     def setName(self, name):
         self.name = name
@@ -187,16 +183,16 @@ class Product(Atom):
 
     def setCode(self, code):
         self.code = code
-        self.setIcon(self.code) # /!\ Maybe this should not hardcoded here 
-        self.setToolTip(self.code) #Same remark
+        self.setIcon(self.code)  # /!\ Maybe this should not hardcoded here
+        self.setToolTip(self.code)  # Same remark
         return self
 
-    def setPrice(self, price): # price is never a float but something inherited from Decimal (Money.Eur)
+    def setPrice(self, price):  # price is never a float but something inherited from Decimal (Money.Eur)
         if isinstance(price, float):
             printWW("Price should not be float !")
         self.price = price
         return self
-    
+
     def setDefaultPrice(self, price):
         if isinstance(price, float):
             printWW("Price should not be float !")
@@ -207,7 +203,7 @@ class Product(Atom):
         self.quantity = quantity
         return self
 
-    def setHappyHours(self,happyHours):
+    def setHappyHours(self, happyHours):
         self.happyHours = happyHours
         return self
 
@@ -236,7 +232,6 @@ class Product(Atom):
     def getCategory(self):
         return self.category
 
-
     def __eq__(self, key):
         if type(self) == type(key):
             return self.getId() == key.getId()
@@ -244,10 +239,10 @@ class Product(Atom):
             return False
 
     def __repr__(self):
-        return "Product({0}, {1})".format(self.id,self.name)
+        return "Product({0}, {1})".format(self.id, self.name)
 
     def __str__(self):
-        return "{0}: {1}".format(self.id,self.name)
+        return "{0}: {1}".format(self.id, self.name)
 
 
 class Operation(Atom):
@@ -291,6 +286,7 @@ class Operation(Atom):
             return self.getId() == key.getId()
         else:
             return False
+
 
 class Buying(Operation):
     def __init__(self):
@@ -339,14 +335,14 @@ class Refilling(Operation):
     def setNewBalance(self, balance):
         self.newBalance = balance
         return self
-    
+
     def getNewBalance(self):
         return self.newBalance
 
     def setCustomerId(self, uid):
         self.customerId = uid
         return self
-    
+
     def getCustomerId(self):
         return self.customerId
 
@@ -364,44 +360,45 @@ class Counter(Atom):
         return self.name
 
     def __repr__(self):
-        return "Counter({0}, {1})".format(self.id,self.name)
+        return "Counter({0}, {1})".format(self.id, self.name)
 
     def __str__(self):
-        return "{0}: {1}".format(self.id,self.name)
-    
+        return "{0}: {1}".format(self.id, self.name)
+
     def __eq__(self, key):
         if type(self) == type(key):
             return key.getId() == self.getId() and key.getName() == self.getName()
         else:
             return False
 
+
 class Distribution(Atom):
     def __init__(self):
         super().__init__()
-        self.userList = [] # list of user uid
-        self.userBalance = [] # the current balance of each user before transaction
-        self.amount = [] # the amount paid by each user
-        self.totalPrice = None # The total price to pay
-    
-    def setUserList(self,uidList):
+        self.userList = []  # list of user uid
+        self.userBalance = []  # the current balance of each user before transaction
+        self.amount = []  # the amount paid by each user
+        self.totalPrice = None  # The total price to pay
+
+    def setUserList(self, uidList):
         self.userList = uidList
         return self
 
     def getUserList(self):
         return self.userList
 
-    def addUser(self,uid):
+    def addUser(self, uid):
         self.userList.append(uid)
         return self
-    
+
     def addAmount(self, amount):
         self.amount.append(amount)
         return self
 
-    def removeUser(self,uid):
+    def removeUser(self, uid):
         try:
             indexUser = self.userList.index(uid)
-            del(self.userList[indexUser])
+            del self.userList[indexUser]
             return self
         except ValueError:
             printE("User {} not found".format(uid))
@@ -425,7 +422,7 @@ class Distribution(Atom):
     def getUserBalance(self, uid):
         try:
             indexUser = self.userList.index(uid)
-            return self.userBalance[indexUser] 
+            return self.userBalance[indexUser]
         except ValueError:
             printE("User {} not found".format(uid))
             return None
@@ -440,7 +437,7 @@ class Distribution(Atom):
                 self.amount[userIndex] = amount
             else:
                 printWW("Insufficient balance for user {}".format(uid))
-                self.amount[userIndex]  = self.userBalance[userIndex]
+                self.amount[userIndex] = self.userBalance[userIndex]
         except ValueError:
             printE("user {} not found".format(uid))
 
@@ -454,6 +451,12 @@ class Distribution(Atom):
         except ValueError:
             printE("user {} not found".format(uid))
 
+    def getTotalPrice(self):
+        return self.totalPrice
+
+    def setTotalPrice(self, totalPrice):
+        self.totalPrice = totalPrice
+        return self
 
     def setFairDistribution(self):
         pass

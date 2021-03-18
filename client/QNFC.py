@@ -27,6 +27,7 @@ from smartcard.ReaderMonitoring import ReaderMonitor, ReaderObserver
 
 from Console import *
 
+
 class NFC_Reader_Error(Exception):
     pass
 
@@ -72,11 +73,10 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
     def __init__(self):
         # should it be super(QObject), super(CardObserver) ?
         QObject.__init__(self)
-        CardObserver.__init__(self)        
+        CardObserver.__init__(self)
         self.cardReader = getReader()
-        self.cardUID = toHexString([0,0,0,0]) # now it's always a string
+        self.cardUID = toHexString([0, 0, 0, 0])  # now it's always a string
         self.__hasCard = False
-
 
     def update(self, observable, actions):
         (addedcards, removedcards) = actions
@@ -84,20 +84,15 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
             try:
                 hresult, hcontext = SCardEstablishContext(SCARD_SCOPE_USER)
                 hresult, hcard, dwActiveProtocol = SCardConnect(
-                    hcontext,
-                    self.cardReader,
-                    SCARD_SHARE_SHARED,
-                    SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
+                    hcontext, self.cardReader, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
                 )
-                hresult, response = SCardTransmit(
-                    hcard, dwActiveProtocol, [0xFF, 0xCA, 0x00, 0x00, 0x00]
-                )
+                hresult, response = SCardTransmit(hcard, dwActiveProtocol, [0xFF, 0xCA, 0x00, 0x00, 0x00])
 
                 self.__hasCard = True
                 self.errorCode = response[-2:]
 
                 if self.errorCode != [0x63, 0x00]:
-                    self.cardUID = toHexString(response[:-2]) # string are more handy serverwise
+                    self.cardUID = toHexString(response[:-2])  # string are more handy serverwise
                 else:
                     self.cardUID = toHexString([0, 0, 0, 0])
                     printE("Failed to read card UID, please try again")
@@ -124,11 +119,10 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
     def hasCard(self):
         return self.__hasCard
 
-    #DEBUG
-    #For virtual card...
-    def setCardState(self,state):
+    # DEBUG
+    # For virtual card...
+    def setCardState(self, state):
         self.__hasCard = state
-
 
 
 # Allow the user to connect and disconect the reader whenerver he wants
@@ -143,7 +137,7 @@ class ReaderUpdater(QObject, ReaderObserver):
 
     def __init__(self):
         super().__init__()
-        self._hasReader= False
+        self._hasReader = False
 
     def update(self, observable, actions):
         (addedreaders, removedreaders) = actions
@@ -157,8 +151,6 @@ class ReaderUpdater(QObject, ReaderObserver):
             self.readerRemoved.emit()
 
         if cardObserver.cardReader:
-            self._hasReader=True
+            self._hasReader = True
         else:
-            self._hasReader=False
-
-
+            self._hasReader = False

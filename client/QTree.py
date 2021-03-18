@@ -5,7 +5,7 @@ from PyQt5.QtGui import *
 import PyQt5.QtCore
 import PyQt5.QtGui
 
-from QUtils import *
+# from QUtils import *
 from QAtoms import *
 from Console import *
 from QDataManager import QDataManager
@@ -18,25 +18,27 @@ import copy
 # The tree model/view paradigm is NOT easy to handle at first, but the most difficult
 # functions are already implemented...
 
-#The key to understand what's going here is to check the Qt's Model/View paradigm 
-#https://doc.qt.io/qt-5/model-view-programming.html
-#It's a really powerfull way to handle trees in UIs
+# The key to understand what's going here is to check the Qt's Model/View paradigm
+# https://doc.qt.io/qt-5/model-view-programming.html
+# It's a really powerfull way to handle trees in UIs
 
-#IN A FEW WORDS
-#The main idea behind model/view paradigm, is break the tree into two main parts:
-#The model (What's inside my tree ?) and View (How does it look ?)
-#Both are completly INDEPENDENTS and exchange information through some standards functions
-#It's a client/server relationship, the tree ask elements to the model and the model respond
-#Because both are independants, you can use the same model for different treeView or the other way
+# IN A FEW WORDS
+# The main idea behind model/view paradigm, is break the tree into two main parts:
+# The model (What's inside my tree ?) and View (How does it look ?)
+# Both are completly INDEPENDENTS and exchange information through some standards functions
+# It's a client/server relationship, the tree ask elements to the model and the model respond
+# Because both are independants, you can use the same model for different treeView or the other way
 
-#Pay attention to the object you're handling, basicaly there are three layers from the UI to the data:
-# QModelIndex index  -> What the view (and the model) handle 
-# ItemTree    item   -> What the model (and only the model) handle internally 
+# Pay attention to the object you're handling, basicaly there are three layers from the UI to the data:
+# QModelIndex index  -> What the view (and the model) handle
+# ItemTree    item   -> What the model (and only the model) handle internally
 # QAtom      qAtom   -> What the user handle (and the dev)
+
 
 class TreeItem:
     """ This class is is in charge to store the architecture/data inside the QT Tree Model.
         It behave like a basic chained list where each node is a QAtom"""
+
     def __init__(self, data, parent=None):
         self.parentItem = parent
         self.childItems = []
@@ -45,14 +47,12 @@ class TreeItem:
             self.data = data
         else:
             self.data = QAtom()
-            if isinstance(data,list) is True:
+            if isinstance(data, list) is True:
                 # /!\ We don't check if data can be interpreted as string
                 self.data.setTexts(data)
 
-
         self.__formatText()
-        #self.__parseMagicString()
-
+        # self.__parseMagicString()
 
     def appendChild(self, child):
         self.childItems.append(child)
@@ -60,7 +60,7 @@ class TreeItem:
     def child(self, row):
         return self.childItems[row]
 
-    def getChild(self): #TODO: remplace it by getChildren ...
+    def getChild(self):  # TODO: remplace it by getChildren ...
         return self.childItems
 
     def childCount(self):
@@ -70,7 +70,7 @@ class TreeItem:
         return len(self.data.getTexts())
 
     def getText(self, column=None):
-        parsedTextList = self.__parseMagicString() 
+        parsedTextList = self.__parseMagicString()
         try:
             if column is None:
                 return None
@@ -83,7 +83,7 @@ class TreeItem:
         return self.data
 
     def setData(self, data):
-        if isinstance(data,Atom):
+        if isinstance(data, QAtom):
             self.data = data
             self.__formatText()
             return True
@@ -96,7 +96,7 @@ class TreeItem:
 
         return 0
 
-    def parent(self): #TODO: Standartize this into getParent()
+    def parent(self):  # TODO: Standartize this into getParent()
         return self.parentItem
 
     # Usefull method for dynamic Tree
@@ -107,14 +107,13 @@ class TreeItem:
 
         for i in range(0, count):
             # note: According the Qt Doc, in TreeModel, items must have the same amount of columns.
-            #data = [QVariant()] * columns
+            # data = [QVariant()] * columns
             data = QAtom()
-            data.setTexts([""]*columns)
-            item = type(self)(data, self) # the type(self) is usefull to get dynamically the type of class
+            data.setTexts([""] * columns)
+            item = type(self)(data, self)  # the type(self) is usefull to get dynamically the type of class
             self.childItems.insert(position, item)
 
         return True
-    
 
     def insertColumns(self, position, columns):
         if position < 0 or position > len(self.data.getTexts()):
@@ -134,9 +133,7 @@ class TreeItem:
         if position < 0 or position > len(self.childItems):
             return False
 
-        for i in range(
-            0, count
-        ):  # I think this may create a segfault if count is incorrect
+        for i in range(0, count):  # I think this may create a segfault if count is incorrect
             self.childItems.pop(position)
 
         return True
@@ -165,19 +162,19 @@ class TreeItem:
         return True
 
     def __formatText(self):
-       #EXPERIMENTAL: AUTO ADJUST COLUMN (SO TEXT) LENGTH 
-       #Seems to work ...
-       #Format text format according to the parent
+        # EXPERIMENTAL: AUTO ADJUST COLUMN (SO TEXT) LENGTH
+        # Seems to work ...
+        # Format text format according to the parent
         if self.parentItem:
             currentText = self.data.getTexts()
             while len(currentText) < self.parentItem.columnCount():
                 currentText.append("")
             while len(currentText) > self.parentItem.columnCount():
-                del(currentText[-1])
-            self.data.setTexts(currentText) #Not necessary because of python shity behavior but clearer this way
-        #ensure data can be printed
+                del currentText[-1]
+            self.data.setTexts(currentText)  # Not necessary because of python shity behavior but clearer this way
+        # ensure data can be printed
         texts = self.data.getTexts()
-        for index,text in enumerate(texts):
+        for index, text in enumerate(texts):
             texts[index] = str(text)
 
     def __parseMagicString(self):
@@ -187,16 +184,16 @@ class TreeItem:
            for instance with a product '@ (2*price)**2' return (2 x price)² where price is
            an a property existing in the product."""
 
-        atomDict = vars(self.data)  #python built-in function to turn an object into dictionary
+        atomDict = vars(self.data)  # python built-in function to turn an object into dictionary
         texts = self.data.getTexts()
         parsedTextList = copy.deepcopy(texts)
-        for index,text in enumerate(texts):
-            if len(text)>0:
-                if '=' == text[0] or '@' == text[0]: # I can't decide I like both ... T_T
-                    expression = text.replace('=','').replace('@','')
+        for index, text in enumerate(texts):
+            if len(text) > 0:
+                if "=" == text[0] or "@" == text[0]:  # I can't decide I like both ... T_T
+                    expression = text.replace("=", "").replace("@", "")
                     try:
-                        parsedTextList[index] = str(eval(expression,atomDict)) #no rage still pythoninc <3
-                        #eval(expr,dict), basically it searchs variable defined in 'dict' and replace them in expr.
+                        parsedTextList[index] = str(eval(expression, atomDict))  # no rage still pythoninc <3
+                        # eval(expr,dict), basically it searchs variable defined in 'dict' and replace them in expr.
                     except:
                         printW("Failed to parse the expression {}".format(expression))
         return parsedTextList
@@ -208,7 +205,7 @@ class QTreeModel(QAbstractItemModel):
        Abstract means that we need to overload some standard function in order to make
        it works correctly.
        Most of the method implemented below are standard methods the TreeView need to work"""
-    
+
     def __init__(self, headers, data=None, parent=None):
         super().__init__(parent)
         self.rootItem = TreeItem(headers)
@@ -219,14 +216,13 @@ class QTreeModel(QAbstractItemModel):
         Depending on what the View want to know, the model must provide the correct information,
         hence the 'role'...
         """
-
         uim = QUIManager()
         if not index.isValid():
             return None
         item = index.internalPointer()
         data = item.getData()
         if role == Qt.DecorationRole:
-            #only show icons in first column
+            # only show icons in first column
             if index.column() == 0:
                 return uim.getIcon(data.getIcon())
             else:
@@ -302,9 +298,9 @@ class QTreeModel(QAbstractItemModel):
 
         return self.createIndex(parentItem.row(), 0, parentItem)
 
-    def setupModelData(self, atomList):
-        for atom in atomList:
-            self.insertAtom(0,atom)
+    def setupModelData(self, qAtomList):
+        for qAtom in qAtomList:
+            self.insertQAtom(0, atom)
 
     # Mandatory functions for editable tree
 
@@ -367,7 +363,7 @@ class QTreeModel(QAbstractItemModel):
         if isinstance(value, str):
             result = item.setText(index.column(), value)
         else:
-            result = item.setData(value) #Value should be QAtomic
+            result = item.setData(value)  # Value should be QAtomic
 
         if result:
             parent = index.parent()
@@ -385,28 +381,27 @@ class QTreeModel(QAbstractItemModel):
 
         return self.rootItem
 
-    def insertAtom(self, position, Atom, parent=QModelIndex()):
-        self.insertRow(position,QModelIndex())
-        newIndex = self.index(position,0)
-        self.setData(newIndex,Atom)
+    def insertQAtom(self, position, qAtom, parent=QModelIndex()):
+        self.insertRow(position, QModelIndex())
+        newIndex = self.index(position, 0)
+        self.setData(newIndex, qAtom)
 
-    def searchQAtom(self, qAtom:QAtom, parent = QModelIndex()):
+    def searchQAtom(self, qAtom: QAtom, parent=QModelIndex()):
         n_row = self.rowCount()
         for i in range(n_row):
-            item = self.getItem(self.index(i,0,parent))
+            item = self.getItem(self.index(i, 0, parent))
             data = item.getData()
-            if data == qAtom: # == means same id
-                return self.index(i,0),item,data
+            if data == qAtom:  # == means same id
+                return self.index(i, 0), item, data
 
-    def getQAtomList(self,parent=QModelIndex()):
+    def getQAtomList(self, parent=QModelIndex()):
         qAtomList = []
         n_row = self.rowCount()
         for i in range(n_row):
-            item = self.getItem(self.index(i,0,parent))
+            item = self.getItem(self.index(i, 0, parent))
             data = item.getData()
             qAtomList.append(data)
         return qAtomList
-
 
 
 class QTree(QWidget):

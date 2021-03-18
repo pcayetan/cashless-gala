@@ -2,20 +2,13 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-import PyQt5.QtCore
-import PyQt5.QtGui
-
-import copy
-import json
-
-from Atoms import *
 from Euro import Eur
 
 from QNFCManager import QNFCManager
-from QUIManager import QUIManager 
+from QUIManager import QUIManager
 from Client import Client
 
-#def euro(price):
+# def euro(price):
 #    return format_currency(price, "EUR", locale="fr_FR")
 
 
@@ -28,24 +21,24 @@ def center(self):
 
 
 class QNFCDialog(QDialog):
-    cardInserted  = pyqtSignal()
-    
-    def __init__(self, parent = None):
+    cardInserted = pyqtSignal()
+
+    def __init__(self, parent=None):
         super().__init__(parent)
         uim = QUIManager()
-        nfcm =  QNFCManager()
-        #Definition
+        nfcm = QNFCManager()
+        # Definition
         self.mainLayout = QVBoxLayout()
         self.label = QLabel()
-        self.setFixedSize(450,400)
+        self.setFixedSize(450, 400)
 
-        #Layout
+        # Layout
         self.mainLayout.addWidget(self.label)
         self.setLayout(self.mainLayout)
 
         nfcm.cardInserted.connect(self.proceed)
 
-        #Setup
+        # Setup
         movie = uim.getAnimation("show-card-animation")
         self.label.setMovie(movie)
         movie.start()
@@ -53,12 +46,12 @@ class QNFCDialog(QDialog):
         self.setWindowTitle("Veuillez présenter une carte devant le lecteur")
         self.setWindowIcon(uim.getIcon("nfc-icon"))
 
-
         center(self)
-    
+
     def proceed(self):
         self.cardInserted.emit()
         self.done(0)
+
 
 class QRowInfo(QWidget):
     def __init__(self, parent=None):
@@ -90,9 +83,7 @@ class QRowInfo(QWidget):
         self.layoutRow.addWidget(labelRowName)
         self.layoutRow.addWidget(LabelValue)
         #        self.mainVBoxLayout.addLayout(self.layoutRow)
-        self.mainVBoxLayout.insertLayout(
-            self.mainVBoxLayout.count() - 1, self.layoutRow
-        )
+        self.mainVBoxLayout.insertLayout(self.mainVBoxLayout.count() - 1, self.layoutRow)
 
     def setRow(self, i, j, String):
         self.row[i][j].setText(str(String))
@@ -100,12 +91,7 @@ class QRowInfo(QWidget):
 
 class QErrorDialog(QMessageBox):
     def __init__(
-        self,
-        title="Erreur",
-        message="Erreur",
-        info="Une erreur est survenue",
-        icon=QMessageBox.Warning,
-        parent=None,
+        self, title="Erreur", message="Erreur", info="Une erreur est survenue", icon=QMessageBox.Warning, parent=None,
     ):
         super().__init__(parent)
 
@@ -126,12 +112,7 @@ class QErrorDialog(QMessageBox):
 
 class QWarningDialog(QMessageBox):
     def __init__(
-        self,
-        title="Erreur",
-        message="Erreur",
-        info="Une erreur est survenue",
-        icon=QMessageBox.Warning,
-        parent=None,
+        self, title="Erreur", message="Erreur", info="Une erreur est survenue", icon=QMessageBox.Warning, parent=None,
     ):
         super().__init__(parent)
 
@@ -152,9 +133,6 @@ class QWarningDialog(QMessageBox):
         self.setFixedHeight(100)
 
 
-
-
-
 class QAbstractInputDialog(QWidget):
     def __init__(self, questionText, parent=None):
         super().__init__(parent)
@@ -163,9 +141,7 @@ class QAbstractInputDialog(QWidget):
         self.questionLabel = QLabel()
         self.inputBar = QLineEdit()
         self.okButton = QPushButton()
-        self.errorDialog = QErrorDialog(
-            "Erreur de saisie", "Erreur de saisie", "Erreur"
-        )
+        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Erreur")
 
         # Settings
         self.questionLabel.setText(questionText)
@@ -189,9 +165,7 @@ class QSimpleNumberInputDialog(QAbstractInputDialog):
 
     def __init__(self, questionText, parent=None):
         super().__init__(parent)
-        self.errorDialog = QErrorDialog(
-            "Erreur de saisie", "Erreur de saisie", "Veuillez saisir un nombre réel."
-        )
+        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir un nombre réel.")
         self.inputBar.setText("2")
 
     def sendValue(self):
@@ -200,9 +174,7 @@ class QSimpleNumberInputDialog(QAbstractInputDialog):
             self.inputBar.setText("2")
             self.close()
         except:
-            self.errorDialog.setWindowIcon(
-                self.style().standardIcon(QStyle.SP_MessageBoxWarning)
-            )
+            self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.errorDialog.show()
             center(self.errorDialog)
             self.inputBar.setText("2")
@@ -213,9 +185,7 @@ class QIpInputDialog(QAbstractInputDialog):
 
     def __init__(self, questionText, parent=None):
         super().__init__(parent)
-        self.errorDialog = QErrorDialog(
-            "Erreur de saisie", "Erreur de saisie", "Veuillez saisir une Ip V4 valide"
-        )
+        self.errorDialog = QErrorDialog("Erreur de saisie", "Erreur de saisie", "Veuillez saisir une Ip V4 valide")
 
     def sendValue(self):
         config = MachineConfig()
@@ -232,11 +202,7 @@ class QIpInputDialog(QAbstractInputDialog):
                     portParser = i.split(":")
                     if len(portParser) == 2:
                         try:
-                            if (
-                                0 <= int(portParser[0])
-                                and int(portParser[0]) <= 255
-                                and int(portParser[1]) > 0
-                            ):
+                            if 0 <= int(portParser[0]) and int(portParser[0]) <= 255 and int(portParser[1]) > 0:
                                 pass
                             else:
                                 valid = False
@@ -254,9 +220,7 @@ class QIpInputDialog(QAbstractInputDialog):
             api_instance = swagger_client.DefaultApi(swagger_client.ApiClient(config))
             self.close()
         else:
-            self.errorDialog.setWindowIcon(
-                self.style().standardIcon(QStyle.SP_MessageBoxWarning)
-            )
+            self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.errorDialog.show()
             center(self.errorDialog)
 
@@ -266,57 +230,60 @@ class QNotImplemented(QLabel):
         super().__init__(parent)
         self.setText("NOT IMPLEMENTED")
 
-class QNFCInfo(QWidget):
 
-    def __init__(self,parent=None):
-        nfcm=QNFCManager()
+class QNFCInfo(QWidget):
+    def __init__(self, parent=None):
+        nfcm = QNFCManager()
+        uim = QUIManager()
         super().__init__(parent)
-        
-        #Definition
+
+        # Definition
         self.mainLayout = QVBoxLayout()
-        
+
         self.groupBox = QGroupBox()
         self.groupBoxLayout = QVBoxLayout()
         self.rowInfo = QRowInfo()
         self.userHistoryButton = QPushButton()
 
-        #Layout
+        # Layout
 
         self.groupBox.setLayout(self.groupBoxLayout)
         self.groupBoxLayout.addWidget(self.rowInfo)
         self.groupBoxLayout.addWidget(self.userHistoryButton)
 
-        #main layout
+        # main layout
         self.mainLayout.addWidget(self.groupBox)
         self.setLayout(self.mainLayout)
 
-        #Settings
-        self.rowInfo.addRow("UID",nfcm.getCardUID())
-        self.rowInfo.addRow("Solde",Eur(0))
+        # Settings
+        self.rowInfo.addRow("UID", nfcm.getCardUID())
+        self.rowInfo.addRow("Solde", Eur(0))
         self.userHistoryButton.setText("Historique utilisateur")
         self.groupBox.setTitle("Info utilisateur")
 
         nfcm.cardInserted.connect(self.cardInserted)
         nfcm.cardRemoved.connect(self.cardRemoved)
+        uim.balanceUpdated.connect(self.update)
 
     def cardInserted(self):
         nfcm = QNFCManager()
         client = Client()
         cardUID = nfcm.getCardUID()
         balance = client.requestUserBalance(customer_id=cardUID)
-        self.rowInfo.setRow(1,1,balance)
-        self.rowInfo.setRow(0,1,cardUID)
-    
+        self.rowInfo.setRow(1, 1, balance)
+        self.rowInfo.setRow(0, 1, cardUID)
+
     def cardRemoved(self):
-        self.rowInfo.setRow(1,1,Eur(0))
-        self.rowInfo.setRow(0,1,"00 00 00 00")
+        self.rowInfo.setRow(1, 1, Eur(0))
+        self.rowInfo.setRow(0, 1, "00 00 00 00")
 
     def update(self):
         nfcm = QNFCManager()
         client = Client()
         cardUID = nfcm.getCardUID()
         balance = client.requestUserBalance(customer_id=cardUID)
-        self.rowInfo.setRow(1,1,balance)
+        self.rowInfo.setRow(1, 1, balance)
+
 
 class QVirtualCard(QWidget):
     virtualCardInserted = pyqtSignal(str)
@@ -326,17 +293,16 @@ class QVirtualCard(QWidget):
         uim = QUIManager()
         nfcm = QNFCManager()
 
-
-        #Definition
+        # Definition
         self.mainLayout = QGridLayout()
         self.inputLine = QLineEdit()
         self.showCardButton = QPushButton()
         self.removeCardButton = QPushButton()
 
-        #Layout
-        self.mainLayout.addWidget(self.inputLine,0,0,1,2)
-        self.mainLayout.addWidget(self.showCardButton,1,0,1,1)
-        self.mainLayout.addWidget(self.removeCardButton,1,1,1,1)
+        # Layout
+        self.mainLayout.addWidget(self.inputLine, 0, 0, 1, 2)
+        self.mainLayout.addWidget(self.showCardButton, 1, 0, 1, 1)
+        self.mainLayout.addWidget(self.removeCardButton, 1, 1, 1, 1)
         self.setLayout(self.mainLayout)
         center(self)
 
@@ -344,13 +310,13 @@ class QVirtualCard(QWidget):
         self.virtualCardInserted[str].connect(nfcm.virtualCardInsert)
         self.removeCardButton.clicked.connect(nfcm.virtualCardRemove)
 
-        #Setup
+        # Setup
         self.inputLine.setText("00 01 02 03")
         self.showCardButton.setText("Lire carte")
         self.removeCardButton.setText("Retirer carte")
         self.setWindowIcon(uim.getWindowIcon("nfc-card"))
         self.setWindowTitle("Carte NFC Virtuelle")
-        self.setFixedSize(300,100)
+        self.setFixedSize(300, 100)
 
     def virtualCardInsert(self):
         self.virtualCardInserted.emit(self.inputLine.text())
