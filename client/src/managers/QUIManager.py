@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -10,6 +11,8 @@ from Console import *
 #           B=A
 # A and B are now sharing the same memory !
 import copy
+
+GMC_DIR = Path(os.environ['GMC_DIR'])
 
 
 class QUIManagerSingleton(type(QObject)):
@@ -27,25 +30,22 @@ class QUIManager(QObject, metaclass=QUIManagerSingleton):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.theme = "default"
-        self.themeRelPath = ["ressources", "themes", self.theme]
-        self.iconRelPath = copy.deepcopy(self.themeRelPath)
-        self.windowIconRelPath = copy.deepcopy(self.themeRelPath)
-        self.animationRelPath = copy.deepcopy(self.themeRelPath)
+        self.themePath = GMC_DIR / "ressources" / "themes" / self.theme
 
-        self.iconRelPath.append("ui-icons")
-        self.windowIconRelPath.append("window-icons")
-        self.animationRelPath.append("animation")
+        self.iconPath = self.themePath / "ui-icons"
+        self.windowIconPath = self.themePath / "window-icons"
+        self.animationPath = self.themePath / "animation"
 
     def getIcon(self, iconName):
         """Return the QIcon according to 'iconName'. None if no icon is found"""
-        iconPath = self.__relPath(self.iconRelPath)
-        fileList = os.listdir(iconPath)
+        #iconPath = self.__relPath(self.iconRelPath)
+        fileList = os.listdir(self.iconPath)
         icon = None
         for file in fileList:
             name = file.split(".")[0]  # [name, extention]
             if name == iconName:
                 try:
-                    icon = QIcon(iconPath + file)
+                    icon = QIcon(str(self.iconPath / file))
                 except:
                     printE("Unable to load the ressource {}".format(file))
 
@@ -53,14 +53,14 @@ class QUIManager(QObject, metaclass=QUIManagerSingleton):
 
     def getWindowIcon(self, iconName):
         """Return the QIcon according to 'iconName'. None if no icon is found"""
-        iconPath = self.__relPath(self.windowIconRelPath)
-        fileList = os.listdir(iconPath)
+        #iconPath = self.__relPath(self.windowIconRelPath)
+        fileList = os.listdir(self.windowIconPath)
         icon = None
         for file in fileList:
             name = file.split(".")[0]  # [name, extention]
             if name == iconName:
                 try:
-                    icon = QIcon(iconPath + file)
+                    icon = QIcon(str(self.windowIconPath / file))
                 except:
                     printE("Unable to load the ressource {}".format(file))
 
@@ -68,22 +68,15 @@ class QUIManager(QObject, metaclass=QUIManagerSingleton):
 
     def getAnimation(self, animationName):
         """Return the QIcon according to 'iconName'. None if no icon is found"""
-        animationPath = self.__relPath(self.animationRelPath)
-        fileList = os.listdir(animationPath)
+        #animationPath = self.__relPath(self.animationRelPath)
+        fileList = os.listdir(self.animationPath)
         movie = None
         for file in fileList:
             name = file.split(".")[0]  # [name, extention]
             if name == animationName:
                 try:
-                    movie = QMovie(animationPath + file)
+                    movie = QMovie(str(self.animationPath / file))
                 except:
                     printE("Unable to load the ressource {}".format(file))
 
         return movie
-
-    def __relPath(self, pathList):
-        # print(pathList)
-        path = ""
-        for i in pathList:
-            path += i + "/"
-        return path

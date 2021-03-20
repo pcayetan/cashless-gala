@@ -194,7 +194,7 @@ class TreeItem:
                     try:
                         parsedTextList[index] = str(eval(expression, atomDict))  # no rage still pythoninc <3
                         # eval(expr,dict), basically it searchs variable defined in 'dict' and replace them in expr.
-                    except:
+                    except ValueError:
                         printW("Failed to parse the expression {}".format(expression))
         return parsedTextList
 
@@ -373,7 +373,7 @@ class QTreeModel(QAbstractItemModel):
     # Tool
     # Basicaly, all these functions are not required by Qt, but are requiered by our own needs..
 
-    def getItem(self, index):
+    def getItem(self, index) -> TreeItem:
         if index.isValid():
             item = index.internalPointer()
             if item:
@@ -382,7 +382,7 @@ class QTreeModel(QAbstractItemModel):
         return self.rootItem
 
     def insertQAtom(self, position, qAtom, parent=QModelIndex()):
-        self.insertRow(position, QModelIndex())
+        self.insertRow(position, parent)
         newIndex = self.index(position, 0)
         self.setData(newIndex, qAtom)
 

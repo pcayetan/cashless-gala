@@ -22,6 +22,7 @@ class QProductSelectorModel(QTreeModel):
         dm = QDataManager()
         # print(data)
         # productDict look like this {"root":{"cat1:{"Product":[]}","Product":[]},"Product":[]}
+
         def exploreDict(productDict, parent: TreeItem):
             # add new categories
             for key in productDict:
@@ -72,10 +73,10 @@ class QBasketModel(QTreeModel):
             index, item, data = self.searchQAtom(qProduct)
             data.incQuantity()
 
-            # Tell to Qt that the data changed, since Qt think with column, we need to refresh the whole line
+            # Tell to Qt that the data changed, since Qt works with column, we need to refresh the whole line
             row = index.row()
             n_column = self.columnCount(parent)
-            # WITH THIS, THE DISPLAY IS CORRECTLY REFRESH, BUT I DON'T KNOW WHY IT WAS NOT WORKING BEFORE !!!
+            # WITH THIS, THE DISPLAY IS CORRECTLY REFRESHED, BUT I DON'T KNOW WHY IT WAS NOT WORKING BEFORE !!!
             index0 = self.index(row, 0, parent)
             indexN = self.index(row, n_column, parent)
             self.dataChanged.emit(index0, indexN, [Qt.DisplayRole, Qt.EditRole])
@@ -87,10 +88,7 @@ class QBasketModel(QTreeModel):
 
             # Configuration of the new row
             quantityPannel = qProduct.getQuantityPannel()
-            qProduct.getActionDict()["Supprimer"] = {
-                "fct": qProduct.delete,
-                "icon": "delete",
-            }
+            qProduct.addAction("Supprimer", qProduct.delete, "delete")
             treeView.setIndexWidget(self.index(0, 1), quantityPannel)
             delButton = qProduct.getDelButton()
             treeView.setIndexWidget(self.index(0, 3), delButton)
@@ -147,9 +145,9 @@ class QBuyingHistoryModel(QTreeModel):
 
         if role == Qt.ForegroundRole:
             nfcm = QNFCManager()
-            #index (QModelIndex), index.internalPointer (TreeItem), --.getData (QAtom)
+            # index (QModelIndex), index.internalPointer (TreeItem), --.getData (QAtom)
             qBuying: QBuying = index.internalPointer().getData()
-            #check if the card on the nfc reader belongs to the transaction
+            # check if the card on the nfc reader belongs to the transaction
             userList = qBuying.getDistribution().getUserList()
             if nfcm.getCardUID() in userList:
                 return QColor(88, 231, 167)
@@ -169,13 +167,28 @@ class QRefillingHistoryModel(QTreeModel):
 
         if role == Qt.ForegroundRole:
             nfcm = QNFCManager()
-            #index (QModelIndex), index.internalPointer (TreeItem), --.getData (QAtom)
+            # index (QModelIndex), index.internalPointer (TreeItem), --.getData (QAtom)
             qRefilling: QRefilling = index.internalPointer().getData()
-            #check if the card on the nfc reader belongs to the transaction
+            # check if the card on the nfc reader belongs to the transaction
             if nfcm.getCardUID() in qRefilling.getCustomerId():
                 return QColor(88, 231, 167)
 
         return super().data(index, role)
+
+
+class QUserHistory(QTreeModel):
+    def __init__(self, headers, user: QUser, data=None, parent=None):
+        super().__init__(headers, data, parent)
+
+        text = [""] * len(headers)
+        buyingsRootQAtom = QAtom()
+        text[0] = "Achats"
+        buyingsRootQAtom.setTexts(text)
+        refillingRootQAtom = QAtom()
+        text[0] = "Rechargements"
+        refillingRootQAtom.setTexts(text)
+        self.insertQAtom(0,buyingsRootQAtom)
+        self.insertQAtom(1,refillingRootQAtom)
 
 
 class QMultiUserModel(QTreeModel):

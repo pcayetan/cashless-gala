@@ -1,5 +1,0 @@
-Menu Number 9;3.5
-Menu Number 7; 7.0
-Menu Number 6; 6.0
-Menu Number 45; 17.0
-Blanquette de Veau; 20.0

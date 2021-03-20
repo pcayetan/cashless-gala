@@ -3,6 +3,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 from QDataManager import QDataManager
+from QUIManager import QUIManager
 from QUtils import *
 from QItemTree import *
 
@@ -58,7 +59,8 @@ class QMainMenu(QMainWindow):
 
         self.setWindowTitle("Gala.Manager.Core")
         self.resize(1600, 1000)
-        self.setWindowIcon(QIcon("icon.ico"))
+        uim = QUIManager()
+        self.setWindowIcon(uim.getWindowIcon("icon"))
 
         center(self)
         self.MainTab = QMainTab()

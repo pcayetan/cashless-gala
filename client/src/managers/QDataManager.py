@@ -9,11 +9,14 @@ import uuid
 
 # for QUIManager, find file in ressources
 import os
+from pathlib import Path
 
 from Console import *  # For colored printing
 
 import pickle
 from pickle import PickleError
+
+GMC_DIR = Path(os.environ['GMC_DIR'])
 
 # /!\ Managers must always be called in Qt context, so no global variable for data manager...
 #     the reason is simple, DataManager needs QAtoms, that need Widgets. Widgets can't be create
@@ -123,7 +126,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         # Machine uid initialisation
 
         try:
-            with open("data/uid", "r") as file:
+            with open(GMC_DIR / "data" / "uid", "r") as file:
                 self.uid = file.readline()
         except ValueError:
             printW("uid file corrupted, a new uid will be generated")
@@ -131,7 +134,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
             printW("uid file not found in ./data, a new uid will be generated")
 
         if not self.uid:
-            with open("data/uid", "w") as file:
+            with open(GMC_DIR / "data" / "uid", "w") as file:
                 self.uid = str(uuid.uuid4())
                 file.write(self.uid)
                 printI("New machine uid generated")
@@ -140,7 +143,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         printI("Request counter list")
         self.counterList = client.requestCounterList()
         try:
-            with open("data/counter", "rb") as file:  # open read/write/binary file
+            with open(GMC_DIR / "data" / "counter", "rb") as file:  # open read/write/binary file
                 try:
                     loadedCounter = pickle.load(file)
                     if loadedCounter in self.counterList:
@@ -159,7 +162,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
             printN("Setting a new default counter")
             self.counter = self.counterList[0]
 
-        with open("data/counter", "wb") as file:
+        with open(GMC_DIR / "data" / "counter", "wb") as file:
             pickle.dump(self.counter, file)
 
         printI("Request products availables for this counter")

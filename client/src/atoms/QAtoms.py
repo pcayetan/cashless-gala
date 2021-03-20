@@ -6,6 +6,10 @@ from QUtils import *
 from QItemTree import *
 
 from QUIManager import QUIManager
+from QNFCManager import QNFCManager
+from Client import Client
+from Euro import Eur
+
 
 # TODO:SOLVE THIS ARCHITECTURE PROBLEM
 # /!\ ARCHITECTURE PROBLEM... MANAGER CAN'T BE CALLED HERE SINCE QATOMS IS IMPORTED IN QMANAGER
@@ -16,6 +20,71 @@ from QUIManager import QUIManager
 ########################
 ####### QT WIDGETS#####
 ######################
+
+
+
+class QNFCInfo(QWidget):
+    def __init__(self, parent=None):
+        nfcm = QNFCManager()
+        uim = QUIManager()
+        super().__init__(parent)
+
+        # Definition
+        self.mainLayout = QVBoxLayout()
+
+        self.groupBox = QGroupBox()
+        self.groupBoxLayout = QVBoxLayout()
+        self.rowInfo = QRowInfo()
+        self.userHistoryButton = QPushButton()
+
+        self.user = QUser(User())
+
+        # Layout
+
+        self.groupBox.setLayout(self.groupBoxLayout)
+        self.groupBoxLayout.addWidget(self.rowInfo)
+        self.groupBoxLayout.addWidget(self.userHistoryButton)
+
+        # main layout
+        self.mainLayout.addWidget(self.groupBox)
+        self.setLayout(self.mainLayout)
+
+        # Settings
+        self.rowInfo.addRow("UID", nfcm.getCardUID())
+        self.rowInfo.addRow("Solde", Eur(0))
+        self.userHistoryButton.setText("Historique utilisateur")
+        self.groupBox.setTitle("Info utilisateur")
+
+        nfcm.cardInserted.connect(self.cardInserted)
+        nfcm.cardRemoved.connect(self.cardRemoved)
+        uim.balanceUpdated.connect(self.update)
+        self.userHistoryButton.clicked.connect(self.showUserInfo)
+
+    def cardInserted(self):
+        nfcm = QNFCManager()
+        client = Client()
+        cardUID = nfcm.getCardUID()
+        balance = client.requestUserBalance(customer_id=cardUID)
+        self.rowInfo.setRow(1, 1, balance)
+        self.rowInfo.setRow(0, 1, cardUID)
+        self.user.setId(cardUID)
+        self.user.setBalance(balance)
+
+    def cardRemoved(self):
+        self.rowInfo.setRow(1, 1, Eur(0))
+        self.rowInfo.setRow(0, 1, "00 00 00 00")
+        self.user.setId("00 00 00 00")
+        self.user.setBalance(Eur(0))
+
+    def update(self):
+        nfcm = QNFCManager()
+        client = Client()
+        cardUID = nfcm.getCardUID()
+        balance = client.requestUserBalance(customer_id=cardUID)
+        self.rowInfo.setRow(1, 1, balance)
+
+    def showUserInfo(self):
+        self.user.showInfoPannel()
 
 
 class QBuyingInfo(QWidget):
@@ -143,7 +212,7 @@ class QQuantity(QWidget):
     def editingFinished(self):
         try:
             self.product.setQuantity(int(self.quantityEditLine.text()))
-        except:
+        except ValueError:
             self.product.setQuantity(1)
             self.quantity = self.product.getQuantity()
             if self.quantityEditLine.text() != "":
@@ -181,13 +250,36 @@ class QQuantity(QWidget):
 
 
 class QUserInfo(QWidget):
-    def __init___(self, parent=None):
+    def __init__(self, user, parent=None):
         super().__init__(parent)
         uim = QUIManager()
 
         center(self)
         self.setWindowTitle("Informations utilisateur")
         self.setWindowIcon(uim.getIcon("group"))
+
+        # Definition
+        self.mainLayout = QVBoxLayout()
+        self.userInfoGroupBox = QGroupBox()
+        self.userInfoGroupBoxLayout = QVBoxLayout()
+        self.historyTree = QUserHistory(["Transaction", "Montant", "Heure"], user)
+
+        # Layout
+        self.mainLayout.addWidget(self.userInfoGroupBox)
+        self.mainLayout.addWidget(self.historyTree)
+
+        self.userInfoGroupBox.setLayout(self.userInfoGroupBoxLayout)
+
+        # Settings
+
+        self.userInfoGroupBox.setTitle("Informations utilisateur")
+        self.setLayout(self.mainLayout)
+
+        # Window settings
+        self.setFixedSize(500, 500)
+        center(self)
+        self.setWindowTitle("Information utilisateur")
+        self.setWindowIcon(uim.getWindowIcon("group"))
 
 
 class QProductInfo(QWidget):
@@ -263,6 +355,14 @@ class QAtom(QObject, Atom):
 
     def getActionDict(self):
         return self.actionDict
+    
+    def addAction(self, actionName: str, function, icon: str = None):
+        if actionName in self.actionDict:
+            printW("{} already in action list".format(actionName))
+        self.actionDict[actionName] = {'fct': function, 'icon': icon}
+
+    def removeAction(self, actionName: str):
+        del self.actionDict[actionName]
 
     def setActionDict(self, actionDict):
         self.actionDict = actionDict
@@ -271,7 +371,11 @@ class QAtom(QObject, Atom):
 class QUser(QAtom, User):
     def __init__(self, user):
         super().__init__(user)
-        self.infoPannel = None
+
+    def showInfoPannel(self):
+        print(self)
+        self.infoPannel = QUserInfo(self)
+        self.infoPannel.show()
 
 
 class QProduct(QAtom, Product):
@@ -353,7 +457,7 @@ class QBuying(QOperation, Buying):
                 else:
                     self.sRefounded.emit()
         else:
-            warningDialog = QWarningDialog("Mauvais utilisateur","L'utilisateur n'est pas concerné par cette transaction","Veuillez présenter une carte concernée par la transaction")
+            warningDialog = QWarningDialog("Mauvais utilisateur", "L'utilisateur n'est pas concerné par cette transaction", "Veuillez présenter une carte concernée par la transaction")
             center(warningDialog)
             warningDialog.exec()
 

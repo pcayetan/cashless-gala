@@ -1,9 +1,0 @@
-Bière;2.0
-Champagne;5.0
-Cidre;1.5
-Coca(Bouteille);2.0
-Coca(25cl);0.5
-Ice Tea(Bouteille);2.0
-Ice Tea(25cl);0.5
-
-

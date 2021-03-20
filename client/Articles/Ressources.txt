@@ -1,4 +1,0 @@
-Oeufs;
-Farine;
-Sel;
-Sucre;

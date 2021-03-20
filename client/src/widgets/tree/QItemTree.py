@@ -6,10 +6,13 @@ from QDataManager import QDataManager
 from QUtils import *
 import copy  # Need to copy Atoms as they are transfered from a tree to another
 
-
 import pickle
 from pickle import PickleError
 
+import os
+from pathlib import Path
+
+GMC_DIR = Path(os.environ['GMC_DIR'])
 
 class QAutoSelectLineEdit(QLineEdit):
     def __init__(self, parent=None):
@@ -201,12 +204,12 @@ class QBuyingHistory(QItemTree):
         for qBuying in qBuyingList:
             buyingList.append(qBuying.getAtom())
 
-        with open("data/buyingHistory", "wb") as file:
+        with open(GMC_DIR / "data" / "buyingHistory", "wb") as file:
             pickle.dump(buyingList, file)
 
     def loadBuyingHistory(self):
         try:
-            with open("data/buyingHistory", "rb") as file:  # open read/write/binary file
+            with open(GMC_DIR / "data" / "buyingHistory", "rb") as file:  # open read/write/binary file
                 loadedBuyingHistory = pickle.load(file)
             return loadedBuyingHistory
         except:

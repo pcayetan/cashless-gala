@@ -1,7 +1,7 @@
 # Installation procedure
 This procedure describe how to get a development environment ready.
 No matter your system we assume you have python 3 installed on your system.
-On Windows don't forget to add python/pip in your PATH environment variable if you did let the installer wizzard do it for you.
+On Windows don't forget to add python/pip in your PATH environment variable if you didn't let the installer wizzard do it for you.
 
 
 ##Raspberry(Raspbian)
@@ -26,7 +26,7 @@ On Windows don't forget to add python/pip in your PATH environment variable if y
 - Create a virtual environment (**virutalenv venv**)
 - Source the environment (**source ./venv/bin/activate**)
 - Install dependencies (**pip install -r requirements.txt**)
-- launch program (**python main.py**)
+- launch program (**./scripts/gmc**)
 
 
 
