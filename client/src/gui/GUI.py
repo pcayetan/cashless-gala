@@ -2,15 +2,13 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
+# Project specific imports
 from QDataManager import QDataManager
 from QUIManager import QUIManager
-from QUtils import *
 from QItemTree import *
-
-
 from QRefillerTab import *
 from QCounterTab import *
-
+from QUtils import center, QIpInputDialog
 # de transaction
 
 #  Shared variables

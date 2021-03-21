@@ -1,20 +1,19 @@
+import os
+# for Data manager, create random machine uid
+import uuid
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-
-from Client import *
-
-# for Data manager, create random machine uid
-import uuid
-
 # for QUIManager, find file in ressources
-import os
 from pathlib import Path
-
-from Console import *  # For colored printing
-
 import pickle
 from pickle import PickleError
+
+# Project specific imports
+
+from Client import *
+from Console import *  # For colored printing
+
 
 GMC_DIR = Path(os.environ['GMC_DIR'])
 

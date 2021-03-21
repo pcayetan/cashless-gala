@@ -1,16 +1,11 @@
 import sys
 import os
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-import PyQt5.QtCore
-import PyQt5.QtGui
-
-from QUtils import *
-from QItemTree import *
-
+# Project specific imports
+from QAtomWidgets import *
 from Client import *
 
 

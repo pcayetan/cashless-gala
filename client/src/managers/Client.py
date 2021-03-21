@@ -1,17 +1,17 @@
 from __future__ import print_function
-
 import grpc
 from grpc import RpcError
 import com_pb2
 import com_pb2_grpc
 from google.protobuf.timestamp_pb2 import Timestamp
-from Console import *
-
-from convert import *
 
 # OPTINAL FOR PINGING THE SERVER AND ENSURE IT'S AVAILABLE
 import platform  # For getting the operating system name
 import subprocess  # For executing a shell command
+
+# Project specific imports
+from convert import *
+from Console import *
 
 
 def ping(host):

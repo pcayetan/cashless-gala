@@ -1,16 +1,17 @@
 import os
+import copy
 from pathlib import Path
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QIcon, QMovie
+
+# Project specific imports
 from Console import *
 
 # copy is mandatory because of the init of path
 # indeed ... A= [X,Y]
 #           B=A
 # A and B are now sharing the same memory !
-import copy
 
 GMC_DIR = Path(os.environ['GMC_DIR'])
 

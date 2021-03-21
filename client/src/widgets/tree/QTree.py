@@ -1,17 +1,14 @@
+import copy
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-import PyQt5.QtCore
-import PyQt5.QtGui
-
-# from QUtils import *
-from QAtoms import *
+# Project specific imports
 from Console import *
+from QAtoms import *
 from QDataManager import QDataManager
 from QUIManager import QUIManager
 
-import copy
 
 
 # Basicaly, this file is the heart of the GUI since there are trees everywhere
@@ -420,3 +417,14 @@ class QTree(QWidget):
         # Link
         self.mainVBoxLayout.addWidget(self.treeView)
         self.setLayout(self.mainVBoxLayout)
+
+
+class QSuperTreeView(QTreeView):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAnimated(True)  # Because animation looks cool ~
+
+    def focusOutEvent(self, event):
+        # This condition was needed because trees loose their selection with right click popup ...
+        if event.reason() != Qt.PopupFocusReason:
+            self.setCurrentIndex(QModelIndex())

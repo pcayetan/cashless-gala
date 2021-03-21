@@ -1,16 +1,14 @@
-from PyQt5.QtCore import pyqtSignal
-from QItemModel import *
-
-from QAtoms import *
-from QDataManager import QDataManager
-from QUtils import *
-import copy  # Need to copy Atoms as they are transfered from a tree to another
-
 import pickle
-from pickle import PickleError
-
 import os
+import copy  # Need to copy Atoms as they are transfered from a tree to anotherV
+from PyQt5.QtCore import pyqtSignal
+from pickle import PickleError
 from pathlib import Path
+
+# Project specific imports
+from QItemModel import *
+from QDataManager import QDataManager
+
 
 GMC_DIR = Path(os.environ['GMC_DIR'])
 
@@ -26,15 +24,6 @@ class QAutoSelectLineEdit(QLineEdit):
         super().setText(str(string))
 
 
-class QSuperTreeView(QTreeView):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAnimated(True)  # Because animation looks cool ~
-
-    def focusOutEvent(self, event):
-        # This condition was needed because trees loose their selection with right click popup ...
-        if event.reason() != Qt.PopupFocusReason:
-            self.setCurrentIndex(QModelIndex())
 
 
 class QItemTree(QWidget):
@@ -263,7 +252,6 @@ class QMultiUserTree(QItemTree):
         self.treeView.setModel(self.treeModel)
         self.setLayout(self.mainLayout)
 
-
         self.userUIDList = []
 
     def addUser(self):
@@ -272,10 +260,23 @@ class QMultiUserTree(QItemTree):
         userId = nfcm.getCardUID()
         user.setId(userId)
         qUser = QUser(user)
-        qUser.setTexts(["@id","","",""])
+        qUser.setTexts(["@id", "", "", ""])
         self.userUIDList.append(userId)
 
-        self.treeModel.insertQAtom(0,qUser)
+        self.treeModel.insertQAtom(0, qUser)
         self.forceRefresh()
     
 
+class QUserHistory(QItemTree):
+    def __init__(self, user: QUser, parent=None):
+        super().__init__(parent)
+
+        # Definition
+        self.mainLayout = QHBoxLayout()
+        self.treeView = QSuperTreeView()
+        self.treeModel = QUserHistoryModel(["Transaction", "Montant"], user)
+
+        # Layout
+        self.treeView.setModel(self.treeModel)
+        self.mainLayout.addWidget(self.treeView)
+        self.setLayout(self.mainLayout)

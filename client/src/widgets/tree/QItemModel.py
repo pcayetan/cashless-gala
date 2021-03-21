@@ -176,7 +176,7 @@ class QRefillingHistoryModel(QTreeModel):
         return super().data(index, role)
 
 
-class QUserHistory(QTreeModel):
+class QUserHistoryModel(QTreeModel):
     def __init__(self, headers, user: QUser, data=None, parent=None):
         super().__init__(headers, data, parent)
 
@@ -184,11 +184,14 @@ class QUserHistory(QTreeModel):
         buyingsRootQAtom = QAtom()
         text[0] = "Achats"
         buyingsRootQAtom.setTexts(text)
+
+        text = copy.deepcopy(text)
         refillingRootQAtom = QAtom()
         text[0] = "Rechargements"
         refillingRootQAtom.setTexts(text)
-        self.insertQAtom(0,buyingsRootQAtom)
-        self.insertQAtom(1,refillingRootQAtom)
+
+        self.insertQAtom(0, buyingsRootQAtom)
+        self.insertQAtom(1, refillingRootQAtom)
 
 
 class QMultiUserModel(QTreeModel):

@@ -3,23 +3,13 @@ import sys
 from pathlib import Path
 import os
 
+#Add the sub-repositories to python path
 GMC_DIR = Path(__file__).parents[1]
 SRC_DIR = GMC_DIR / "src"
 for i in SRC_DIR.glob('**/*'):
     if i.is_dir() and i.name != "__pycache__":
         sys.path.append(str(i))
-             
 os.environ['GMC_DIR'] = str(GMC_DIR)
-
-# sys.path.append('../src/atoms')
-# sys.path.append('../src/debug')
-# sys.path.append('../src/euro')
-# sys.path.append('../src/grpc')
-# sys.path.append('../src/gui')
-# sys.path.append('../src/managers')
-# sys.path.append('../src/widgets')
-# sys.path.append('../src/widgets/atoms')
-# sys.path.append('../src/widgets/tree')
 
 from GUI import *
 
@@ -33,6 +23,7 @@ from GUI import *
 # TODO: ADD A TOOLBAR STATUS SINGLETON HANDLER                          [OK VIA QCONNECTOR]
 # TODO: HANDLE CARD READER PLUG/UNPLUG                                  [OK]
 # TODO: ADD TRADUCTION
+# TODO: REPLACE all "from XXX import *" by to "from XXX import YYY"
 
 if __name__ == "__main__":
     app = QApplication.instance()
@@ -48,7 +39,7 @@ if __name__ == "__main__":
         app.installTranslator(qtTranslator)
 
     MainWindow = QMainMenu()
-    VirtualCard = QVirtualCard()
+    #VirtualCard = QVirtualCard()
 
     # la fenêtre est rendue visible
     #    MainWindow.showMaximized()

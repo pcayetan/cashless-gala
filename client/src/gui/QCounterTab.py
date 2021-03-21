@@ -1,19 +1,15 @@
 import sys
 import os
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-
+# Project specific imports
 from QDataManager import QDataManager
 from QNFCManager import QNFCManager
 from QUIManager import QUIManager
 from Client import Client
-
-
-from QUtils import *
-from QItemTree import *
+from QAtomWidgets import *
 
 
 class QAutoCompleteLineEdit(QLineEdit):
@@ -102,7 +98,6 @@ class QMultiUserPannel(QWidget):
 
     def addUser(self):
         self.multiUserTree.addUser()
-        
 
 
 class QCounterTab(QWidget):

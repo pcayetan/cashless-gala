@@ -2,8 +2,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
+# Project specific imports
 from Euro import Eur
-
 from QNFCManager import QNFCManager
 from QUIManager import QUIManager
 from Client import Client
@@ -53,6 +53,128 @@ class QNFCDialog(QDialog):
         self.done(0)
 
 
+class QDelButton(QToolButton):
+
+    deleted = pyqtSignal(QToolButton)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        uim = QUIManager()
+        self.row = -1
+        self.clicked.connect(self.delete)
+
+        # So normally ui manager should be used here
+        # but because of the cycle import problem I can't import the ui manager here unless
+        # I merge QAtoms with QManager...
+        #        self.setIcon(QIcon("ressources/themes/default/ui-icons/delete.png"))
+        self.setIcon(uim.getIcon("delete"))
+        self.setIconSize(QSize(32, 32))
+        self.setFixedSize(QSize(48, 48))
+
+    def setRow(self, row):
+        self.row = row
+
+    def getRow(self):
+        return self.row
+
+    def delete(self):
+        self.deleted.emit(self)
+
+class QQuantity(QWidget):
+
+    quantityChanged = pyqtSignal()
+
+    def __init__(self, product, parent=None):
+        super().__init__(parent)
+
+        # Definition
+        self.mainHBoxLayout = QHBoxLayout()
+        self.minusButton = QToolButton()
+        self.quantityEditLine = QLineEdit()
+        self.plusButton = QToolButton()
+        self.quantity = product.getQuantity()
+        self.product = product
+
+        # Settings
+        self.minusButton.setText("-")
+
+        self.quantityEditLine.setText(str(self.quantity))
+        self.quantityEditLine.setAlignment(Qt.AlignHCenter)
+        self.quantityEditLine.setFixedWidth(50)
+
+        self.plusButton.setText("+")
+
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        # Link
+
+        self.mainHBoxLayout.addWidget(self.minusButton)
+        self.mainHBoxLayout.addWidget(self.quantityEditLine)
+        self.mainHBoxLayout.addWidget(self.plusButton)
+        self.setLayout(self.mainHBoxLayout)
+
+        self.plusButton.clicked.connect(self.incQuantity)
+        self.minusButton.clicked.connect(self.decQuantity)
+        self.quantityEditLine.textChanged.connect(self.editingFinished)
+        self.quantityEditLine.editingFinished.connect(self.__noBlank)
+
+    def incQuantity(self):
+        self.product.incQuantity()
+        self.quantity = self.product.getQuantity()
+        self.quantityEditLine.setText(str(self.quantity))
+        self.quantityEditLine.editingFinished.emit()
+        self.quantityChanged.emit()
+
+    def decQuantity(self):
+        self.product.decQuantity()
+        self.quantity = self.product.getQuantity()
+        if self.quantity > 0:
+            self.quantityEditLine.setText(str(self.quantity))
+            self.quantityEditLine.editingFinished.emit()
+        else:
+            self.product.setQuantity(1)
+
+    def editingFinished(self):
+        try:
+            self.product.setQuantity(int(self.quantityEditLine.text()))
+        except ValueError:
+            self.product.setQuantity(1)
+            self.quantity = self.product.getQuantity()
+            if self.quantityEditLine.text() != "":
+                self.quantityEditLine.setText("1")
+
+        if self.quantity >= 1:
+            self.quantityChanged.emit()
+        else:
+            self.quantityEditLine.setText("1")
+            self.product.setQuantity(1)
+            popUp = QErrorDialog(
+                "Erreur de saisie", "Quantité invalide", "Veuillez saisir un nombre entier positif non nul",
+            )
+            # center(popUp)
+            popUp.exec()
+
+    def __noBlank(self):
+        stripedText = self.quantityEditLine.text().strip()
+        self.quantityEditLine.setText(stripedText)
+
+        if self.quantityEditLine.text() == "":
+            self.quantity = 1
+            self.quantityEditLine.setText("1")
+
+    def setQuantity(self, qty):
+        try:
+            self.product.setQuantity(int(qty))
+            self.quantityEditLine.setText(str(qty))
+            self.quantityChanged.emit()
+        except ValueError:
+            print("ERROR: ", qty, " is not a number")
+
+    def update(self):
+        self.quantityEditLine.setText(str(self.product.getQuantity()))
+
+
+
 class QRowInfo(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -77,7 +199,7 @@ class QRowInfo(QWidget):
         LabelValue.setText(str(Value))
         try:
             self.row.append([labelRowName, LabelValue])
-        except:
+        except AttributeError:  # Is that event necessary ?
             self.row = [[labelRowName, LabelValue]]
 
         self.layoutRow.addWidget(labelRowName)
@@ -173,7 +295,7 @@ class QSimpleNumberInputDialog(QAbstractInputDialog):
             self.valueSelected.emit(float(self.inputBar.text()))
             self.inputBar.setText("2")
             self.close()
-        except:
+        except ValueError:
             self.errorDialog.setWindowIcon(self.style().standardIcon(QStyle.SP_MessageBoxWarning))
             self.errorDialog.show()
             center(self.errorDialog)
@@ -198,7 +320,7 @@ class QIpInputDialog(QAbstractInputDialog):
                         pass
                     else:  # invalid ip
                         valid = False
-                except:  # Not a number
+                except ValueError:  # Not a number
                     portParser = i.split(":")
                     if len(portParser) == 2:
                         try:
@@ -206,7 +328,7 @@ class QIpInputDialog(QAbstractInputDialog):
                                 pass
                             else:
                                 valid = False
-                        except:
+                        except ValueError:
                             valid = False
                     else:
                         valid = False
