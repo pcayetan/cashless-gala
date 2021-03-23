@@ -7,6 +7,7 @@ from PyQt5.QtGui import *
 # Project specific imports
 from QAtomWidgets import *
 from Client import *
+from QUtils import *
 
 
 class QAbstractPayment(QGroupBox):

@@ -10,6 +10,7 @@ from QNFCManager import QNFCManager
 from QUIManager import QUIManager
 from Client import Client
 from QAtomWidgets import *
+from QUtils import *
 
 
 class QAutoCompleteLineEdit(QLineEdit):
