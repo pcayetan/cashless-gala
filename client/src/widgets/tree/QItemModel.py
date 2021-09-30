@@ -3,9 +3,8 @@ from QTree import *
 
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtCore import *
-
 # from Euro import *
-
+from Client import Client
 # Specialized models ...
 
 
@@ -161,7 +160,18 @@ class QRefillingHistoryModel(QTreeModel):
 
     def addRefilling(self, refilling):
         qRefilling = QRefilling(refilling)
+        qRefilling.sCancelled.connect(self.removeRefilling)
         self.insertQAtom(0, qRefilling)
+    
+    def removeRefilling(self, qRefilling: QRefilling = None):
+        uim = QUIManager()
+        if qRefilling:
+            pass
+        else:
+            qRefilling = self.sender()
+        index, item, data = self.searchQAtom(qRefilling)
+        self.removeRow(index.row())
+        uim.balanceUpdated.emit()
 
     def data(self, index: QModelIndex, role):
 
@@ -192,6 +202,31 @@ class QUserHistoryModel(QTreeModel):
 
         self.insertQAtom(0, buyingsRootQAtom)
         self.insertQAtom(1, refillingRootQAtom)
+        self.user = user
+
+        client = Client()
+        buyings, refillings = client.requestHistory(type=0, customer_id=user.getId())
+        for buying in buyings:
+            qBuying = QBuying(buying)
+            qBuying.setTexts(["@label", "@price", str(qBuying.getRefounded())])
+            self.addOperation(qBuying)
+
+        # Looks like the server can't handle the case where you want both buyings AND refillings
+        # Hence this work around...
+        buyings, refillings = client.requestHistory(type=1, customer_id=user.getId())
+        for refilling in refillings:
+            qRefilling = QRefilling(refilling)
+            qRefilling.setTexts(["", "@amount", str(qRefilling.getRefounded())])
+            self.addOperation(qRefilling)
+
+    def addOperation(self, operation: QOperation):
+        if isinstance(operation, QBuying):
+            subRoot = self.index(0, 0, QModelIndex())
+            self.insertQAtom(0, operation, subRoot)
+            
+        if isinstance(operation, QRefilling):
+            subRoot = self.index(1, 0, QModelIndex())
+            self.insertQAtom(0, operation, subRoot)
 
 
 class QMultiUserModel(QTreeModel):

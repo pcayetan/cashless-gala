@@ -77,7 +77,7 @@ class QNFCInfo(QWidget):
 
 
 class QBuyingInfo(QWidget):
-    def __init__(self, qBuying, parent=None):
+    def __init__(self, qBuying: QBuying, parent=None):
         super().__init__(parent)
         productList = qBuying.getBasketItems()
         # Définitons
@@ -146,7 +146,8 @@ class QUserInfo(QWidget):
         self.setLayout(self.mainLayout)
 
         # Window settings
-        self.setFixedSize(500, 500)
+        # self.setFixedSize(500, 500)
+        self.historyTree.treeView.expandAll()
         QUtils.center(self)
         self.setWindowTitle("Information utilisateur")
         self.setWindowIcon(uim.getWindowIcon("group"))

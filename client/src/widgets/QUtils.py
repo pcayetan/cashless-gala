@@ -224,12 +224,12 @@ class QErrorDialog(QMessageBox):
 
         #        self.setWindowIcon()
         self.setWindowTitle(title)
-        self.setBaseSize(QSize(800, 600))
+        self.setBaseSize(QSize(800, 650))   
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self.setFixedWidth(600)
-        self.setFixedHeight(100)
+        self.setFixedHeight(200)
 
 
 class QWarningDialog(QMessageBox):

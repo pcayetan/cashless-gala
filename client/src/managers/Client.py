@@ -130,7 +130,7 @@ class Client(metaclass=ClientSingleton):
         uint64 counter_id
         string customer_id
         string device_uuid
-        uint64 max_history_size (0: no limit) 
+        uint64 max_history_size (0: no limit)
         """
         buyings = []
         refillings = []
@@ -164,13 +164,14 @@ class Client(metaclass=ClientSingleton):
             refoundBuyingRequest = com_pb2.RefoundBuyingRequest(**kwargs)
             refoundBuyingReply = self.stub.RefoundBuying(refoundBuyingRequest)
             if refoundBuyingReply.status == com_pb2.RefoundBuyingReply.SUCCESS:
+                self.now = unpackTime(refoundBuyingReply.now)
                 return True
             else:
                 printE("Unable to refound: {}".format(refoundBuyingReply.status))
                 return None
 
         except RpcError:
-            printE("RPC: Unable to get product list")
+            printE("RPC: Unable to refound")
             return None
 
     def requestCounterProduct(self, **kwargs) -> [Product]:
@@ -236,3 +237,21 @@ class Client(metaclass=ClientSingleton):
 
     def requestTransfert(self, **kwargs):
         pass
+
+    def requestCancelRefilling(self, **kwargs):
+        """
+        uint64 refilling_id
+        """
+
+        try:
+            cancelRefillingRequest = com_pb2.CancelRefillingRequest(**kwargs)
+            cancelRefillingReply = self.stub.CancelRefilling(cancelRefillingRequest)
+            if cancelRefillingReply.status == com_pb2.CancelRefillingReply.SUCCESS:
+                self.now = unpackTime(cancelRefillingReply.now)
+                return True
+            else:
+                printE("Unable to refound: {}".format(cancelRefillingReply.status))
+                return None
+        except RpcError:
+            printE("RPC: Unable to cancel refilling")
+            return None

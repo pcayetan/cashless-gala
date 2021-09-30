@@ -272,7 +272,7 @@ class Operation(Atom):
     def getLabel(self):
         return self.label
 
-    def getRefounded(self, refounded):
+    def getRefounded(self):
         return self.refounded
 
     def getCounterId(self):

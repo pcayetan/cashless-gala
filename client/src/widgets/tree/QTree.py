@@ -380,7 +380,7 @@ class QTreeModel(QAbstractItemModel):
 
     def insertQAtom(self, position, qAtom, parent=QModelIndex()):
         self.insertRow(position, parent)
-        newIndex = self.index(position, 0)
+        newIndex = self.index(position, 0, parent)
         self.setData(newIndex, qAtom)
 
     def searchQAtom(self, qAtom: QAtom, parent=QModelIndex()):

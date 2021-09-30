@@ -201,7 +201,7 @@ class QBuyingHistory(QItemTree):
             with open(GMC_DIR / "data" / "buyingHistory", "rb") as file:  # open read/write/binary file
                 loadedBuyingHistory = pickle.load(file)
             return loadedBuyingHistory
-        except:
+        except FileNotFoundError:
             return None
 
 
@@ -274,7 +274,7 @@ class QUserHistory(QItemTree):
         # Definition
         self.mainLayout = QHBoxLayout()
         self.treeView = QSuperTreeView()
-        self.treeModel = QUserHistoryModel(["Transaction", "Montant"], user)
+        self.treeModel = QUserHistoryModel(["Transaction", "Montant", "Annulée"], user)
 
         # Layout
         self.treeView.setModel(self.treeModel)

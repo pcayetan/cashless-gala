@@ -7,7 +7,7 @@ from QUIManager import QUIManager
 from QNFCManager import QNFCManager
 from Client import Client
 from Euro import Eur
-from QUtils import QQuantity, QDelButton
+from QUtils import QQuantity, QDelButton, QWarningDialog, center
 
 # ________/\\\___________/\\\\\\\\\_________________________________________________________________
 # _____/\\\\/\\\\______/\\\\\\\\\\\\\_______________________________________________________________
@@ -136,6 +136,7 @@ class QCounter(QAtom, Counter):
 
 
 class QOperation(QAtom, Operation):
+
     def __init__(self, operation):
         super().__init__(operation)
 
@@ -143,9 +144,10 @@ class QOperation(QAtom, Operation):
 class QBuying(QOperation, Buying):
     sRefounded = pyqtSignal()  # The attribute "refounded" already exists
 
-    def __init__(self, buying):
+    def __init__(self, buying: Buying):
         super().__init__(buying)
-        self.actionDict["Rembourser"] = {"fct": self.refound, "icon": "delete"}
+        if not buying.getRefounded():
+            self.actionDict["Rembourser"] = {"fct": self.refound, "icon": "delete"}
 
     def refound(self):
         client = Client()
@@ -170,9 +172,30 @@ class QBuying(QOperation, Buying):
 
 
 class QRefilling(QOperation, Refilling):
+    sCancelled = pyqtSignal()
+
     def __init__(self, refilling):
         super().__init__(refilling)
         self.infoPannel = None
+        if not self.getRefounded():
+            self.actionDict["Annuler"] = {"fct": self.cancel, "icon": "delete"}
+
+    def cancel(self):
+        client = Client()
+        nfcm = QNFCManager()
+        if nfcm.getCardUID() == self.getCustomerId():
+            reply = QMessageBox.question(
+                None, "Annuler transaction", "Annuler cette transaction ?", QMessageBox.Yes, QMessageBox.No
+            )
+            if reply == QMessageBox.Yes:
+                if client.requestCancelRefilling(refilling_id=self.getId()) is None:
+                    printE("Error during canceling")
+                else:
+                    self.sCancelled.emit()
+        else:
+            warningDialog = QWarningDialog("Mauvais utilisateur", "L'utilisateur n'est pas concerné par cette transaction", "Veuillez présenter une carte concernée par la transaction")
+            center(warningDialog)
+            warningDialog.exec()
 
 
 class QDistribution(QAtom, Distribution):
