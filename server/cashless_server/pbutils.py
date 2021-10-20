@@ -3,7 +3,7 @@
 from google.protobuf.timestamp_pb2 import Timestamp
 import decimal
 
-from server import models, com_pb2
+from . import models, com_pb2
 
 
 def pb_now() -> Timestamp:

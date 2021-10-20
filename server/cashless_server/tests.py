@@ -8,9 +8,9 @@ import grpc
 from google.protobuf.timestamp_pb2 import Timestamp
 from grpc_testing import server_from_dictionary, strict_real_time
 
-from server import db, models, com_pb2, com_pb2_grpc
+from . import db, models, com_pb2, com_pb2_grpc
 
-from server.pbutils import (
+from .pbutils import (
     pb_now,
     date_to_pb,
     decimal_to_pb_money,

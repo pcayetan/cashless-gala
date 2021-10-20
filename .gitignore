@@ -23,3 +23,4 @@ swagger-client
 *_pb2*
 .DS_Store
 .envrc
+poetry.lock

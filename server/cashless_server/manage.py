@@ -13,7 +13,7 @@ def default_group():
 
 @default_group.command(name="runserver", help="Run the server")
 @click.option(
-    "--host", "-h", default="", type=str, help='Host to listen from (default "")'
+    "--host", "-h", default="127.0.0.1", type=str, help='Host to listen from (default "")'
 )
 @click.option(
     "--port", "-p", default=50051, type=int, help="Port to listen from (default 50051)"
@@ -26,7 +26,7 @@ def default_group():
     help="Enable server reflection for debug (default False)",
 )
 def runserver(host, port, reflect):
-    from server import server
+    from . import server
 
     server.serve(host, port, reflect)
 
@@ -52,15 +52,15 @@ def protoc():
 
     p = Popen(
         "python -m grpc_tools.protoc -I%s --python_out=%s --grpc_python_out=%s %s"
-        % ("../protos", "./server/", "./server/", "../protos/com.proto"),
+        % ("../protos", "./cashless_server/", "./cashless_server/", "../protos/com.proto"),
         shell=True,
     )
     p.wait()
     # Fix import path issues
-    with fileinput.FileInput("server/com_pb2_grpc.py", inplace=True) as file:
+    with fileinput.FileInput("cashless_server/com_pb2_grpc.py", inplace=True) as file:
         for line in file:
             print(
-                line.replace("import com_pb2", "import server.com_pb2"), end="",
+                line.replace("import com_pb2", "import cashless_server.com_pb2"), end="",
             )
 
 
@@ -80,7 +80,7 @@ def setup(**kwargs):
     from slugify import slugify
     import jsonschema
 
-    from server import settings, db, Model, engine, com_pb2, models
+    from . import settings, db, Model, engine, com_pb2, models
 
     def datetime_helper(event_date, hour, minute):
         # Does not handle midnight and after
@@ -212,6 +212,8 @@ def setup(**kwargs):
     db.commit()
     print("--- Database successfully created ---")
 
+def main():
+    click.CommandCollection(sources=[default_group])()
 
 if __name__ == "__main__":
-    click.CommandCollection(sources=[default_group])()
+    main()

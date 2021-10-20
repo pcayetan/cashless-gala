@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, backref
 import sqlalchemy.types as types
 
-from server import Model
+from . import Model
 
 
 class Money(types.TypeDecorator):

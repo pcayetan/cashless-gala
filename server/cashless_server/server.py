@@ -8,8 +8,8 @@ import decimal
 from concurrent import futures
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from server import db, models, com_pb2, com_pb2_grpc
-from server.pbutils import (
+from . import db, models, com_pb2, com_pb2_grpc
+from .pbutils import (
     pb_now,
     date_to_pb,
     decimal_to_pb_money,
