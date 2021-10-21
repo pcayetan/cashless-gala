@@ -4,9 +4,19 @@ version = "0.1.0"
 description = "Server for centralizing cashless system"
 authors = ["Sli <antoine@bartuccio.fr>"]
 license = "GPL-3.0-only"
+include = [
+    {path = "cashless_server/com.proto"},
+    {path = "cashless_server/com_pb2.py"},
+    {path = "cashless_server/com_pb2_grpc.py"},
+    {path = "cashless_server/db_import_schema.json"}
+]
+
+[tool.poetry.build]
+script = "build.py"
+# generate-setup-file = false
 
 [tool.poetry.scripts]
-manage = 'cashless_server.manage:main'
+cash = 'cashless_server.manage:main'
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -18,8 +28,14 @@ jsonschema = "^4.1.2"
 python-slugify = "^5.0.2"
 SQLAlchemy = "^1.4.26"
 
+grpcio-testing = {version = "^1.41.0", optional= true }
+pytest = "^6.2.5"
+
+[tool.poetry.extras]
+testing = ["grpcio-testing"]
+
 [tool.poetry.dev-dependencies]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.0.0", "wheel", "setuptools", "grpcio-tools", "click"]
 build-backend = "poetry.core.masonry.api"

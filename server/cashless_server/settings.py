@@ -1,11 +1,13 @@
 # -*- coding:utf-8 -*
-import sys
+import logging
+import os
 
 DB_PATH = "database.sqlite"
 
 try:
-    from .settings_custom import *
+    with open(os.environ.get("CFG", "settings_custom.py"), "r") as f:
+        exec(f.read())
 
-    print("Custom settings imported", file=sys.stderr)
-except:
-    print("Custom settings failed", file=sys.stderr)
+    logging.info("Custom settings imported")
+except Exception as e:
+    logging.warning(f"Custom settings failed: {e}")

@@ -23,4 +23,5 @@ swagger-client
 *_pb2*
 .DS_Store
 .envrc
-poetry.lock
+pyrightconfig.json
+*.egg-info*

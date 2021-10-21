@@ -4,6 +4,7 @@
 import grpc
 import json
 import decimal
+import logging
 
 from concurrent import futures
 from google.protobuf.timestamp_pb2 import Timestamp
@@ -540,7 +541,7 @@ def serve(address: str, port: int, reflect: bool):
     com_pb2_grpc.add_PaymentProtocolServicer_to_server(PaymentServicer(), server)
     server.add_insecure_port("%s:%d" % (address, port))
 
-    print("Listening from %s:%d" % (address, port))
+    logging.info("Listening from %s:%d" % (address, port))
     if reflect:
         from grpc_reflection.v1alpha import reflection
 
@@ -549,7 +550,7 @@ def serve(address: str, port: int, reflect: bool):
             reflection.SERVICE_NAME,
         )
         reflection.enable_server_reflection(SERVICE_NAMES, server)
-        print("Reflection enabled")
+        logging.info("Reflection enabled")
 
     server.start()
     server.wait_for_termination()
