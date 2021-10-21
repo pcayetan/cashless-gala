@@ -4,6 +4,7 @@ import os
 import sys
 
 import click
+import logging
 
 
 @click.group()
@@ -13,7 +14,11 @@ def default_group():
 
 @default_group.command(name="runserver", help="Run the server")
 @click.option(
-    "--host", "-h", default="", type=str, help='Host to listen from (default "")'
+    "--host",
+    "-h",
+    default="127.0.0.1",
+    type=str,
+    help='Host to listen from (default "")',
 )
 @click.option(
     "--port", "-p", default=50051, type=int, help="Port to listen from (default 50051)"
@@ -26,47 +31,47 @@ def default_group():
     help="Enable server reflection for debug (default False)",
 )
 def runserver(host, port, reflect):
-    from server import server
+    from . import server
 
     server.serve(host, port, reflect)
 
 
+@default_group.command(name="test", help="Run tests")
+@click.argument("name", type=str, required=False)
+def test(name=None):
+    import unittest
+
+    loader = unittest.TestLoader()
+
+    if name is None:
+        suite = loader.discover("", pattern="tests.py")
+    else:
+        suite = loader.loadTestsFromName("server.tests.%s" % name)
+    unittest.TextTestRunner(verbosity=2).run(suite)
+
+
 @default_group.command(name="protoc", help="Generate protoc files")
 def protoc():
-    from subprocess import Popen
-    import fileinput
-
-    p = Popen(
-        "python -m grpc_tools.protoc -I%s --python_out=%s --grpc_python_out=%s %s"
-        % ("../protos", "./server/", "./server/", "../protos/com.proto"),
-        shell=True,
-    )
-    p.wait()
-    # Fix import path issues
-    with fileinput.FileInput("server/com_pb2_grpc.py", inplace=True) as file:
-        for line in file:
-            print(
-                line.replace("import com_pb2", "import server.com_pb2"), end="",
-            )
+    try:
+        from ..protoc import build_protoc
+    except ModuleNotFoundError:
+        logging.error("This functionnality can not be used when installed from pip")
+        return
+    build_protoc()
 
 
 @default_group.command(name="setup", help="Generate database")
-@click.option("--import", "-i", default=None, help="Import initial data from json file")
-@click.option(
-    "--schema",
-    "-s",
-    default="db_import_schema.json",
-    help="Location of the schema used to validate the json of the import command",
-)
-def setup(**kwargs):
+@click.argument("import_file", required=False, default=None, type=click.File("r"))
+def setup(import_file):
     import json
+    from importlib.resources import read_text
     from datetime import datetime
     from random import randint
 
     from slugify import slugify
     import jsonschema
 
-    from server import settings, db, Model, engine, com_pb2, models
+    from . import settings, db, Model, engine, com_pb2, models
 
     def datetime_helper(event_date, hour, minute):
         # Does not handle midnight and after
@@ -86,13 +91,13 @@ def setup(**kwargs):
         return code
 
     if os.path.exists(settings.DB_PATH):
-        print("--- Deleting database ---")
+        logging.info("--- Deleting database ---")
         os.remove(settings.DB_PATH)
-    print("--- Creating database ---")
+    logging.info("--- Creating database ---")
 
     Model.metadata.create_all(bind=engine)
 
-    print("--- Creating payment methods ---")
+    logging.info("--- Creating payment methods ---")
     db.add(models.PaymentMethod(id=com_pb2.PaymentMethod.UNKNOWN, name="inconnu"))
     db.add(models.PaymentMethod(id=com_pb2.PaymentMethod.CASH, name="espèces"))
     db.add(models.PaymentMethod(id=com_pb2.PaymentMethod.CARD, name="carte"))
@@ -101,40 +106,24 @@ def setup(**kwargs):
     db.add(models.PaymentMethod(id=com_pb2.PaymentMethod.TRANSFER, name="transfert"))
     db.add(models.PaymentMethod(id=com_pb2.PaymentMethod.OTHER, name="autre"))
 
-    if kwargs["import"] is not None:
+    if import_file is not None:
 
         # Load user json
-        print("Importing data from %s" % kwargs["import"])
+        logging.info(f"Importing data from {import_file.name}")
         try:
-            f = open(kwargs["import"], "r")
-        except OSError as e:
-            print("Error opening %s: %s" % (kwargs["import"], e), file=sys.stderr)
-            return
-        try:
-            data = json.load(f)
+            data = json.loads(import_file.read())
         except json.decoder.JSONDecodeError as e:
-            print("Error loading %s: %s" % (kwargs["import"], e), file=sys.stderr)
+            logging.error(f"Error loading {import_file.name}: {e}")
             return
-        f.close()
-        print(kwargs["schema"])
+        import_file.close()
 
-        # Load schema for validation
-        print("Matching against schema")
-        try:
-            f = open(kwargs["schema"], "r")
-        except OSError as e:
-            print("Error opening %s: %s" % (kwargs["import"], e), file=sys.stderr)
-            return
-        try:
-            schema = json.load(f)
-        except json.decoder.JSONDecodeError as e:
-            print("Error loading %s: %s" % (kwargs["import"], e), file=sys.stderr)
-            return
-        f.close()
+        # Load schema for validation from current module resources files
+        schema = json.loads(read_text(__package__, "db_import_schema.json"))
+        logging.info("Matching against schema")
         try:
             jsonschema.validate(data, schema)
         except jsonschema.exceptions.ValidationError as e:
-            print("Your json is incorrect: %s" % e, file=sys.stderr)
+            logging.error(f"Your json is incorrect: {e}")
             return
 
         generated_codes = {}
@@ -142,16 +131,16 @@ def setup(**kwargs):
         event_date = datetime(
             year=event_date["year"], month=event_date["month"], day=event_date["day"]
         )
-        print("--- Event date is : %s ---", event_date)
+        logging.info(f"--- Event date is : {event_date} ---")
 
-        print("--- Creating counters ---")
+        logging.info("--- Creating counters ---")
         for counter in data.get("counters", []):
-            print("Creating counter %s" % counter)
+            logging.info(f"Creating counter {counter}")
             db.add(models.Counter(name=counter))
 
         db.commit()
 
-        print("--- Creating products ---")
+        logging.info("--- Creating products ---")
         for product in data.get("products", []):
             p = models.Product(
                 name=product["name"].capitalize(),
@@ -161,7 +150,7 @@ def setup(**kwargs):
                 ),
                 default_price=product["price"],
             )
-            print("Creating product %s" % p.name)
+            logging.info(f"Creating product {p.name}")
             db.add(p)
             db.commit()
 
@@ -196,8 +185,12 @@ def setup(**kwargs):
             db.commit()
 
     db.commit()
-    print("--- Database successfully created ---")
+    logging.info("--- Database successfully created ---")
+
+
+def main():
+    click.CommandCollection(sources=[default_group])()
 
 
 if __name__ == "__main__":
-    click.CommandCollection(sources=[default_group])()
+    main()

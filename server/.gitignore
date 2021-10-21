@@ -1,3 +1,5 @@
-server/settings_custom.py
+settings_custom.py
+setup.py
+poetry.lock
 *.sqlite
 *.pyc

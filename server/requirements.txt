@@ -1,7 +1,0 @@
-grpcio==1.36
-grpcio-tools==1.36
-grpcio-reflection==1.36
-SQLAlchemy==1.3.17
-click==7.1.2
-jsonschema
-python-slugify

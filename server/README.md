@@ -1,11 +1,27 @@
 # Installation
 
 ```bash
-virtualenv python=python3 env
-source env/bin/activate
-pip install -r requirements.txt
+poetry install
+poetry shell
 
-./manage.py protoc # Generate protobuf files
-./manage.py setup --import 2019.json # Generate database
-./manage.py runserver -h 127.0.0.1
+cash setup 2019.json # Generate database by importing 2019's database
+cash runserver
+
+# You can use custom settings by creating a settings_custom.py file
+# You can also configure the location of those settings through the CFG env variable
+```
+
+# Testing
+
+```bash
+cash test # Launch all tests
+cash test TestBalance # Only launch test cases of TestBalance class
+cash test TestBalance.test_existing_user # Only test one method of TestBalance class
+```
+
+# Developement
+
+```bash
+# Rebuild protobuf files
+cash protoc
 ```

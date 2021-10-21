@@ -23,3 +23,5 @@ swagger-client
 *_pb2*
 .DS_Store
 .envrc
+pyrightconfig.json
+*.egg-info*
