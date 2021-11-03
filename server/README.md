@@ -14,9 +14,12 @@ cash runserver
 # Testing
 
 ```bash
-cash test # Launch all tests
-cash test TestBalance # Only launch test cases of TestBalance class
-cash test TestBalance.test_existing_user # Only test one method of TestBalance class
+poetry install -E testing # Install testing dependencies
+pytest  # Launch all tests
+pytest -k "TestBalance" # Only launch test cases of TestBalance class
+pytest -k "test_existing_user" # Only test one method of TestBalance class
+# Generate html coverage report
+pytest --cov-report=html --cov=cashless_server
 ```
 
 # Developement

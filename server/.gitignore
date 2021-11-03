@@ -3,3 +3,6 @@ setup.py
 poetry.lock
 *.sqlite
 *.pyc
+.pytest_cache
+.coverage
+htmlcov

@@ -2,14 +2,14 @@
 # -*- coding:utf-8 -*
 
 import grpc
-import json
 import decimal
 import logging
 
-from concurrent import futures
-from google.protobuf.timestamp_pb2 import Timestamp
+from sqlalchemy.orm.session import Session
 
-from . import db, models, com_pb2, com_pb2_grpc
+from concurrent import futures
+
+from . import db_session, models, com_pb2, com_pb2_grpc
 from .pbutils import (
     pb_now,
     date_to_pb,
@@ -19,7 +19,7 @@ from .pbutils import (
 )
 
 
-def get_or_create_machine(_uuid: str) -> models.Machine:
+def get_or_create_machine(db: Session, _uuid: str) -> models.Machine:
     machine = db.query(models.Machine).get(_uuid)
     if machine is None:
         machine = models.Machine(uuid=_uuid)
@@ -28,7 +28,7 @@ def get_or_create_machine(_uuid: str) -> models.Machine:
     return machine
 
 
-def get_or_create_customer(_id: str) -> models.Customer:
+def get_or_create_customer(db: Session, _id: str) -> models.Customer:
     customer = db.query(models.Customer).get(_id)
     if customer is None:
         customer = models.Customer(id=_id, balance=0)
@@ -39,13 +39,14 @@ def get_or_create_customer(_id: str) -> models.Customer:
 
 class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
     """
-        Communication protocol to communicate with the cashless client
+    Communication protocol to communicate with the cashless client
     """
 
-    def Buy(self, request, context):
+    @db_session
+    def Buy(self, request, context, db: Session):
         """
-            Validate a given basket and roll payments for customer
-            according to the money repartition given by the client
+        Validate a given basket and roll payments for customer
+        according to the money repartition given by the client
         """
         # Some basic checks
         if not request.counter_id:
@@ -62,7 +63,7 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             return com_pb2.BuyingReply(
                 now=pb_now(), status=com_pb2.BuyingReply.COUNTER_NOT_FOUND
             )
-        machine = get_or_create_machine(request.device_uuid)
+        machine = get_or_create_machine(db, request.device_uuid)
 
         total_payment = decimal.Decimal("0")  # Total payment of customers
         real_price_sum = decimal.Decimal(
@@ -70,7 +71,7 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         )  # Used to check if total_payment is correct
         payments = []  # Contains tuple (customer, amount_for_customer)
         for payment in request.payments:
-            customer = get_or_create_customer(payment.customer_id)
+            customer = get_or_create_customer(db, payment.customer_id)
             amount = pb_money_to_decimal(payment.amount)
             if amount > customer.balance:
                 return com_pb2.BuyingReply(
@@ -107,7 +108,9 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         reply_payments = []  # Used for response
         reply_items = []  # Used for response
         buying = models.Buying(
-            counter_id=counter.id, machine_id=machine.uuid, refounded=False,
+            counter_id=counter.id,
+            machine_id=machine.uuid,
+            refounded=False,
         )
         db.add(buying)
         db.commit()
@@ -163,9 +166,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             ),
         )
 
-    def Refill(self, request, context):
+    @db_session
+    def Refill(self, request, context, db: Session):
         """
-            Refill a customer account with money
+        Refill a customer account with money
         """
         if not request.customer_id:
             return com_pb2.RefillingReply(
@@ -186,8 +190,8 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
                 now=pb_now(), status=com_pb2.RefillingReply.COUNTER_NOT_FOUND
             )
 
-        customer = get_or_create_customer(request.customer_id)
-        machine = get_or_create_machine(request.device_uuid)
+        customer = get_or_create_customer(db, request.customer_id)
+        machine = get_or_create_machine(db, request.device_uuid)
         amount = pb_money_to_decimal(request.amount)
 
         customer.balance += amount
@@ -209,9 +213,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             refilling=refilling_to_pb(refilling),
         )
 
-    def RefoundBuying(self, request, context):
+    @db_session
+    def RefoundBuying(self, request, context, db: Session):
         """
-            Refound users involved in a buying
+        Refound users involved in a buying
         """
         # Check missing fields
         if not request.buying_id:
@@ -251,9 +256,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             customer_balances=customer_balances,
         )
 
-    def CancelRefilling(self, request, context):
+    @db_session
+    def CancelRefilling(self, request, context, db: Session):
         """
-            Cancel a refilling
+        Cancel a refilling
         """
         if not request.refilling_id:
             return com_pb2.CancelRefillingReply(
@@ -284,9 +290,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             customer_balance=decimal_to_pb_money(customer.balance),
         )
 
-    def Transfert(self, request, context):
+    @db_session
+    def Transfert(self, request, context, db: Session):
         """
-            Transfert money from a customer to another
+        Transfert money from a customer to another
         """
         if not request.origin_id:
             return com_pb2.TransfertReply(
@@ -305,25 +312,28 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
 
         if not request.device_uuid:
             return com_pb2.TransfertReply(
-                now=pb_now(), status=com_pb2.TransfertReply.MISSING_DEVICE_UUID,
+                now=pb_now(),
+                status=com_pb2.TransfertReply.MISSING_DEVICE_UUID,
             )
 
         counter = db.query(models.Counter).get(request.counter_id)
         if counter is None:
             return com_pb2.TransfertReply(
-                now=pb_now(), status=com_pb2.TransfertReply.COUNTER_NOT_FOUND,
+                now=pb_now(),
+                status=com_pb2.TransfertReply.COUNTER_NOT_FOUND,
             )
 
         amount = pb_money_to_decimal(request.amount)
 
         # Check origin balance
-        origin_customer = get_or_create_customer(request.origin_id)
+        origin_customer = get_or_create_customer(db, request.origin_id)
         if origin_customer.balance < amount:
             return com_pb2.TransfertReply(
-                now=pb_now(), status=com_pb2.TransfertReply.NOT_ENOUGH_MONEY,
+                now=pb_now(),
+                status=com_pb2.TransfertReply.NOT_ENOUGH_MONEY,
             )
-        destination_customer = get_or_create_customer(request.destination_id)
-        machine = get_or_create_machine(request.device_uuid)
+        destination_customer = get_or_create_customer(db, request.destination_id)
+        machine = get_or_create_machine(db, request.device_uuid)
 
         # Remove money from origin
         origin_customer.balance -= amount
@@ -362,9 +372,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             destination_refilling=refilling_to_pb(destination_refilling),
         )
 
-    def Balance(self, request, context):
+    @db_session
+    def Balance(self, request, context, db: Session):
         """
-            Return balance of a customer and create it if it doesn't exist
+        Return balance of a customer and create it if it doesn't exist
         """
         if not request.customer_id:
             return com_pb2.BalanceReply(
@@ -375,13 +386,14 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             status=com_pb2.BalanceReply.SUCCESS,
             now=pb_now(),
             balance=decimal_to_pb_money(
-                get_or_create_customer(request.customer_id).balance
+                get_or_create_customer(db, request.customer_id).balance
             ),
         )
 
-    def History(self, request, context):
+    @db_session
+    def History(self, request, context, db: Session):
         """
-            Retrieve history
+        Retrieve history
         """
 
         # Prepare default values
@@ -392,10 +404,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         refounded = None
 
         if request.customer_id:
-            customer = get_or_create_customer(request.customer_id)
+            customer = get_or_create_customer(db, request.customer_id)
 
         if request.device_uuid:
-            device = get_or_create_machine(request.device_uuid)
+            device = get_or_create_machine(db, request.device_uuid)
 
         if request.refounded == com_pb2.HistoryRequest.NOT_REFOUNDED:
             refounded = False
@@ -480,9 +492,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             buyings=buyings,
         )
 
-    def CounterList(self, request, context):
+    @db_session
+    def CounterList(self, request, context, db: Session):
         """
-            Return a list of every counter available
+        Return a list of every counter available
         """
         resp = []
         for counter in db.query(models.Counter).all():
@@ -493,9 +506,10 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
             status=com_pb2.CounterListReply.SUCCESS, counters=resp, now=pb_now()
         )
 
-    def Products(self, request, context):
+    @db_session
+    def Products(self, request, context, db: Session):
         """
-            Return the list of products available on a given counter
+        Return the list of products available on a given counter
         """
         if not request.counter_id:
             return com_pb2.ProductsReply(
