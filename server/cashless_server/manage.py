@@ -16,9 +16,9 @@ def default_group():
 @click.option(
     "--host",
     "-h",
-    default="127.0.0.1",
+    default="0.0.0.0",
     type=str,
-    help='Host to listen from (default "")',
+    help='Host to listen from (default "0.0.0.0")',
 )
 @click.option(
     "--port", "-p", default=50051, type=int, help="Port to listen from (default 50051)"
@@ -36,20 +36,6 @@ def runserver(host, port, reflect):
     server.serve(host, port, reflect)
 
 
-@default_group.command(name="test", help="Run tests")
-@click.argument("name", type=str, required=False)
-def test(name=None):
-    import unittest
-
-    loader = unittest.TestLoader()
-
-    if name is None:
-        suite = loader.discover("", pattern="tests.py")
-    else:
-        suite = loader.loadTestsFromName("server.tests.%s" % name)
-    unittest.TextTestRunner(verbosity=2).run(suite)
-
-
 @default_group.command(name="protoc", help="Generate protoc files")
 def protoc():
     try:
@@ -62,7 +48,14 @@ def protoc():
 
 @default_group.command(name="setup", help="Generate database")
 @click.argument("import_file", required=False, default=None, type=click.File("r"))
+def _setup(import_file):
+    setup(import_file)
+
+
 def setup(import_file):
+    """
+    Generate database and import from json file
+    """
     import json
     from importlib.resources import read_text
     from datetime import datetime
@@ -71,7 +64,7 @@ def setup(import_file):
     from slugify import slugify
     import jsonschema
 
-    from . import settings, db, Model, engine, com_pb2, models
+    from . import settings, get_db, get_engine, com_pb2, models
 
     def datetime_helper(event_date, hour, minute):
         # Does not handle midnight and after
@@ -95,7 +88,8 @@ def setup(import_file):
         os.remove(settings.DB_PATH)
     logging.info("--- Creating database ---")
 
-    Model.metadata.create_all(bind=engine)
+    models.Model.metadata.create_all(bind=get_engine())
+    db = get_db()
 
     logging.info("--- Creating payment methods ---")
     db.add(models.PaymentMethod(id=com_pb2.PaymentMethod.UNKNOWN, name="inconnu"))
