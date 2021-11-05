@@ -15,13 +15,14 @@ service PaymentProtocol {
 }
 
 enum PaymentMethod {
-  UNKNOWN = 0;
-  CASH = 1;
-  CARD = 2;
-  CHECK = 3;
-  AE = 4;
-  TRANSFER = 5;
-  OTHER = 6;
+  NOT_PROVIDED = 0;
+  UNKNOWN = 1;
+  CASH = 2;
+  CARD = 3;
+  CHECK = 4;
+  AE = 5;
+  TRANSFER = 6;
+  OTHER = 7;
 }
 
 // This is based on the DecimalTuple format available on Python
