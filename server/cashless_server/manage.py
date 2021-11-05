@@ -38,12 +38,9 @@ def runserver(host, port, reflect):
 
 @default_group.command(name="protoc", help="Generate protoc files")
 def protoc():
-    try:
-        from ..protoc import build_protoc
-    except ModuleNotFoundError:
-        logging.error("This functionnality can not be used when installed from pip")
-        return
-    build_protoc()
+    from subprocess import Popen
+
+    Popen(f"{sys.executable} ./protoc.py", shell=True).wait()
 
 
 @default_group.command(name="setup", help="Generate database")
@@ -89,7 +86,8 @@ def setup(import_file):
     logging.info("--- Creating database ---")
 
     models.Model.metadata.create_all(bind=get_engine())
-    db = get_db()
+    db_session = get_db()
+    db = db_session()
 
     logging.info("--- Creating payment methods ---")
     db.add(models.PaymentMethod(id=com_pb2.PaymentMethod.UNKNOWN, name="inconnu"))
@@ -179,6 +177,7 @@ def setup(import_file):
             db.commit()
 
     db.commit()
+    db_session.remove()
     logging.info("--- Database successfully created ---")
 
 

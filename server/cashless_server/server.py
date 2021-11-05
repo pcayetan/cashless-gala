@@ -184,6 +184,11 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
                 now=pb_now(), status=com_pb2.RefillingReply.MISSING_DEVICE_UUID
             )
 
+        if request.payment_method == com_pb2.PaymentMethod.NOT_PROVIDED:
+            return com_pb2.RefillingReply(
+                now=pb_now(), status=com_pb2.RefillingReply.MISSING_PAYMENT_METHOD
+            )
+
         counter = db.query(models.Counter).get(request.counter_id)
         if counter is None:
             return com_pb2.RefillingReply(
