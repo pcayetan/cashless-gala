@@ -15,11 +15,10 @@ class QProductSelectorModel(QTreeModel):
         super().__init__(headers, data=data, parent=parent)
         dm = QDataManager()
         self.qProductList = []
-        if data is not None:
-            self.setupModelData(data)
+        self.setupModelData()
         dm.priceUpdated[Product].connect(self.updatePrice)
 
-    def setupModelData(self, data):
+    def setupModelData(self):
         dm = QDataManager()
         # print(data)
         # productDict look like this {"root":{"cat1:{"Product":[]}","Product":[]},"Product":[]}

@@ -69,10 +69,7 @@ class QProductSelector(QItemTree):
         # Definition
         self.mainLayout = QVBoxLayout()
         self.treeView = QSuperTreeView()
-        if productDict:
-            self.treeModel = QProductSelectorModel(["Produits", "Prix"], dm.productDict)
-        else:
-            self.treeModel = None
+        self.treeModel = QProductSelectorModel(["Produits", "Prix"], dm.productDict)
 
         # Layout
         self.mainLayout.addWidget(self.treeView)
@@ -83,6 +80,20 @@ class QProductSelector(QItemTree):
         self.treeView.expandAll()
 
         self.treeView.doubleClicked[QModelIndex].connect(self.clicked)
+        self.treeModel.modelAboutToBeReset.connect(self.resetProductSelector)
+        dm.counterUpdated.connect(self.updateProducts)
+
+    def updateProducts(self):
+        self.treeModel.beginResetModel()
+        # This will emit modelAboutToBeReset signal
+
+    def resetProductSelector(self):
+        dm = QDataManager()
+        n_row = self.treeModel.rowCount()
+        self.treeModel.removeRows(0, n_row)
+        self.treeModel.setupModelData()
+        self.treeModel.endResetModel()
+        self.treeView.expandAll()
 
     def clicked(self, index):
         qAtom = index.internalPointer().getData()
@@ -105,6 +116,10 @@ class QBasket(QItemTree):
         self.mainLayout.addWidget(self.treeView)
         self.treeView.setModel(self.treeModel)
         self.setLayout(self.mainLayout)
+
+        dm = QDataManager()
+        # The basket must be cleared if you change the counter
+        dm.counterUpdated.connect(self.clear)
 
         # self.treeModel.modelChanged.connect(self.forceRefresh)
 

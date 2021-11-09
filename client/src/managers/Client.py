@@ -219,7 +219,7 @@ class Client(metaclass=ClientSingleton):
             productsRequest = com_pb2.ProductsRequest(**kwargs)
             productsReply = self.stub.Products(productsRequest)
             if productsReply.status == com_pb2.ProductsReply.SUCCESS:
-                self.updateTime(productsReply.now)
+                self.updateTime(unpackTime(productsReply.now))
                 # Fill product List
                 pbProductList = productsReply.products  # get protobuff products
                 for pb_product in pbProductList:

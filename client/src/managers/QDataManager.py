@@ -103,6 +103,7 @@ class QDataManagerSingleton(type(QObject)):
 
 class QDataManager(QObject, metaclass=QDataManagerSingleton):
     priceUpdated = pyqtSignal(Product)
+    counterUpdated = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -110,7 +111,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         log = logging.getLogger()
 
         # Definition
-        self.productList = []  # list of "Products"
+        self.productList = []  # list of "Products" for a given counter
         self.productDict = {}  # With categories
         self.buyingList = []
         self.refillingList = []
@@ -151,6 +152,7 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         # counter initialisation
         log.info("Request counter list")
         self.counterList = client.requestCounterList()
+        defaultCounter = self.counterList[0]
         try:
             with open(Path("data/counter"), "rb") as file:
                 try:
@@ -163,22 +165,17 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
                             "Unable to find the loaded counter in the existing list"
                         )
                         log.info("Setting a new default counter")
-                        self.counter = self.counterList[0]
+                        self.counter = defaultCounter
                 except PickleError:
                     log.warning("Counter memory corrupted")
                     log.info("Setting a new default counter")
-                    self.counter = self.counterList[0]
+                    self.counter = defaultCounter
         except FileNotFoundError:
             log.warning("Counter file not found")
             log.info("Setting a new default counter")
-            self.counter = self.counterList[0]
+            self.counter = defaultCounter
 
-        with open(Path("data/counter"), "wb") as file:
-            pickle.dump(self.counter, file)
-
-        log.info("Request products availables for this counter")
-        self.productList = client.requestCounterProduct(counter_id=self.counter.getId())
-        self.productDict = parseProductDict(self.productList)
+        self.updateCounter(self.counter)
 
     def getPrice(self, product):
         for prod in self.productList:
@@ -190,6 +187,16 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
 
     def getUID(self):
         return self.uid
+
+    def updateCounter(self, counter: Counter):
+        client = Client()
+        with open(Path("data/counter"), "wb") as file:
+            pickle.dump(counter, file)
+
+        log.info("Request products availables for this counter")
+        self.productList = client.requestCounterProduct(counter_id=counter.getId())
+        self.productDict = parseProductDict(self.productList)
+        self.counterUpdated.emit()
 
     def update(self):
         client = Client()

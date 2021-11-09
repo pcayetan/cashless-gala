@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import logging
 
 # Project specific imports
 from src.managers.QDataManager import QDataManager
@@ -11,6 +12,8 @@ from src.gui.QCounterTab import *
 
 from src.gui.QUtils import center
 from src.gui.widgets.QForms import QIpInputDialog
+
+log = logging.getLogger()
 
 # de transaction
 
@@ -79,14 +82,29 @@ class QMainMenu(QMainWindow):
         # helpMenu = mainMenu.addMenu("&Aide")
         counterMenu = configMenu.addMenu("&Comptoir")
         ipMenu = configMenu.addMenu("&Adresse serveur")
-        counterActionList = []
+        counterActionGroup = QActionGroup(self)
         self.counterActionGroup = QActionGroup(self)
 
         self.ipDialog = QIpInputDialog("Veuillez saisir l'adresse du serveur")
         self.ipDialog.setWindowTitle("IP Serveur")
 
         #  Settings
-        # Link
+
+        dm = QDataManager()
+        for counter in dm.counterList:
+            # Create actions
+            action = QAction(counter.getName(), self)
+            action.triggered.connect(self.updateCounter)
+            action.setCheckable(True)
+            action.setData(counter)  # Looks like there's room for user defined data
+            # Add the action to a group so that the actions are mutually exclusive
+            self.counterActionGroup.addAction(action)
+            # Set the current check on the right counter
+            if counter == dm.counter:
+                log.debug("Counter {} selected".format(counter))
+                action.setChecked(True)
+            # Add the action to the widget menu
+            counterMenu.addAction(action)
 
         # Toolbar
 
@@ -97,4 +115,8 @@ class QMainMenu(QMainWindow):
         pass
 
     def updateCounter(self):
-        pass
+        dm = QDataManager()
+        action = self.sender()
+        selectedCounter = action.data()
+        dm.updateCounter(selectedCounter)
+        log.info("Counter {} selected".format(selectedCounter))
