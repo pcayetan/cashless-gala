@@ -1,17 +1,28 @@
 from __future__ import print_function
 import grpc
 from grpc import RpcError
-import com_pb2
-import com_pb2_grpc
 from google.protobuf.timestamp_pb2 import Timestamp
+import logging
+
+import src.managers.com.com_pb2
+import src.managers.com.com_pb2_grpc
 
 # OPTINAL FOR PINGING THE SERVER AND ENSURE IT'S AVAILABLE
 import platform  # For getting the operating system name
 import subprocess  # For executing a shell command
 
+import time
+from datetime import datetime, timedelta
+
 # Project specific imports
-from convert import *
-from Console import *
+from src.managers.com.convert import *
+
+# Temporary solution to let 'user' change server address
+import sys
+from pathlib import Path
+
+
+log = logging.getLogger()
 
 
 def ping(host):
@@ -40,10 +51,30 @@ class ClientSingleton(type):
 
 class Client(metaclass=ClientSingleton):
     def __init__(self):
-        self.serverAddress = "127.0.0.1:50051"
+
+        # TEMPORARY
+        # I don't want QDataManager here so I get the root path myself here
+        if getattr(sys, "frozen", False):
+            # If the program has been frozen by cx_freeze
+            self.rootDir = Path(sys.executable).absolute().parents[0]
+        else:
+            self.rootDir = Path(__file__).absolute().parents[2]
+        with open(self.rootDir / Path("data/server"), "r") as file:
+            address = file.readline()
+        address = address.strip()
+        # END TEMPORARY
+        self.serverAddress = address + ":50051"
         self.channel = grpc.insecure_channel(self.serverAddress)
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
-        self.now = None  # datetime
+        self.timestamp = datetime(1970, 1, 1)
+        self.t0 = time.time()
+
+    def getTime(self) -> datetime:
+        return self.timestamp + timedelta(seconds=time.time() - self.t0)
+
+    def updateTime(self, datetime: datetime):
+        self.t0 = time.time()
+        self.timestamp = datetime
 
     def setServerAddress(self, address):
         self.serverAddress = address
@@ -54,10 +85,10 @@ class Client(metaclass=ClientSingleton):
 
     def requestBuy(self, **kwargs) -> Buying:
         """
-    int64 counter_id
-    string device_uuid
-    repeated Payment payments
-    repeated BasketItem basket
+        int64 counter_id
+        string device_uuid
+        repeated Payment payments
+        repeated BasketItem basket
         """
         try:
             payments = kwargs["payments"]
@@ -74,12 +105,12 @@ class Client(metaclass=ClientSingleton):
 
             buyingRequest = com_pb2.BuyingRequest(**kwargs)
             buyingReply = self.stub.Buy(buyingRequest)
-            self.now = unpackTime(buyingReply.now)
+            self.updateTime(unpackTime(buyingReply.now))
             if buyingReply.status == com_pb2.BuyingReply.SUCCESS:
                 transaction = buyingReply.transaction
                 buying = unpackBuying(transaction)
             elif buyingReply.status == com_pb2.BuyingReply.NOT_ENOUGH_MONEY:
-                printW("Not enough money")
+                log.warning("Not enough money")
                 return None
 
             return buying
@@ -97,6 +128,7 @@ class Client(metaclass=ClientSingleton):
         """
         try:
             paymentMethodList = [
+                com_pb2.NOT_PROVIDED,
                 com_pb2.UNKNOWN,
                 com_pb2.CASH,
                 com_pb2.CARD,
@@ -110,16 +142,16 @@ class Client(metaclass=ClientSingleton):
             refillingRequest = com_pb2.RefillingRequest(**kwargs)
             refillingReply = self.stub.Refill(refillingRequest)
             if refillingReply.status == com_pb2.RefillingReply.SUCCESS:
-                self.now = unpackTime(refillingReply.now)
+                self.updateTime(unpackTime(refillingReply.now))
                 newBalance = unpackMoney(refillingReply.customer_balance)
                 refilling = unpackRefilling(refillingReply.refilling)
                 refilling.setNewBalance(newBalance)
                 return refilling
             else:
-                printE("Unable to refill")
+                log.error("Unable to refill")
                 return None
         except RpcError:
-            printE("RPC: Unable to refill")
+            log.error("RPC: Unable to refill")
             return None
 
     def requestHistory(self, **kwargs):
@@ -135,7 +167,10 @@ class Client(metaclass=ClientSingleton):
         buyings = []
         refillings = []
 
-        requestType = [com_pb2.HistoryRequest.BUYINGS, com_pb2.HistoryRequest.REFILLINGS]
+        requestType = [
+            com_pb2.HistoryRequest.BUYINGS,
+            com_pb2.HistoryRequest.REFILLINGS,
+        ]
         refoundStatus = [
             com_pb2.HistoryRequest.NOT_SPECIFIED,
             com_pb2.HistoryRequest.NOT_REFOUNDED,
@@ -145,6 +180,7 @@ class Client(metaclass=ClientSingleton):
             historyRequest = com_pb2.HistoryRequest(**kwargs)
             historyReply = self.stub.History(historyRequest)
             if historyReply.status == com_pb2.HistoryReply.SUCCESS:
+                self.updateTime(unpackTime(historyReply.now))
                 for buying in historyReply.buyings:
                     buyings.append(unpackBuying(buying))
                 for refilling in historyReply.refillings:
@@ -164,14 +200,14 @@ class Client(metaclass=ClientSingleton):
             refoundBuyingRequest = com_pb2.RefoundBuyingRequest(**kwargs)
             refoundBuyingReply = self.stub.RefoundBuying(refoundBuyingRequest)
             if refoundBuyingReply.status == com_pb2.RefoundBuyingReply.SUCCESS:
-                self.now = unpackTime(refoundBuyingReply.now)
+                self.updateTime(unpackTime(refoundBuyingReply.now))
                 return True
             else:
-                printE("Unable to refound: {}".format(refoundBuyingReply.status))
+                log.error("Unable to refound: {}".format(refoundBuyingReply.status))
                 return None
 
         except RpcError:
-            printE("RPC: Unable to refound")
+            log.error("RPC: Unable to refound")
             return None
 
     def requestCounterProduct(self, **kwargs) -> [Product]:
@@ -183,7 +219,7 @@ class Client(metaclass=ClientSingleton):
             productsRequest = com_pb2.ProductsRequest(**kwargs)
             productsReply = self.stub.Products(productsRequest)
             if productsReply.status == com_pb2.ProductsReply.SUCCESS:
-                self.now = unpackTime(productsReply.now)
+                self.updateTime(productsReply.now)
                 # Fill product List
                 pbProductList = productsReply.products  # get protobuff products
                 for pb_product in pbProductList:
@@ -191,11 +227,11 @@ class Client(metaclass=ClientSingleton):
                     productList.append(newProduct)
                 return productList
             else:
-                printE("Unable to get product list")
+                log.error("Unable to get product list")
                 return None
 
         except RpcError:
-            printE("RPC: Unable to get product list")
+            log.error("RPC: Unable to get product list")
             return None
 
         return None
@@ -207,10 +243,10 @@ class Client(metaclass=ClientSingleton):
         try:
             balanceRequest = com_pb2.BalanceRequest(customer_id=kwargs["customer_id"])
             balanceReply = self.stub.Balance(balanceRequest)
-            self.now = unpackTime(balanceReply.now)
+            self.updateTime(unpackTime(balanceReply.now))
             return unpackMoney(balanceReply.balance)
         except RpcError:
-            printE("Unable to get customer balance")
+            log.error("Unable to get customer balance")
             return None
 
         return None
@@ -222,7 +258,7 @@ class Client(metaclass=ClientSingleton):
             counterListRequest = com_pb2.CounterListRequest()
             counterListReply = self.stub.CounterList(counterListRequest)
             pbCounterList = counterListReply.counters  # get the payload
-            self.now = unpackTime(counterListReply.now)  # update the time
+            self.updateTime(unpackTime(counterListReply.now))  # update the time
 
             for pb_counter in pbCounterList:
                 newCounter = unpackCounter(pb_counter)
@@ -230,7 +266,7 @@ class Client(metaclass=ClientSingleton):
             return counterList
 
         except RpcError:
-            printE("Unable to get counter list")
+            log.error("Unable to get counter list")
             return None
 
         return None
@@ -247,11 +283,11 @@ class Client(metaclass=ClientSingleton):
             cancelRefillingRequest = com_pb2.CancelRefillingRequest(**kwargs)
             cancelRefillingReply = self.stub.CancelRefilling(cancelRefillingRequest)
             if cancelRefillingReply.status == com_pb2.CancelRefillingReply.SUCCESS:
-                self.now = unpackTime(cancelRefillingReply.now)
+                self.updateTime(unpackTime(cancelRefillingReply.now))
                 return True
             else:
-                printE("Unable to refound: {}".format(cancelRefillingReply.status))
+                log.error("Unable to refound: {}".format(cancelRefillingReply.status))
                 return None
         except RpcError:
-            printE("RPC: Unable to cancel refilling")
+            log.error("RPC: Unable to cancel refilling")
             return None

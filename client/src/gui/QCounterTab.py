@@ -3,14 +3,22 @@ import os
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import logging
 
 # Project specific imports
-from QDataManager import QDataManager
-from QNFCManager import QNFCManager
-from QUIManager import QUIManager
-from Client import Client
-from QAtomWidgets import *
-from QUtils import *
+from src.managers.QDataManager import QDataManager
+from src.managers.QNFCManager import QNFCManager
+from src.managers.QUIManager import QUIManager
+from src.managers.Client import Client
+from src.gui.QUtils import center
+from src.gui.QNFCInfo import QNFCInfo
+from src.gui.widgets.QDialogs import QNFCDialog
+
+from src.utils.Euro import Eur
+from src.trees.QItemTree import QProductSelector, QBasket, QBuyingHistory
+from src.atoms.Atoms import *
+
+log = logging.getLogger()
 
 
 class QAutoCompleteLineEdit(QLineEdit):
@@ -50,32 +58,31 @@ class QSearchBar(QWidget):
 
 
 class QMultiUserPannel(QWidget):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         # Definition
         self.mainLayout = QVBoxLayout()
-        ## Progress bar
+        # Progress bar
         self.progressBarGroupBox = QGroupBox()
         self.progressBarGroupBoxLayout = QVBoxLayout()
         self.progressBar = QProgressBar()
 
-        ## multiUserTree
+        # multiUserTree
         self.infoLabel = QLabel()
         self.multiUserTree = QMultiUserTree()
 
-        ## Buttons
+        # Buttons
         self.buttonLayout = QHBoxLayout()
         self.validateButton = QPushButton()
         self.resetButton = QPushButton()
-        
+
         # Layout
 
-        ## Progress bar
+        # Progress bar
         self.progressBarGroupBoxLayout.addWidget(self.progressBar)
         self.progressBarGroupBox.setLayout(self.progressBarGroupBoxLayout)
 
-        ## Buttons
+        # Buttons
 
         self.buttonLayout.addWidget(self.resetButton)
         self.buttonLayout.addWidget(self.validateButton)
@@ -92,7 +99,9 @@ class QMultiUserPannel(QWidget):
         self.setWindowTitle("Commande groupée")
         self.setWindowIcon(uim.getIcon("group"))
         self.setFixedSize(1200, 800)
-        self.infoLabel.setText("Présenter les cartes sur le lecteur pour les ajouter à la transaction")
+        self.infoLabel.setText(
+            "Présenter les cartes sur le lecteur pour les ajouter à la transaction"
+        )
         self.progressBarGroupBox.setTitle("Progression")
         self.validateButton.setText("Payer")
         self.resetButton.setText("RÀZ")
@@ -119,7 +128,7 @@ class QCounterTab(QWidget):
 
         # Right pannel
         self.rightPannelLayout = QVBoxLayout()  # find a better name ~
-        self.systemInfo = None
+        self.systemInfo = None  # For time related info...
         self.nfcInfo = QNFCInfo()
         self.history = QBuyingHistory()
         self.validateButtonLayout = QHBoxLayout()
@@ -130,14 +139,14 @@ class QCounterTab(QWidget):
 
         # Layout
         # left pannel
-        self.productSelectionLayout.addWidget(self.searchBar)
+        # self.productSelectionLayout.addWidget(self.searchBar) # TODO: Implement
         self.productSelectionLayout.addWidget(self.itemSelector)
 
         # Mid pannel
 
         # Right pannel
 
-        self.rightPannelLayout.addWidget(self.systemInfo)
+        # self.rightPannelLayout.addWidget(self.systemInfo)
         self.rightPannelLayout.addWidget(self.nfcInfo)
         self.rightPannelLayout.addWidget(self.history)
         self.rightPannelLayout.addLayout(self.validateButtonLayout)
@@ -164,7 +173,7 @@ class QCounterTab(QWidget):
         self.multiUserButton.clicked.connect(self.showMultiUserPannel)
 
     def showMultiUserPannel(self):
-        printI("Multi user button clicked")
+        log.info("Multi user button clicked")
         self.multiUserPannel = QMultiUserPannel()
         nfcm = QNFCManager()
         nfcm.cardInserted.connect(self.multiUserPannel.addUser)
@@ -182,14 +191,18 @@ class QCounterTab(QWidget):
             self.singleUserPay()
 
     def singleUserPay(self):
-        printI("Single user payment")
+        log.info("Single user payment")
         client = Client()
         dm = QDataManager()
         nfcm = QNFCManager()
 
         productList = self.basket.getProductList()
         if len(productList) == 0:
-            warningDialog = QWarningDialog("Aucun article sélectionné", "Aucun article sélectionné", "Veuillez sélectionner un ou plusieurs articles avant de procéder au paiement")
+            warningDialog = QWarningDialog(
+                "Aucun article sélectionné",
+                "Aucun article sélectionné",
+                "Veuillez sélectionner un ou plusieurs articles avant de procéder au paiement",
+            )
             center(warningDialog)
             warningDialog.exec()
             return
@@ -204,7 +217,10 @@ class QCounterTab(QWidget):
 
         try:
             response = client.requestBuy(
-                counter_id=dm.getCounter().getId(), device_uuid=dm.getUID(), payments=distribution, basket=productList,
+                counter_id=dm.getCounter().getId(),
+                device_uuid=dm.getUID(),
+                payments=distribution,
+                basket=productList,
             )
             if response:
                 self.history.addBuying(response)
@@ -213,13 +229,14 @@ class QCounterTab(QWidget):
                 self.basket.clear()
             else:
                 warningDialog = QWarningDialog(
-                    "Solde insuffisant", "Le solde utilisateur est insufisant", "Veuillez recharger votre carte",
+                    "Solde insuffisant",
+                    "Le solde utilisateur est insufisant",
+                    "Veuillez recharger votre carte",
                 )
                 warningDialog.exec_()
 
-        except:
-            printE("Something happen, transaction failed. Please try again")
+        except Exception:
+            log.error("Something happen, transaction failed. Please try again")
 
     def multiUserPay(self, distribution):
         pass
-

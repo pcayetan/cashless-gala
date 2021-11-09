@@ -3,15 +3,17 @@ import sys
 from pathlib import Path
 import os
 
-#Add the sub-repositories to python path
-GMC_DIR = Path(__file__).parents[1]
-SRC_DIR = GMC_DIR / "src"
-for i in SRC_DIR.glob('**/*'):
-    if i.is_dir() and i.name != "__pycache__":
-        sys.path.append(str(i))
-os.environ['GMC_DIR'] = str(GMC_DIR)
+# sys.path.insert(1, "managers")
+# sys.path.insert(1, "managers/com")
+sys.path.insert(1, "src/managers")
+sys.path.insert(1, "src/managers/com")  # The generated com files need it
+from src.gui.GUI import *
 
-from GUI import *
+from src.utils.logs import init_logging
+
+# from qt_material import apply_stylesheet
+# from qt_material import list_themes
+
 
 # TODO: ENSURE BALANCE CAN'T HAVE ABSURDS VALUES (eg: 16.33333...)       [OK Money class + string]
 # TODO: FIX MULTI-USER PANEL
@@ -24,23 +26,15 @@ from GUI import *
 # TODO: HANDLE CARD READER PLUG/UNPLUG                                  [OK]
 # TODO: ADD TRADUCTION
 # TODO: REPLACE all "from XXX import *" by to "from XXX import YYY"
+# TODO: REPLACE THE "CONSOLE" MODULE BY A REAL BUILT-IN LOGGING MODULE
 
 if __name__ == "__main__":
+    init_logging()
     app = QApplication.instance()
     if not app:
         app = QApplication(sys.argv)
-    # translation
-    locale = QLocale.system().name()
-    qtTranslator = QTranslator()
-    print(QLibraryInfo.location(QLibraryInfo.TranslationsPath))
-    frenchLocale = QLocale(QLocale.French, QLocale.France)
-    if qtTranslator.load(locale, "qt_" + locale):
-        print("qtTranslator installed")
-        app.installTranslator(qtTranslator)
-
+    #        apply_stylesheet(app, theme="dark_teal.xml")
     MainWindow = QMainMenu()
-    #VirtualCard = QVirtualCard()
-
     # la fenêtre est rendue visible
     #    MainWindow.showMaximized()
     MainWindow.show()

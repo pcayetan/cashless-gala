@@ -3,12 +3,15 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 # Project specific imports
-from QDataManager import QDataManager
-from QUIManager import QUIManager
-from QItemTree import *
-from QRefillerTab import *
-from QCounterTab import *
-from QUtils import center, QIpInputDialog
+from src.managers.QDataManager import QDataManager
+from src.managers.QUIManager import QUIManager
+from src.trees.QItemTree import *
+from src.gui.QRefillerTab import *
+from src.gui.QCounterTab import *
+
+from src.gui.QUtils import center
+from src.gui.widgets.QForms import QIpInputDialog
+
 # de transaction
 
 #  Shared variables
@@ -24,7 +27,7 @@ def setFont(Widget, Font):
         try:
             child.setFont(Font)
             setFont(child, Font)
-        except:
+        except Exception:
             pass
         # TODO: Find a better way to do this
         if isinstance(child, QTreeView):  # Dirty hack to correct oversizing
@@ -64,7 +67,7 @@ class QMainMenu(QMainWindow):
         self.MainTab = QMainTab()
         self.setCentralWidget(self.MainTab)
 
-        font = QFont()  # TODO: Dirty trick to set the whole app font size
+        font = QFont()  # NOTE: Dirty trick to set the whole app font size
         font.setPointSize(16)
         setFont(self, font)
 
@@ -73,8 +76,9 @@ class QMainMenu(QMainWindow):
 
         # Definitions
         configMenu = mainMenu.addMenu("&Config")
-        helpMenu = mainMenu.addMenu("&Aide")
+        # helpMenu = mainMenu.addMenu("&Aide")
         counterMenu = configMenu.addMenu("&Comptoir")
+        ipMenu = configMenu.addMenu("&Adresse serveur")
         counterActionList = []
         self.counterActionGroup = QActionGroup(self)
 

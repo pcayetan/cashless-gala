@@ -1,9 +1,11 @@
-from Console import *
+import logging
 
 
 class UIProperties:
     def __init__(self):
-        self.text = []  # A list because there is several things we may want to show from an Atom (name,price,...)
+        self.text = (
+            []
+        )  # A list because there is several things we may want to show from an Atom (name,price,...)
         self.foreground = None
         self.background = None
         self.icon = None
@@ -165,6 +167,12 @@ class User(Atom):
     def getCanDrink(self):
         return self.canDrink
 
+    def __eq__(self, key):
+        if type(self) == type(key):
+            return self.getId() == key.getId()
+        else:
+            return False
+
 
 class Product(Atom):
     def __init__(self):
@@ -187,15 +195,17 @@ class Product(Atom):
         self.setToolTip(self.code)  # Same remark
         return self
 
-    def setPrice(self, price):  # price is never a float but something inherited from Decimal (Money.Eur)
+    def setPrice(
+        self, price
+    ):  # price is never a float but something inherited from Decimal (Money.Eur)
         if isinstance(price, float):
-            printWW("Price should not be float !")
+            log.warning("Price should not be float !")
         self.price = price
         return self
 
     def setDefaultPrice(self, price):
         if isinstance(price, float):
-            printWW("Price should not be float !")
+            log.warning("Price should not be float !")
         self.defaultPrice = price
         return self
 
@@ -248,7 +258,7 @@ class Product(Atom):
 class Operation(Atom):
     def __init__(self):
         super().__init__()
-        self.refounded = None
+        self.isRefounded = None
         # Could be usefull to show where the product has been bought
         self.counterId = None
         self.date = None
@@ -258,7 +268,7 @@ class Operation(Atom):
         return self
 
     def setRefounded(self, refounded):
-        self.refounded = refounded
+        self.isRefounded = refounded
         return self
 
     def setCounterId(self, counterId):
@@ -273,7 +283,7 @@ class Operation(Atom):
         return self.label
 
     def getRefounded(self):
-        return self.refounded
+        return self.isRefounded
 
     def getCounterId(self):
         return self.counterId
@@ -401,7 +411,7 @@ class Distribution(Atom):
             del self.userList[indexUser]
             return self
         except ValueError:
-            printE("User {} not found".format(uid))
+            log.error("User {} not found".format(uid))
             return None
 
     def setUserBalanceList(self, balanceList):
@@ -416,7 +426,7 @@ class Distribution(Atom):
             indexUser = self.userList.index(uid)
             self.userBalance[indexUser] = balance
         except ValueError:
-            printE("User {} not found".format(uid))
+            log.error("User {} not found".format(uid))
             return None
 
     def getUserBalance(self, uid):
@@ -424,7 +434,7 @@ class Distribution(Atom):
             indexUser = self.userList.index(uid)
             return self.userBalance[indexUser]
         except ValueError:
-            printE("User {} not found".format(uid))
+            log.error("User {} not found".format(uid))
             return None
 
     def setAmountList(self, amountList):
@@ -436,10 +446,10 @@ class Distribution(Atom):
             if amount <= self.userBalance[userIndex]:
                 self.amount[userIndex] = amount
             else:
-                printWW("Insufficient balance for user {}".format(uid))
+                log.warning("Insufficient balance for user {}".format(uid))
                 self.amount[userIndex] = self.userBalance[userIndex]
         except ValueError:
-            printE("user {} not found".format(uid))
+            log.error("user {} not found".format(uid))
 
     def getAmountList(self):
         return self.amount
@@ -449,7 +459,7 @@ class Distribution(Atom):
             userIndex = self.userList.index(uid)
             return self.amount[userIndex]
         except ValueError:
-            printE("user {} not found".format(uid))
+            log.error("user {} not found".format(uid))
 
     def getTotalPrice(self):
         return self.totalPrice

@@ -3,19 +3,18 @@ from __future__ import print_function
 # GRPC modules
 import grpc
 from grpc import RpcError
-import com_pb2
-import com_pb2_grpc
+import src.managers.com.com_pb2 as com_pb2
+import src.managers.com.com_pb2_grpc as com_pb2_grpc
 from google.protobuf.timestamp_pb2 import Timestamp
-
-from Euro import *
 
 # Help to convert google timestamp into QTime ...
 from datetime import datetime
 
-from Atoms import *
+from src.utils.Euro import *
+from src.atoms.Atoms import *
 
 # Cute print in the terminal
-from Console import *
+import logging
 
 # 'packing' describes the fact of converting the UI atom
 # into a grpc message
@@ -26,7 +25,9 @@ from Console import *
 
 def packProduct(product: Product) -> com_pb2.BasketItem:
     pb_price = packMoney(product.getPrice())
-    newPbProduct = com_pb2.BasketItem(product_id=product.getId(), quantity=product.getQuantity(), unit_price=pb_price)
+    newPbProduct = com_pb2.BasketItem(
+        product_id=product.getId(), quantity=product.getQuantity(), unit_price=pb_price
+    )
     return newPbProduct
 
 
@@ -38,7 +39,9 @@ def unpackProduct(pb_product: com_pb2.Product) -> Product:
         newHappyHour = HappyHours()
         newHappyHour.setStart(unpackTime(j.start))
         newHappyHour.setEnd(unpackTime(j.end))
-        newHappyHour.setPrice(unpackMoney(j.price))  # Since we choosed a securised money format we need to convert
+        newHappyHour.setPrice(
+            unpackMoney(j.price)
+        )  # Since we choosed a securised money format we need to convert
         happyHoursList.append(newHappyHour)
 
     newProduct = Product()
@@ -54,8 +57,7 @@ def unpackProduct(pb_product: com_pb2.Product) -> Product:
 
 
 def packMoney(euro: Eur) -> com_pb2.Money:
-    strEuro = str(euro).replace("€", "").replace(" ", "").replace(",", ".")
-    money = com_pb2.Money(amount=strEuro)
+    money = com_pb2.Money(amount=str(euro.amount))
     return money
 
 

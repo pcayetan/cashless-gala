@@ -4,11 +4,10 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 # Project specific imports
-from Console import *
-from QAtoms import *
-from QDataManager import QDataManager
-from QUIManager import QUIManager
-
+import logging
+from src.atoms.QAtoms import *
+from src.managers.QDataManager import QDataManager
+from src.managers.QUIManager import QUIManager
 
 
 # Basicaly, this file is the heart of the GUI since there are trees everywhere
@@ -33,8 +32,8 @@ from QUIManager import QUIManager
 
 
 class TreeItem:
-    """ This class is is in charge to store the architecture/data inside the QT Tree Model.
-        It behave like a basic chained list where each node is a QAtom"""
+    """This class is is in charge to store the architecture/data inside the QT Tree Model.
+    It behave like a basic chained list where each node is a QAtom"""
 
     def __init__(self, data, parent=None):
         self.parentItem = parent
@@ -79,7 +78,7 @@ class TreeItem:
     def getData(self):
         return self.data
 
-    def setData(self, data):
+    def setData(self, data: QAtom):
         if isinstance(data, QAtom):
             self.data = data
             self.__formatText()
@@ -107,7 +106,7 @@ class TreeItem:
             # data = [QVariant()] * columns
             data = QAtom()
             data.setTexts([""] * columns)
-            item = type(self)(data, self)  # the type(self) is usefull to get dynamically the type of class
+            item = TreeItem(data, self)
             self.childItems.insert(position, item)
 
         return True
@@ -130,7 +129,9 @@ class TreeItem:
         if position < 0 or position > len(self.childItems):
             return False
 
-        for i in range(0, count):  # I think this may create a segfault if count is incorrect
+        for i in range(
+            0, count
+        ):  # I think this may create a segfault if count is incorrect
             self.childItems.pop(position)
 
         return True
@@ -168,7 +169,9 @@ class TreeItem:
                 currentText.append("")
             while len(currentText) > self.parentItem.columnCount():
                 del currentText[-1]
-            self.data.setTexts(currentText)  # Not necessary because of python shity behavior but clearer this way
+            self.data.setTexts(
+                currentText
+            )  # Not necessary because of python shity behavior but clearer this way
         # ensure data can be printed
         texts = self.data.getTexts()
         for index, text in enumerate(texts):
@@ -176,32 +179,40 @@ class TreeItem:
 
     def __parseMagicString(self):
         """Magic strings are strings that must be evaluated as a mathematical expressions
-           All magic strings start with either '=' or '@'
-           The variable used in the expression must be part of the QAtoms's attributes
-           for instance with a product '@ (2*price)**2' return (2 x price)² where price is
-           an a property existing in the product."""
+        All magic strings start with either '=' or '@'
+        The variable used in the expression must be part of the QAtoms's attributes
+        for instance with a product '@ (2*price)**2' return (2 x price)² where price is
+        an a property existing in the product."""
 
-        atomDict = vars(self.data)  # python built-in function to turn an object into dictionary
+        atomDict = vars(
+            self.data
+        )  # python built-in function to turn an object into dictionary
         texts = self.data.getTexts()
         parsedTextList = copy.deepcopy(texts)
         for index, text in enumerate(texts):
             if len(text) > 0:
-                if "=" == text[0] or "@" == text[0]:  # I can't decide I like both ... T_T
+                if (
+                    "=" == text[0] or "@" == text[0]
+                ):  # I can't decide I like both ... T_T
                     expression = text.replace("=", "").replace("@", "")
                     try:
-                        parsedTextList[index] = str(eval(expression, atomDict))  # no rage still pythoninc <3
+                        parsedTextList[index] = str(
+                            eval(expression, atomDict)
+                        )  # no rage still pythoninc <3
                         # eval(expr,dict), basically it searchs variable defined in 'dict' and replace them in expr.
                     except ValueError:
-                        printW("Failed to parse the expression {}".format(expression))
+                        log.warning(
+                            "Failed to parse the expression {}".format(expression)
+                        )
         return parsedTextList
 
 
 class QTreeModel(QAbstractItemModel):
     """Base class for all tree models
-       QTreeModel inherit from QAbstractItemModel which is a pure Qt class.
-       Abstract means that we need to overload some standard function in order to make
-       it works correctly.
-       Most of the method implemented below are standard methods the TreeView need to work"""
+    QTreeModel inherit from QAbstractItemModel which is a pure Qt class.
+    Abstract means that we need to overload some standard function in order to make
+    it works correctly.
+    Most of the method implemented below are standard methods the TreeView need to work"""
 
     def __init__(self, headers, data=None, parent=None):
         super().__init__(parent)
@@ -267,7 +278,7 @@ class QTreeModel(QAbstractItemModel):
     def index(self, row, column, parent=QModelIndex()):
         """index is a Qt object that represent a particular node in the model.
         Despite a tree is technically a 2D object (row/column) an index has actually
-        3 coordinates. The 3rd one is the parent of the node. """
+        3 coordinates. The 3rd one is the parent of the node."""
 
         if not self.hasIndex(row, column, parent):
             return QModelIndex()
@@ -346,7 +357,7 @@ class QTreeModel(QAbstractItemModel):
 
         return result
 
-    def setData(self, index, value, role=Qt.EditRole):
+    def setData(self, index: QModelIndex, value: QAtom, role=Qt.EditRole):
         """You should use this method as much as possible to modify your tree's contend.
         Notice the use of 'dataChanged.emit' this notify the 'view' that it should be updated.
         If you don't use this method, ensure that dataChanged is correctly emited, otherwise you'll never
@@ -383,17 +394,20 @@ class QTreeModel(QAbstractItemModel):
         newIndex = self.index(position, 0, parent)
         self.setData(newIndex, qAtom)
 
-    def searchQAtom(self, qAtom: QAtom, parent=QModelIndex()):
-        n_row = self.rowCount()
+    def searchQAtom(
+        self, qAtom: QAtom, parent=QModelIndex()
+    ) -> (QModelIndex, TreeItem, QAtom):
+        n_row = self.rowCount(parent)
         for i in range(n_row):
             item = self.getItem(self.index(i, 0, parent))
             data = item.getData()
             if data == qAtom:  # == means same id
-                return self.index(i, 0), item, data
+                return self.index(i, 0, parent), item, data
+        return None
 
     def getQAtomList(self, parent=QModelIndex()):
         qAtomList = []
-        n_row = self.rowCount()
+        n_row = self.rowCount(parent)
         for i in range(n_row):
             item = self.getItem(self.index(i, 0, parent))
             data = item.getData()

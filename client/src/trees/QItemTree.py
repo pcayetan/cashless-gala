@@ -1,29 +1,13 @@
 import pickle
-import os
 import copy  # Need to copy Atoms as they are transfered from a tree to anotherV
 from PyQt5.QtCore import pyqtSignal
 from pickle import PickleError
 from pathlib import Path
 
 # Project specific imports
-from QItemModel import *
-from QDataManager import QDataManager
-
-
-GMC_DIR = Path(os.environ['GMC_DIR'])
-
-class QAutoSelectLineEdit(QLineEdit):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-    def focusInEvent(self, event):
-        super().focusInEvent(event)
-        QTimer.singleShot(0, self.selectAll)
-
-    def setText(self, string):
-        super().setText(str(string))
-
-
+from src.trees.QItemModel import *
+from src.managers.QDataManager import QDataManager
+from src.gui.QUtils import center
 
 
 class QItemTree(QWidget):
@@ -52,7 +36,7 @@ class QItemTree(QWidget):
                         action = contextMenu.addAction(actionName)
                 except KeyError:
                     action = contextMenu.addAction(actionName)
-                    printW("No icon key for this product")
+                    log.warning("No icon key for this product")
 
                 action.triggered.connect(actionDict[actionName]["fct"])
 
@@ -122,22 +106,26 @@ class QBasket(QItemTree):
         self.treeView.setModel(self.treeModel)
         self.setLayout(self.mainLayout)
 
-        self.treeModel.modelChanged.connect(self.forceRefresh)
+        # self.treeModel.modelChanged.connect(self.forceRefresh)
 
     def addProduct(self, product: Product):
         newProduct = copy.deepcopy(product)
         # newProduct = copy.deepcopy(product) #Create a deep copy of the atoms, otherwise the initial one is modified
-        newProduct.setTexts(["@name", "", "@quantity * price", ""])  # The price should be handled inside basket model
+        newProduct.setTexts(
+            ["@name", "", "@quantity * price", ""]
+        )  # The price should be handled inside basket model
         self.treeModel.addProduct(
             newProduct, self.treeView
         )  # Insert the atom to the top. (No choice but give the treeview to add indexWidget...)
-        self.forceRefresh()  # Resize column to content for each columns
+        self.treeView.resizeColumnToContents(1)
+        self.treeView.resizeColumnToContents(2)
+        # self.forceRefresh()  # Resize column to content for each columns
 
     def getProductList(self):
         return self.treeModel.getQAtomList()
 
-    def clear(self):
-        n_row = self.treeModel.rowCount()
+    def clear(self, parent=QModelIndex()):
+        n_row = self.treeModel.rowCount(parent)
         for i in range(n_row):
             self.treeModel.removeRow(0)
 
@@ -159,7 +147,7 @@ class QBuyingHistory(QItemTree):
         # Definition
         self.mainLayout = QVBoxLayout()
         self.treeView = QSuperTreeView()
-        self.treeModel = QBuyingHistoryModel(["Utilisateur", "Montant"])
+        self.treeModel = QBuyingHistoryModel(["Utilisateur", "Description", "Montant"])
 
         # Layout
         self.mainLayout.addWidget(self.treeView)
@@ -169,10 +157,12 @@ class QBuyingHistory(QItemTree):
         dm = QDataManager()
         client = Client()
         nfcm = QNFCManager()
-        nfcm.cardInserted.connect(self.forceRefresh)
-        nfcm.cardRemoved.connect(self.forceRefresh)
         buyings, refillings = client.requestHistory(
-            type=0, counter_id=dm.counter.getId(), device_uuid=dm.getUID(), max_history_size=0, refounded=1
+            type=0,
+            counter_id=dm.counter.getId(),
+            device_uuid=dm.getUID(),
+            max_history_size=0,
+            refounded=1,
         )
         for buying in buyings:
             self.addBuying(buying)
@@ -182,10 +172,11 @@ class QBuyingHistory(QItemTree):
         distribution = newBuying.getDistribution()
         firstCustomer = distribution.getUserList()[0]
         totalPrice = str(buying.getPrice())
-        newBuying.setTexts([firstCustomer, totalPrice])
+        description = newBuying.getLabel()
+        newBuying.setTexts([firstCustomer, description, totalPrice])
         self.treeModel.addBuying(newBuying)
         self.saveBuyingHistory()
-        self.forceRefresh()
+        # self.forceRefresh()
 
     def saveBuyingHistory(self):
         qBuyingList = self.treeModel.getQAtomList()
@@ -193,16 +184,19 @@ class QBuyingHistory(QItemTree):
         for qBuying in qBuyingList:
             buyingList.append(qBuying.getAtom())
 
-        with open(GMC_DIR / "data" / "buyingHistory", "wb") as file:
+        with open(Path("data/buyingHistory"), "wb") as file:
             pickle.dump(buyingList, file)
 
     def loadBuyingHistory(self):
         try:
-            with open(GMC_DIR / "data" / "buyingHistory", "rb") as file:  # open read/write/binary file
+            with open(Path("data/buyingHistory"), "rb") as file:
                 loadedBuyingHistory = pickle.load(file)
             return loadedBuyingHistory
         except FileNotFoundError:
             return None
+
+    def removeBuying(self, qBuying: QBuying):
+        self.treeModel.removeBuying(qBuying)
 
 
 class QRefillingHistory(QItemTree):
@@ -222,14 +216,16 @@ class QRefillingHistory(QItemTree):
         dm = QDataManager()
         client = Client()
         buyings, refillings = client.requestHistory(
-            type=1, counter_id=dm.counter.getId(), device_uuid=dm.getUID(), max_history_size=0, refounded=1
+            type=1,
+            counter_id=dm.counter.getId(),
+            device_uuid=dm.getUID(),
+            max_history_size=0,
+            refounded=1,
         )
         for refilling in refillings:
             self.addRefilling(refilling)
 
         nfcm = QNFCManager()
-        nfcm.cardInserted.connect(self.forceRefresh)
-        nfcm.cardRemoved.connect(self.forceRefresh)
 
     def addRefilling(self, refilling: Refilling):
         newRefilling = copy.deepcopy(refilling)
@@ -239,13 +235,14 @@ class QRefillingHistory(QItemTree):
 
 
 class QMultiUserTree(QItemTree):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         # Definition
         self.mainLayout = QVBoxLayout()
         self.treeView = QSuperTreeView()
-        self.treeModel = QMultiUserModel(["Utilisateur", "Proportion", "Montant", "Action"])
+        self.treeModel = QMultiUserModel(
+            ["Utilisateur", "Proportion", "Montant", "Action"]
+        )
 
         # Layout
         self.mainLayout.addWidget(self.treeView)
@@ -265,18 +262,38 @@ class QMultiUserTree(QItemTree):
 
         self.treeModel.insertQAtom(0, qUser)
         self.forceRefresh()
-    
+
 
 class QUserHistory(QItemTree):
-    def __init__(self, user: QUser, parent=None):
+    historyUpdated = pyqtSignal(QOperation)
+
+    def __init__(self, user: User, parent=None):
         super().__init__(parent)
+        center(self)
 
         # Definition
         self.mainLayout = QHBoxLayout()
         self.treeView = QSuperTreeView()
-        self.treeModel = QUserHistoryModel(["Transaction", "Montant", "Annulée"], user)
+        self.treeModel = QUserHistoryModel(
+            ["Transaction", "Montant", "Annulée"], QUser(user)
+        )
 
         # Layout
         self.treeView.setModel(self.treeModel)
         self.mainLayout.addWidget(self.treeView)
         self.setLayout(self.mainLayout)
+
+        # Settings
+        self.treeModel.refounded.connect(self.refound)
+        self.treeModel.cancelled.connect(self.cancel)
+
+        # uim = QUIManager()
+
+        # self.historyUpdated.connect(uim.balanceUpdated)
+        # self.historyUpdated.connect(uim.historyUpdated)
+
+    def refound(self, operation: QOperation):
+        self.historyUpdated.emit(operation)
+
+    def cancel(self, operation: QOperation):
+        self.historyUpdated.emit(operation)

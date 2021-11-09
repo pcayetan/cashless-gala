@@ -3,11 +3,25 @@ import os
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import logging
 
 # Project specific imports
-from QAtomWidgets import *
-from Client import *
-from QUtils import *
+from src.managers.QDataManager import QDataManager
+from src.managers.QUIManager import QUIManager
+from src.managers.QNFCManager import QNFCManager
+from src.managers.Client import Client
+
+from src.gui.QUtils import center
+from src.gui.widgets.QInputs import QMoneyInputLine
+from src.utils.Euro import Eur
+
+from src.trees.QItemTree import QRefillingHistory
+from src.gui.QNFCInfo import QNFCInfo
+from src.gui.widgets.QDialogs import QWarningDialog
+
+from src.managers.com.com_pb2 import PaymentMethod
+
+log = logging.getLogger()
 
 
 class QAbstractPayment(QGroupBox):
@@ -20,78 +34,36 @@ class QAbstractPayment(QGroupBox):
         self.warningDialog = None
         self.paymentMethod = None
         self.strictPositive = True
-        self.inputLine = QAutoSelectLineEdit()
+        self.inputLine = QMoneyInputLine()
         self.okButton = QPushButton()
 
+        self.inputLine.setMin(0)
+        self.inputLine.maxDecimal = 2
+        self.inputLine.autoSelect = True
+
         self.credited.connect(self.clear)
-        self.inputLine.returnPressed.connect(self.setFocusOnOk)
 
     def getPaymentMethod(self):
         return self.paymentMethod
 
     def credit(self):
-        amountText = self.inputLine.text()
-        if self.formatValid(amountText, self.strictPositive, isCredit=True):
-            nfcm = QNFCManager()
-            uim = QUIManager()
-            if nfcm.hasCard():
-                amount = self.textToEur(amountText)
-                self.credited.emit(amount)
-                uim.balanceUpdated.emit()
-            else:
-                warningDialog = QWarningDialog("Aucun utilisateur", "Veuillez placer le tag nfc sur le lecteur.")
-                warningDialog.exec_()
-
-    def formatValid(self, text, strictPositive=True, isCredit=False):
-
-        try:  # can it be red as money ?
-            amount = self.textToEur(text)
-        except:
-            warningDialog = QWarningDialog("Format invalide", "Veuillez saisir un nombre")
-            warningDialog.exec_()
-            return False
-
-        if amount.getExponent() >= -2:  # Less or two digits before the comma ?
-            if not isCredit and amount == Eur(0):  # 0 is an acceptable number as long as it's not a validation
-                return True
-            elif amount > Eur(0) or not strictPositive:
-                return True
-            else:
-                warningDialog = QWarningDialog("Format Invalide", "Veuillez saisir un nombre strictement positif")
-                warningDialog.exec_()
-                return False
+        nfcm = QNFCManager()
+        uim = QUIManager()
+        if nfcm.hasCard():
+            amount = self.inputLine.value
+            self.credited.emit(amount)
+            uim.balanceUpdated.emit()
         else:
             warningDialog = QWarningDialog(
-                "Format Invalide", "Veuillez saisir un nombre avec au plus deux chiffres après la virgule.",
+                "Aucun utilisateur", "Veuillez placer le tag nfc sur le lecteur."
             )
             warningDialog.exec_()
-            return False
-
-    def textToEur(self, text):
-        return Eur(text.replace("€", "").replace(",", ".").replace(" ", "").strip())
-
-    def formatInput(self):
-        inputLine = self.sender()
-        text = inputLine.text()
-
-        inputLine.blockSignals(True)
-        try:
-            text = str(eval(text))
-        except:
-            # Can't be parsed as mathematical expression
-            pass
-        if self.formatValid(text, self.strictPositive):
-            amount = self.textToEur(text)
-            inputLine.setText(amount)
-        else:
-            inputLine.setText(Eur(0))
-        inputLine.blockSignals(False)
 
     def clear(self):
         self.inputLine.setText(Eur(0))
 
     def setFocusOnOk(self):
-        self.okButton.setFocus()
+        self.okButton.setFocus(7)
 
 
 class QCreditCardPayment(QAbstractPayment):
@@ -99,7 +71,7 @@ class QCreditCardPayment(QAbstractPayment):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.paymentMethod = 2
+        self.paymentMethod = PaymentMethod.CARD
 
         # Definitions
 
@@ -129,21 +101,24 @@ class QCreditCardPayment(QAbstractPayment):
 
         self.setLayout(self.mainVBoxLayout)
 
-        self.inputLine.editingFinished.connect(self.formatInput)
+        #        self.inputLine.editingFinished.connect(self.formatInput)
         self.okButton.clicked.connect(self.credit)
-        self.inputLine.returnPressed.connect(self.formatInput)
+        self.inputLine.returnPressed.connect(self.handleReturnPressed)
+
+    def handleReturnPressed(self):
+        self.setFocusOnOk()
 
 
 class QCashPayment(QAbstractPayment):
     def __init__(self, parent=None):
         super().__init__(parent)
         # Definition
-        self.paymentMethod = 1
+        self.paymentMethod = PaymentMethod.CASH
         self.mainGridLayout = QGridLayout()
         self.mainVBoxLayout = QVBoxLayout()
 
         self.moneyInLabel = QLabel()
-        self.moneyIn = QAutoSelectLineEdit()
+        self.moneyIn = QMoneyInputLine()
         self.moneyBackLabel = QLabel()
         self.moneyBack = QLabel()
 
@@ -157,12 +132,13 @@ class QCashPayment(QAbstractPayment):
         self.okButton.setText("OK")
         self.inputLine.setMaximumWidth(150)
         self.inputLine.setAlignment(Qt.AlignCenter)
-        self.inputLine.setText(Eur(0))
+        self.inputLine.setValue(0)
         self.moneyBack.setText(str(Eur(0)))
         self.moneyBack.setAlignment(Qt.AlignCenter)
         self.moneyBackLabel.setText("Argent à rendre:")
-        self.moneyIn.setText(str(Eur(0)))
+        self.moneyIn.setValue(0)
         self.moneyIn.setAlignment(Qt.AlignCenter)
+        self.moneyIn.autoSelect = True
         self.moneyInLabel.setText("Argent reçu:")
 
         # Layout
@@ -181,9 +157,9 @@ class QCashPayment(QAbstractPayment):
 
         self.setLayout(self.mainVBoxLayout)
 
-        self.inputLine.editingFinished.connect(self.formatInput)
-        self.moneyIn.editingFinished.connect(self.formatInput)
-        self.inputLine.returnPressed.connect(self.formatInput)
+        #        self.inputLine.editingFinished.connect(self.formatInput)
+        #        self.moneyIn.editingFinished.connect(self.formatInput)
+        #        self.inputLine.returnPressed.connect(self.formatInput)
         self.okButton.clicked.connect(self.credit)
         self.inputLine.editingFinished.connect(self.updateMoneyBack)
         self.moneyIn.editingFinished.connect(self.updateMoneyBack)
@@ -192,30 +168,22 @@ class QCashPayment(QAbstractPayment):
         creditText = self.inputLine.text()
         moneyInText = self.moneyIn.text()
         # if self.formatValid(creditText) and self.formatValid(moneyInText):
-        try:
-            credit = self.textToEur(creditText)
-        except:
-            credit = Eur(0)
-        try:
-            moneyIn = self.textToEur(moneyInText)
-        except:
-            moneyIn = Eur(0)
+        credit = self.inputLine.value
+        moneyIn = self.moneyIn.value
         self.moneyBack.setText(str(moneyIn - credit))
 
 
 class QAEPayment(QCreditCardPayment):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.paymentMethod = 4
-
+        self.paymentMethod = PaymentMethod.AE
         self.setTitle("Paiement par compte AE")
 
 
 class QNFCPayment(QGroupBox):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.paymentMethod = 5
-
+        self.paymentMethod = PaymentMethod.TRANSFER
         self.setTitle("Transfert entre cartes NFC")
 
 
@@ -224,7 +192,7 @@ class QOtherPayment(QCreditCardPayment):
         super().__init__(parent)
         self.setTitle("Singularité")
         self.strictPositive = False
-        self.paymentMethod = 6
+        self.paymentMethod = PaymentMethod.OTHER
 
 
 class QCheckPayment(QCreditCardPayment):
@@ -232,7 +200,7 @@ class QCheckPayment(QCreditCardPayment):
         super().__init__(parent)
         self.setTitle("Paiement par chèque")
         self.strictPositive = False
-        self.paymentMethod = 6
+        self.paymentMethod = PaymentMethod.CHECK
 
 
 class QRefillerTab(QWidget):
@@ -255,6 +223,7 @@ class QRefillerTab(QWidget):
         self.aePaymentRadio = QRadioButton()
         self.transfertPayementRadio = QRadioButton()
         self.otherPaymentRadio = QRadioButton()
+        # self.spacer = QSpacerItem(int, int)
 
         # Middle pannel
         self.paymentLayout = QStackedLayout()
@@ -281,6 +250,7 @@ class QRefillerTab(QWidget):
         self.paymentMethodLayout.addWidget(self.aePaymentRadio)
         self.paymentMethodLayout.addWidget(self.transfertPayementRadio)
         self.paymentMethodLayout.addWidget(self.otherPaymentRadio)
+        self.paymentMethodLayout.addStretch(1)
 
         # midpannel
 
@@ -325,6 +295,7 @@ class QRefillerTab(QWidget):
         self.cashPaymentRadio.toggled.connect(self.selectCash)
         self.cardPaymentRadio.toggled.connect(self.selectCreditCard)
         self.aePaymentRadio.toggled.connect(self.selectAE)
+        self.checkPaymentRadio.toggled.connect(self.selectCheck)
         self.transfertPayementRadio.toggled.connect(self.selectTransfert)
         self.otherPaymentRadio.toggled.connect(self.selectOther)
 
@@ -347,6 +318,10 @@ class QRefillerTab(QWidget):
     def selectAE(self):
         if self.aePaymentRadio.isChecked():
             self.paymentLayout.setCurrentWidget(self.aePayment)
+
+    def selectCheck(self):
+        if self.checkPaymentRadio.isChecked():
+            self.paymentLayout.setCurrentWidget(self.checkPayment)
 
     def selectTransfert(self):
         if self.transfertPayementRadio.isChecked():
@@ -373,6 +348,6 @@ class QRefillerTab(QWidget):
                 payment_method=paymentMethod,
                 amount=amount,
             )
-            printI("User {} credited of {}".format(uid, amount))
+            log.info("User {} credited of {}".format(uid, amount))
             self.balanceUpdated.emit()
             self.history.addRefilling(refilling)

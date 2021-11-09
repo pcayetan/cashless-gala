@@ -1,10 +1,12 @@
-from QDataManager import QDataManager
-from QTree import *
-
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtCore import *
+
+from src.managers.QDataManager import QDataManager
+from src.trees.QTree import *
+
 # from Euro import *
-from Client import Client
+from src.managers.Client import Client
+
 # Specialized models ...
 
 
@@ -71,7 +73,6 @@ class QBasketModel(QTreeModel):
             # by default, I should reimplement 'match', but I prefer use my own search function
             index, item, data = self.searchQAtom(qProduct)
             data.incQuantity()
-
             # Tell to Qt that the data changed, since Qt works with column, we need to refresh the whole line
             row = index.row()
             n_column = self.columnCount(parent)
@@ -99,7 +100,8 @@ class QBasketModel(QTreeModel):
             qProduct.deleted.connect(self.removeProduct)
 
     def update(self):
-        self.modelChanged.emit()
+        pass
+        # self.modelChanged.emit()
 
     def removeProduct(self, qProduct=None):
 
@@ -121,12 +123,15 @@ class QUserListModel(QTreeModel):
 class QBuyingHistoryModel(QTreeModel):
     def __init__(self, headers, data=None, parent=None):
         super().__init__(headers, data, parent)
+        nfcm = QNFCManager()
+        nfcm.cardInserted.connect(self.updateHighlight)
+        nfcm.cardRemoved.connect(self.updateHighlight)
 
     def addBuying(self, buying):
         uim = QUIManager()
         qBuying = QBuying(buying)
         # qBuying.getActionDict()["Supprimer"] = {"fct": self.removeBuying, "icon": "delete"}
-        qBuying.sRefounded.connect(self.removeBuying)
+        qBuying.refounded.connect(self.removeBuying)
         self.insertQAtom(0, qBuying)
         uim.balanceUpdated.emit()
 
@@ -149,20 +154,31 @@ class QBuyingHistoryModel(QTreeModel):
             # check if the card on the nfc reader belongs to the transaction
             userList = qBuying.getDistribution().getUserList()
             if nfcm.getCardUID() in userList:
+                # TODO: Do not hardcode themes...
                 return QColor(88, 231, 167)
 
         return super().data(index, role)
+
+    def updateHighlight(self):
+        n_row = self.rowCount()
+        n_column = self.columnCount()
+        topLeft = self.index(0, 0)
+        bottomRight = self.index(n_row, n_column)
+        self.dataChanged.emit(topLeft, bottomRight)
 
 
 class QRefillingHistoryModel(QTreeModel):
     def __init__(self, headers, data=None, parent=None):
         super().__init__(headers, data, parent)
+        nfcm = QNFCManager()
+        nfcm.cardInserted.connect(self.updateHighlight)
+        nfcm.cardRemoved.connect(self.updateHighlight)
 
     def addRefilling(self, refilling):
         qRefilling = QRefilling(refilling)
-        qRefilling.sCancelled.connect(self.removeRefilling)
+        qRefilling.cancelled.connect(self.removeRefilling)
         self.insertQAtom(0, qRefilling)
-    
+
     def removeRefilling(self, qRefilling: QRefilling = None):
         uim = QUIManager()
         if qRefilling:
@@ -185,8 +201,19 @@ class QRefillingHistoryModel(QTreeModel):
 
         return super().data(index, role)
 
+    def updateHighlight(self):
+        n_row = self.rowCount()
+        n_column = self.columnCount()
+        topLeft = self.index(0, 0)
+        bottomRight = self.index(n_row, n_column)
+        self.dataChanged.emit(topLeft, bottomRight)
+
 
 class QUserHistoryModel(QTreeModel):
+    cancelled = pyqtSignal(QRefilling)
+    refounded = pyqtSignal(QBuying)
+    historyUpdated = pyqtSignal(QOperation)
+
     def __init__(self, headers, user: QUser, data=None, parent=None):
         super().__init__(headers, data, parent)
 
@@ -208,6 +235,8 @@ class QUserHistoryModel(QTreeModel):
         buyings, refillings = client.requestHistory(type=0, customer_id=user.getId())
         for buying in buyings:
             qBuying = QBuying(buying)
+            qBuying.refounded.connect(self.refound)
+            qBuying.refounded.connect(self.updateHistory)
             qBuying.setTexts(["@label", "@price", str(qBuying.getRefounded())])
             self.addOperation(qBuying)
 
@@ -216,17 +245,36 @@ class QUserHistoryModel(QTreeModel):
         buyings, refillings = client.requestHistory(type=1, customer_id=user.getId())
         for refilling in refillings:
             qRefilling = QRefilling(refilling)
-            qRefilling.setTexts(["", "@amount", str(qRefilling.getRefounded())])
+            qRefilling.cancelled.connect(self.cancel)
+            qRefilling.cancelled.connect(self.updateHistory)
+            qRefilling.setTexts(["", "@amount", "@isRefounded"])
             self.addOperation(qRefilling)
 
     def addOperation(self, operation: QOperation):
         if isinstance(operation, QBuying):
             subRoot = self.index(0, 0, QModelIndex())
             self.insertQAtom(0, operation, subRoot)
-            
+
         if isinstance(operation, QRefilling):
             subRoot = self.index(1, 0, QModelIndex())
             self.insertQAtom(0, operation, subRoot)
+
+    def refound(self, buying: QBuying):
+        self.refounded.emit(buying)
+
+    def cancel(self, refilling: QRefilling):
+        self.cancelled.emit(refilling)
+
+    def updateHistory(self, operation: QOperation):
+        if isinstance(operation, QBuying):
+            modelIndex = self.index(0, 0)
+        else:
+            modelIndex = self.index(1, 0)
+        index, treeItem, atom = self.searchQAtom(operation, modelIndex)
+        operation.setText("@isRefounded", 2)
+        self.setData(index, operation)
+
+        self.historyUpdated.emit(operation)
 
 
 class QMultiUserModel(QTreeModel):

@@ -25,3 +25,4 @@ swagger-client
 .envrc
 pyrightconfig.json
 *.egg-info*
+log

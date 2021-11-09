@@ -3,90 +3,27 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
 # Project specific imports
-from QNFCManager import QNFCManager
-from QUIManager import QUIManager
-from QUtils import QRowInfo, center
-import QUtils  # For some reason, there is a namespace conflict with "center" and another Qt function
-from QItemTree import *
+from src.managers.QNFCManager import QNFCManager
+from src.managers.QUIManager import QUIManager
+from src.gui.QUtils import center
+from src.gui.widgets.QForms import QRowInfo
 
+from src.atoms.Atoms import *
 
-class QNFCInfo(QWidget):
-    def __init__(self, parent=None):
-        nfcm = QNFCManager()
-        uim = QUIManager()
-        super().__init__(parent)
-
-        # Definition
-        self.mainLayout = QVBoxLayout()
-
-        self.groupBox = QGroupBox()
-        self.groupBoxLayout = QVBoxLayout()
-        self.rowInfo = QRowInfo()
-        self.userHistoryButton = QPushButton()
-
-        self.user = QUser(User())
-
-        # Layout
-
-        self.groupBox.setLayout(self.groupBoxLayout)
-        self.groupBoxLayout.addWidget(self.rowInfo)
-        self.groupBoxLayout.addWidget(self.userHistoryButton)
-
-        # main layout
-        self.mainLayout.addWidget(self.groupBox)
-        self.setLayout(self.mainLayout)
-
-        # Settings
-        self.rowInfo.addRow("UID", nfcm.getCardUID())
-        self.rowInfo.addRow("Solde", Eur(0))
-        self.userHistoryButton.setText("Historique utilisateur")
-        self.groupBox.setTitle("Info utilisateur")
-
-        nfcm.cardInserted.connect(self.cardInserted)
-        nfcm.cardRemoved.connect(self.cardRemoved)
-        uim.balanceUpdated.connect(self.update)
-        self.userHistoryButton.clicked.connect(self.showUserInfo)
-
-    def cardInserted(self):
-        nfcm = QNFCManager()
-        client = Client()
-        cardUID = nfcm.getCardUID()
-        balance = client.requestUserBalance(customer_id=cardUID)
-        self.rowInfo.setRow(1, 1, balance)
-        self.rowInfo.setRow(0, 1, cardUID)
-        self.user.setId(cardUID)
-        self.user.setBalance(balance)
-
-    def cardRemoved(self):
-        self.rowInfo.setRow(1, 1, Eur(0))
-        self.rowInfo.setRow(0, 1, "00 00 00 00")
-        self.user.setId("00 00 00 00")
-        self.user.setBalance(Eur(0))
-
-    def update(self):
-        nfcm = QNFCManager()
-        client = Client()
-        cardUID = nfcm.getCardUID()
-        balance = client.requestUserBalance(customer_id=cardUID)
-        self.rowInfo.setRow(1, 1, balance)
-
-    def showUserInfo(self):
-        nfcm = QNFCManager()
-        if nfcm.hasCard():
-            self.user.showInfoPannel()
+# Trees are no longer supported in QAtomWidgets due to circular dependices
+# resulting in hard to maintain program.
 
 
 class QBuyingInfo(QWidget):
-    def __init__(self, qBuying: QBuying, parent=None):
+    def __init__(self, buying: Buying, parent=None):
         super().__init__(parent)
-        productList = qBuying.getBasketItems()
+        productList = buying.getBasketItems()
         # Définitons
         self.mainLayout = QGridLayout()
-        self.productTree = QTree([],)
+        self.productTree = QTree([])
 
         self.userInfoGroupBox = QGroupBox()
         self.userInfoLayout = QVBoxLayout()
-        self.userInfoTree = QUserList()
 
         self.buttonLayout = QHBoxLayout()
         self.editButton = QPushButton()
@@ -95,7 +32,6 @@ class QBuyingInfo(QWidget):
 
         # Layout
         self.userInfoGroupBox.setLayout(self.userInfoLayout)
-        self.userInfoLayout.addWidget(self.userInfoTree)
 
         self.mainLayout.addWidget(self.productTree, 0, 0)
         self.mainLayout.addWidget(self.userInfoGroupBox, 0, 1)
@@ -117,29 +53,29 @@ class QBuyingInfo(QWidget):
 
 
 class QUserInfo(QWidget):
-    def __init__(self, user, parent=None):
+    def __init__(self, user: User, parent=None):
         super().__init__(parent)
         uim = QUIManager()
 
         self.setWindowTitle("Informations utilisateur")
         self.setWindowIcon(uim.getIcon("group"))
+        self.setFixedSize(800, 600)
+
+        self.user = user
 
         # Definition
         self.mainLayout = QVBoxLayout()
         self.userInfoGroupBox = QGroupBox()
         self.userInfoGroupBoxLayout = QVBoxLayout()
-        self.historyTree = QUserHistory(user)
         self.userInfo = QRowInfo()
 
         # Layout
         self.userInfoGroupBoxLayout.addWidget(self.userInfo)
         self.mainLayout.addWidget(self.userInfoGroupBox)
-        self.mainLayout.addWidget(self.historyTree)
 
         self.userInfoGroupBox.setLayout(self.userInfoGroupBoxLayout)
 
         # Settings
-
         self.userInfo.addRow("Solde:", user.getBalance())
         self.userInfo.addRow("UID:", user.getId())
         self.userInfoGroupBox.setTitle("Informations utilisateur")
@@ -147,14 +83,19 @@ class QUserInfo(QWidget):
 
         # Window settings
         # self.setFixedSize(500, 500)
-        self.historyTree.treeView.expandAll()
-        QUtils.center(self)
+        center(self)
         self.setWindowTitle("Information utilisateur")
         self.setWindowIcon(uim.getWindowIcon("group"))
 
+    def updateUserBalance(self):
+        client = Client()
+        balance = client.requestUserBalance(customer_id=self.user.getId())
+        self.user.setBalance(balance)
+        self.userInfo.setRow(0, 1, balance)
+
 
 class QProductInfo(QWidget):
-    def __init__(self, product, parent=None):
+    def __init__(self, product: Product, parent=None):
         super().__init__(parent)
         uim = QUIManager()
 
@@ -175,4 +116,4 @@ class QProductInfo(QWidget):
 
         self.setWindowTitle("Informations produit")
         self.setWindowIcon(uim.getWindowIcon("product"))
-        QUtils.center(self)
+        center(self)

@@ -15,6 +15,8 @@ from smartcard.util import toHexString
 from PyQt5.QtCore import pyqtSignal
 from PyQt5.QtCore import QObject
 
+import logging
+
 # DEBUG
 
 from smartcard.scard import SCardGetErrorMessage
@@ -25,7 +27,7 @@ from smartcard.scard import SCardReleaseContext
 # ReaderObserver
 from smartcard.ReaderMonitoring import ReaderMonitor, ReaderObserver
 
-from Console import *
+log = logging.getLogger()
 
 
 class NFC_Reader_Error(Exception):
@@ -37,10 +39,12 @@ def getReaders():
         hresult, hcontext = SCardEstablishContext(SCARD_SCOPE_USER)
         hresult, readers = SCardListReaders(hcontext, [])
         if len(readers) == 0:
-            raise NFC_Reader_Error("Can't find the NFC reader, try to unplug and plugin again")
+            raise NFC_Reader_Error(
+                "Can't find the NFC reader, try to unplug and plugin again"
+            )
         return readers
     except NFC_Reader_Error:
-        printE("Can't find the NFC reader, try to unplug and plugin again")
+        log.error("Can't find the NFC reader, try to unplug and plugin again")
 
 
 def getReader(index=0):
@@ -84,25 +88,32 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
             try:
                 hresult, hcontext = SCardEstablishContext(SCARD_SCOPE_USER)
                 hresult, hcard, dwActiveProtocol = SCardConnect(
-                    hcontext, self.cardReader, SCARD_SHARE_SHARED, SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
+                    hcontext,
+                    self.cardReader,
+                    SCARD_SHARE_SHARED,
+                    SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1,
                 )
-                hresult, response = SCardTransmit(hcard, dwActiveProtocol, [0xFF, 0xCA, 0x00, 0x00, 0x00])
+                hresult, response = SCardTransmit(
+                    hcard, dwActiveProtocol, [0xFF, 0xCA, 0x00, 0x00, 0x00]
+                )
 
                 self.__hasCard = True
                 self.errorCode = response[-2:]
 
                 if self.errorCode != [0x63, 0x00]:
-                    self.cardUID = toHexString(response[:-2])  # string are more handy serverwise
+                    self.cardUID = toHexString(
+                        response[:-2]
+                    )  # string are more handy serverwise
                 else:
                     self.cardUID = toHexString([0, 0, 0, 0])
-                    printE("Failed to read card UID, please try again")
+                    log.error("Failed to read card UID, please try again")
 
                 #            print("+Inserted: ", toHexString(card.atr))
                 self.cardInserted.emit()
-                printNFC("+INSERTED {0}".format(self.cardUID))
+                log.debug("+INSERTED {0}".format(self.cardUID))
 
             except:
-                printE("unkown error occured, please try again")
+                log.error("unkown error occured, please try again")
 
         for card in removedcards:
 
@@ -111,7 +122,7 @@ class QCardObserver(QObject, CardObserver, metaclass=QCardObserverSingleton):
 
             #            print("-Removed: ", toHexString(card.atr))
             self.cardRemoved.emit()
-            printNFC("-Removed: {0}".format(self.cardUID))
+            log.debug("-Removed: {0}".format(self.cardUID))
 
     def getCardUID(self):
         return self.cardUID
@@ -144,10 +155,10 @@ class ReaderUpdater(QObject, ReaderObserver):
         cardObserver = QCardObserver()
         cardObserver.cardReader = getReader()
         if len(addedreaders) != 0:
-            printNFC("Added readers {0}".format(addedreaders))
+            log.debug("Added readers {0}".format(addedreaders))
             self.readerInserted.emit()
         if len(removedreaders) != 0:
-            printNFC("Removed readers {0}".format(removedreaders))
+            log.debug("Removed readers {0}".format(removedreaders))
             self.readerRemoved.emit()
 
         if cardObserver.cardReader:

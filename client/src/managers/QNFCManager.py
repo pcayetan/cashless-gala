@@ -1,7 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
-from QNFC import *
+from src.managers.QNFC import *
 
 
 class QNFCManagerSingleton(type(QObject)):
@@ -15,7 +15,9 @@ class QNFCManagerSingleton(type(QObject)):
 
 class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
 
-    cardInserted = pyqtSignal()  # It's a copy of the cardObserver signal.. but wrapped in a manager
+    cardInserted = (
+        pyqtSignal()
+    )  # It's a copy of the cardObserver signal.. but wrapped in a manager
     cardRemoved = pyqtSignal()
 
     readerInserted = pyqtSignal()
@@ -37,7 +39,9 @@ class QNFCManager(QObject, metaclass=QNFCManagerSingleton):
     def getCardUID(self):
         return self.cardObserver.getCardUID()
 
-    def wrapperCardInserted(self,):  # basicaly, it's just the same that the cardObserver event but wrapped here
+    def wrapperCardInserted(
+        self,
+    ):  # basicaly, it's just the same that the cardObserver event but wrapped here
         self.cardInserted.emit()
 
     def wrapperCardRemoved(self):
