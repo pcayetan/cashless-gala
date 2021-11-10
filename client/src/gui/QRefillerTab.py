@@ -17,7 +17,7 @@ from src.utils.Euro import Eur
 
 from src.trees.QItemTree import QRefillingHistory
 from src.gui.QNFCInfo import QNFCInfo
-from src.gui.widgets.QDialogs import QWarningDialog
+from src.gui.widgets.QDialogs import QWarningDialog, QNFCDialog
 
 from src.managers.com.com_pb2 import PaymentMethod
 
@@ -85,7 +85,7 @@ class QCreditCardPayment(QAbstractPayment):
         # Settings
 
         self.label.setText("Credit:")
-        self.okButton.setText("OK")
+        self.okButton.setText("Valider")
         self.inputLine.setMaximumWidth(150)
         self.inputLine.setAlignment(Qt.AlignCenter)
         self.inputLine.setText(Eur(0))
@@ -129,7 +129,7 @@ class QCashPayment(QAbstractPayment):
         # Settings
 
         self.label.setText("Credit:")
-        self.okButton.setText("OK")
+        self.okButton.setText("Valider")
         self.inputLine.setMaximumWidth(150)
         self.inputLine.setAlignment(Qt.AlignCenter)
         self.inputLine.setValue(0)
@@ -180,11 +180,140 @@ class QAEPayment(QCreditCardPayment):
         self.setTitle("Paiement par compte AE")
 
 
-class QNFCPayment(QGroupBox):
+class QTransferPayment(QGroupBox):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.paymentMethod = PaymentMethod.TRANSFER
         self.setTitle("Transfert entre cartes NFC")
+
+        # Definition
+        self.mainLayout = QVBoxLayout()
+        # Emetteur
+        self.emitterID = "00 00 00 00"
+        self.emitterBalance = Eur(0)
+        self.emitterGroupBox = QGroupBox("Émetteur")
+        self.emitterLayout = QHBoxLayout()
+        self.emitterButton = QPushButton("Scanner")
+        self.emitterUIDLabel = QLabel(self.emitterID)
+        self.emitterBalanceLabel = QLabel(str(self.emitterBalance))
+
+        # Amount
+        self.amountLabel = QLabel("Montant à transferer")
+        self.amountEditLine = QMoneyInputLine()
+        self.amountLayout = QHBoxLayout()
+
+        # Receiver
+        self.receiverID = "00 00 00 00"
+        self.receiverBalance = Eur(0)
+        self.receiverGroupBox = QGroupBox("Bénéficiaire")
+        self.receiverLayout = QHBoxLayout()
+        self.receiverButton = QPushButton("Scanner")
+        self.receiverUIDLabel = QLabel(self.receiverID)
+        self.receiverBalanceLabel = QLabel(str(self.receiverBalance))
+
+        self.okButton = QPushButton("Valider")
+
+        # Settings
+        self.emitterBalanceLabel.setAlignment(Qt.AlignCenter)
+        self.emitterUIDLabel.setAlignment(Qt.AlignCenter)
+        self.receiverBalanceLabel.setAlignment(Qt.AlignCenter)
+        self.receiverUIDLabel.setAlignment(Qt.AlignCenter)
+
+        self.amountEditLine.setValue(0)
+        self.amountEditLine.setMin(0)
+        self.amountEditLine.autoSelect = True
+
+        # Layout
+        self.emitterLayout.addWidget(self.emitterButton)
+        self.emitterLayout.addWidget(self.emitterUIDLabel)
+        self.emitterLayout.addWidget(self.emitterBalanceLabel)
+        self.emitterGroupBox.setLayout(self.emitterLayout)
+
+        self.amountLayout.addWidget(self.amountLabel)
+        self.amountLayout.addWidget(self.amountEditLine)
+
+        self.receiverLayout.addWidget(self.receiverButton)
+        self.receiverLayout.addWidget(self.receiverUIDLabel)
+        self.receiverLayout.addWidget(self.receiverBalanceLabel)
+        self.receiverGroupBox.setLayout(self.receiverLayout)
+
+        self.mainLayout.addWidget(self.emitterGroupBox)
+        self.mainLayout.addLayout(self.amountLayout)
+        self.mainLayout.addWidget(self.receiverGroupBox)
+        self.mainLayout.addWidget(self.okButton)
+        self.mainLayout.addStretch(1)
+        self.setLayout(self.mainLayout)
+
+        self.emitterButton.clicked.connect(self.scanEmitter)
+        self.receiverButton.clicked.connect(self.scanReceiver)
+        self.okButton.clicked.connect(self.transfer)
+
+    def scanEmitter(self):
+        client = Client()
+        nfcm = QNFCManager()
+        if not nfcm.hasCard():
+            nfcDialog = QNFCDialog()
+            nfcDialog.setModal(True)
+            nfcDialog.cardInserted.connect(self.scanEmitter)
+            nfcDialog.exec_()
+        else:
+            self.emitterID = nfcm.getCardUID()
+            self.emitterBalance = client.requestUserBalance(customer_id=self.emitterID)
+            self.emitterUIDLabel.setText(self.emitterID)
+            self.emitterBalanceLabel.setText(str(self.emitterBalance))
+
+    def scanReceiver(self):
+        client = Client()
+        nfcm = QNFCManager()
+        if not nfcm.hasCard():
+            nfcDialog = QNFCDialog()
+            nfcDialog.setModal(True)
+            nfcDialog.cardInserted.connect(self.scanReceiver)
+            nfcDialog.exec_()
+        else:
+            self.receiverID = nfcm.getCardUID()
+            self.receiverBalance = client.requestUserBalance(
+                customer_id=self.receiverID
+            )
+            self.receiverUIDLabel.setText(self.receiverID)
+            self.receiverBalanceLabel.setText(str(self.receiverBalance))
+
+    def transfer(self):
+        client = Client()
+        dm = QDataManager()
+        deviceUID = dm.uid
+        counter = dm.counter
+        amount = self.amountEditLine.value
+        if self.emitterBalance - amount >= Eur(0):
+            result = client.requestTransfert(
+                origin_id=self.emitterID,
+                destination_id=self.receiverID,
+                amount=amount,
+                counter_id=counter.id,
+                device_uuid=deviceUID,
+            )
+            if result:
+                log.debug(
+                    "Sucessfully transfered {} from {} to {}".format(
+                        amount, self.emitterID, self.receiverID
+                    )
+                )
+                self.clear()
+            else:
+                log.debug("Transfer failed")
+        else:
+            log.debug("Transfer failed: not enough credit on {}".format(self.emitterID))
+
+    def clear(self):
+        self.emitterID = "00 00 00 00"
+        self.emitterBalance = Eur(0)
+        self.receiverID = "00 00 00 00"
+        self.receiverBalance = Eur(0)
+        self.emitterUIDLabel.setText(self.emitterID)
+        self.emitterBalanceLabel.setText(str(Eur(0)))
+        self.receiverUIDLabel.setText(self.receiverID)
+        self.receiverBalanceLabel.setText(str(Eur(0)))
+        self.amountEditLine.setValue(0)
 
 
 class QOtherPayment(QCreditCardPayment):
@@ -231,7 +360,7 @@ class QRefillerTab(QWidget):
         self.cardPayment = QCreditCardPayment()
         self.checkPayment = QCheckPayment()
         self.aePayment = QAEPayment()
-        self.transfertPayement = QNFCPayment()
+        self.transfertPayement = QTransferPayment()
         self.otherPayment = QOtherPayment()
 
         # Right Pannel

@@ -15,7 +15,12 @@ from src.gui.QNFCInfo import QNFCInfo
 from src.gui.widgets.QDialogs import QNFCDialog
 
 from src.utils.Euro import Eur
-from src.trees.QItemTree import QProductSelector, QBasket, QBuyingHistory
+from src.trees.QItemTree import (
+    QProductSelector,
+    QBasket,
+    QBuyingHistory,
+    QMultiUserTree,
+)
 from src.atoms.Atoms import *
 
 log = logging.getLogger()

@@ -47,7 +47,7 @@ class QMainTab(QTabWidget):
         # Initialization
         self.tabCounter = QCounterTab()
         self.tabRefiller = QRefillerTab()
-        self.TabStat = QWidget()
+        # self.TabStat = QWidget()
 
         # Add tabs
         self.addTab(self.tabCounter, "Comptoir")
@@ -89,7 +89,7 @@ class QMainMenu(QMainWindow):
         self.ipDialog.setWindowTitle("IP Serveur")
 
         #  Settings
-
+        # Menu & Actions
         dm = QDataManager()
         for counter in dm.counterList:
             # Create actions

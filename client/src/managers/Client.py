@@ -272,7 +272,27 @@ class Client(metaclass=ClientSingleton):
         return None
 
     def requestTransfert(self, **kwargs):
-        pass
+        """
+        string origin_id = 1;
+        string destination_id = 2;
+        Eur amount = 3;
+        uint64 counter_id = 4;
+        string device_uuid = 5;
+        """
+        try:
+            kwargs["amount"] = packMoney(kwargs["amount"])
+            transfertRequest = com_pb2.TransfertRequest(**kwargs)
+            transfertReply = self.stub.Transfert(transfertRequest)
+
+            if transfertReply.status == com_pb2.TransfertReply.SUCCESS:
+                self.updateTime(unpackTime(transfertReply.now))
+                return True
+            else:
+                log.error("Unable to transfer: {}".format(transfertReply.status))
+                return None
+        except RpcError:
+            log.error("RPC: Unable to transfer")
+            return None
 
     def requestCancelRefilling(self, **kwargs):
         """

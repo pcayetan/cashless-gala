@@ -47,7 +47,8 @@ class QNumericLineEdit(QTextLineEdit):
         self.baseType = Decimal
         self.range = [self.baseType("-inf"), self.baseType("inf")]
         self.editingFinished.connect(self.handleEditingFinished)
-        self.previousOnError = True
+        # TODO: Some bugs have been observed when too many decimal
+        self.previousOnError = False
         self.maxDecimal = None
 
     def setValue(self, value: Any):
@@ -63,6 +64,9 @@ class QNumericLineEdit(QTextLineEdit):
         else:
             if self.previousOnError is True:
                 self.setText(self.previousText)
+            else:
+                self.value = self.baseType(0)
+                self.setText(str(self.value))
             log.warning(
                 "Input value `{}` must be in range `[{},{}]`".format(value, min, max)
             )
@@ -120,6 +124,7 @@ class QMoneyInputLine(QNumericLineEdit):
         self.value = Eur(0)
         self.range = [Eur("-inf"), Eur("inf")]
         self.baseType = Eur
+        self.maxDecimal = 2
         # self.editingFinished.connect(self.handleEditingFinished)
 
     def setAmount(self, amount: Eur):
