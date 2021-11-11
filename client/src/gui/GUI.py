@@ -85,8 +85,8 @@ class QMainMenu(QMainWindow):
         counterActionGroup = QActionGroup(self)
         self.counterActionGroup = QActionGroup(self)
 
-        self.ipDialog = QIpInputDialog("Veuillez saisir l'adresse du serveur")
-        self.ipDialog.setWindowTitle("IP Serveur")
+        # self.ipDialog = QIpInputDialog("Veuillez saisir l'adresse du serveur")
+        # self.ipDialog.setWindowTitle("IP Serveur")
 
         #  Settings
         # Menu & Actions

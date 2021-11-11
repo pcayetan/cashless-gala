@@ -1,4 +1,5 @@
 from __future__ import print_function
+from typing import Optional
 import grpc
 from grpc import RpcError
 from google.protobuf.timestamp_pb2 import Timestamp
@@ -59,15 +60,53 @@ class Client(metaclass=ClientSingleton):
             self.rootDir = Path(sys.executable).absolute().parents[0]
         else:
             self.rootDir = Path(__file__).absolute().parents[2]
-        with open(self.rootDir / Path("data/server"), "r") as file:
-            address = file.readline()
-        address = address.strip()
+
+        # Read server address
+        from src.gui.widgets.QForms import QIpInputDialog
+
+        inputDialog = QIpInputDialog()
+
+        serverSettings = self.rootDir / Path("data/server")
+        if serverSettings.exists():
+            with open(serverSettings, "r") as file:
+                address = file.readline().strip()
+        else:
+            if inputDialog.exec() != 1:
+                exit(0)
+            address = inputDialog.textValue()
+
+        # Check connection and ask user if address is unreachable
+        channel = self._connectToServer(address)
+        while channel is None:
+            if inputDialog.exec() != 1:
+                exit(0)
+            address = inputDialog.textValue()
+            channel = self._connectToServer(address)
+
+        # Save settings
+        with open(serverSettings, "w+") as file:
+            file.write(address)
+
         # END TEMPORARY
-        self.serverAddress = address + ":50051"
-        self.channel = grpc.insecure_channel(self.serverAddress)
+        self.serverAddress = address
+        self.channel = channel
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
         self.timestamp = datetime(1970, 1, 1)
         self.t0 = time.time()
+
+    def _connectToServer(self, ip, timeout=1) -> Optional[grpc.Channel]:
+        from src.gui.widgets.QForms import QIpInputDialog
+
+        if not QIpInputDialog.isIPValid(ip):
+            return None
+
+        channel = grpc.insecure_channel(ip)
+        try:
+            grpc.channel_ready_future(channel).result(timeout=timeout)
+        except grpc.FutureTimeoutError as e:
+            logging.error(f"Could not connect to server with address {ip}: {e}")
+            return None
+        return channel
 
     def getTime(self) -> datetime:
         return self.timestamp + timedelta(seconds=time.time() - self.t0)

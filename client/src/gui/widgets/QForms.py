@@ -1,9 +1,10 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from typing import Union
+from typing import Union, Optional
 
 import logging
+import re
 
 # Project specific imports
 from src.utils.Euro import Eur
@@ -140,57 +141,26 @@ class QSimpleNumberInputDialog(QAbstractInputDialog):
             self.inputBar.setText("2")
 
 
-class QIpInputDialog(QAbstractInputDialog):
-    valueSelected = pyqtSignal(str)
+class QIpInputDialog(QInputDialog):
+    def __init__(self, defaultAddr="localhost:50051"):
+        super().__init__()
+        self.setInputMode(QInputDialog.TextInput)
+        self.setLabelText("Veuillez entrer l'adresse du serveur")
+        self.setTextValue(defaultAddr)
 
-    def __init__(self, questionText, parent=None):
-        super().__init__(parent)
-        self.errorDialog = QErrorDialog(
-            "Erreur de saisie", "Erreur de saisie", "Veuillez saisir une Ip V4 valide"
-        )
+    def textValue(self):
+        return super().textValue().replace(" ", "")
 
-    def sendValue(self):
-        config = MachineConfig()
-        ipParser = self.inputBar.text().replace(" ", "").split(".")
-        valid = True
-        if len(ipParser) == 4:
-            for i in ipParser:
-                try:
-                    if 0 <= int(i) and int(i) <= 255:
-                        pass
-                    else:  # invalid ip
-                        valid = False
-                except ValueError:  # Not a number
-                    portParser = i.split(":")
-                    if len(portParser) == 2:
-                        try:
-                            if (
-                                0 <= int(portParser[0])
-                                and int(portParser[0]) <= 255
-                                and int(portParser[1]) > 0
-                            ):
-                                pass
-                            else:
-                                valid = False
-                        except ValueError:
-                            valid = False
-                    else:
-                        valid = False
-        else:
-            valid = False
+    @classmethod
+    def isIPValid(cls, ip: str) -> bool:
+        if not re.match("[A-z.0-9]+:[0-9]{2,5}", ip):
+            return False
 
-        if valid is True:
-            self.inputBar.setText(self.inputBar.text().replace(" ", ""))
-            self.valueSelected.emit(self.inputBar.text())
-            config.setHost("http://" + self.inputBar.text())
-            api_instance = swagger_client.DefaultApi(swagger_client.ApiClient(config))
-            self.close()
-        else:
-            self.errorDialog.setWindowIcon(
-                self.style().standardIcon(QStyle.SP_MessageBoxWarning)
-            )
-            self.errorDialog.show()
-            center(self.errorDialog)
+        _, port = ip.split(":")
+        if int(port) > 65535:  # If superior to the maximum port available
+            return False
+
+        return True
 
 
 class QRowInfo(QWidget):
