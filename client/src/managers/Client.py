@@ -60,6 +60,27 @@ class Client(metaclass=ClientSingleton):
             self.rootDir = Path(sys.executable).absolute().parents[0]
         else:
             self.rootDir = Path(__file__).absolute().parents[2]
+        # END TEMPORARY
+
+        self.connectToServer(loadFromSettings=True)
+
+        self.timestamp = datetime(1970, 1, 1)
+        self.t0 = time.time()
+
+    def connectToServer(self, loadFromSettings=False):
+        def _establishConnection(ip, timeout=1) -> Optional[grpc.Channel]:
+            from src.gui.widgets.QForms import QIpInputDialog
+
+            if not QIpInputDialog.isIPValid(ip):
+                return None
+
+            channel = grpc.insecure_channel(ip)
+            try:
+                grpc.channel_ready_future(channel).result(timeout=timeout)
+            except grpc.FutureTimeoutError as e:
+                logging.error(f"Could not connect to server with address {ip}: {e}")
+                return None
+            return channel
 
         # Read server address
         from src.gui.widgets.QForms import QIpInputDialog
@@ -67,46 +88,31 @@ class Client(metaclass=ClientSingleton):
         inputDialog = QIpInputDialog()
 
         serverSettings = self.rootDir / Path("data/server")
-        if serverSettings.exists():
+        if loadFromSettings and serverSettings.exists():
+            # Pre-load from settings
             with open(serverSettings, "r") as file:
                 address = file.readline().strip()
         else:
+            # Ask user
             if inputDialog.exec() != 1:
                 exit(0)
             address = inputDialog.textValue()
 
         # Check connection and ask user if address is unreachable
-        channel = self._connectToServer(address)
+        channel = _establishConnection(address)
         while channel is None:
             if inputDialog.exec() != 1:
                 exit(0)
             address = inputDialog.textValue()
-            channel = self._connectToServer(address)
+            channel = _establishConnection(address)
 
         # Save settings
         with open(serverSettings, "w+") as file:
             file.write(address)
 
-        # END TEMPORARY
         self.serverAddress = address
         self.channel = channel
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
-        self.timestamp = datetime(1970, 1, 1)
-        self.t0 = time.time()
-
-    def _connectToServer(self, ip, timeout=1) -> Optional[grpc.Channel]:
-        from src.gui.widgets.QForms import QIpInputDialog
-
-        if not QIpInputDialog.isIPValid(ip):
-            return None
-
-        channel = grpc.insecure_channel(ip)
-        try:
-            grpc.channel_ready_future(channel).result(timeout=timeout)
-        except grpc.FutureTimeoutError as e:
-            logging.error(f"Could not connect to server with address {ip}: {e}")
-            return None
-        return channel
 
     def getTime(self) -> datetime:
         return self.timestamp + timedelta(seconds=time.time() - self.t0)

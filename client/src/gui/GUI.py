@@ -81,12 +81,12 @@ class QMainMenu(QMainWindow):
         configMenu = mainMenu.addMenu("&Config")
         # helpMenu = mainMenu.addMenu("&Aide")
         counterMenu = configMenu.addMenu("&Comptoir")
-        ipMenu = configMenu.addMenu("&Adresse serveur")
+
+        changeIpAction = QAction("&Changer l'adresse du serveur", self)
+        changeIpAction.triggered.connect(Client().connectToServer)
+        configMenu.addAction(changeIpAction)
         counterActionGroup = QActionGroup(self)
         self.counterActionGroup = QActionGroup(self)
-
-        # self.ipDialog = QIpInputDialog("Veuillez saisir l'adresse du serveur")
-        # self.ipDialog.setWindowTitle("IP Serveur")
 
         #  Settings
         # Menu & Actions
