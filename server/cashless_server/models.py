@@ -88,7 +88,7 @@ class Product(Model):
         Takes happy hours into account
         If multiple happy hours matches, it gets the first found one
         """
-        now = datetime.now(TIMEZONE)
+        now = TIMEZONE.localize(datetime.now())
         for hap in self.happy_hours:
             if now >= pytz.utc.localize(
                 hap.start
@@ -109,6 +109,10 @@ class HappyHour(Model):
         "Product", backref=backref("happy_hours", lazy=True), lazy=True
     )
     price = Column(Money)
+    # start_hour = Column(
+    #     Integer,
+    # )
+
     start = Column(DateTime())
     end = Column(DateTime())
 

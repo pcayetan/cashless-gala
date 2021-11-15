@@ -243,7 +243,7 @@ class TestRefilling(PaymentProtocolTestCase):
         # Creation date
         self.assertAlmostEqual(
             pytz.utc.localize(refilling.date),
-            datetime.now(TIMEZONE),
+            TIMEZONE.localize(datetime.now()),
             delta=timedelta(seconds=1),
         )
         self.assertEqual(resp.refilling.date, pbutils.date_to_pb(refilling.date))

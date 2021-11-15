@@ -69,13 +69,14 @@ def setup(import_file):
     def datetime_helper(event_date, hour, minute):
         # Does not handle midnight and after
         return (
-            datetime(
-                year=event_date.year,
-                month=event_date.month,
-                day=event_date.day,
-                hour=hour,
-                minute=minute,
-                tzinfo=settings.TIMEZONE,
+            settings.TIMEZONE.localize(
+                datetime(
+                    year=event_date.year,
+                    month=event_date.month,
+                    day=event_date.day,
+                    hour=hour,
+                    minute=minute,
+                )
             )
             .astimezone(pytz.utc)
             .replace(tzinfo=None)
@@ -128,8 +129,12 @@ def setup(import_file):
 
         generated_codes = {}
         event_date = data.get("event_date", {})
-        event_date = datetime(
-            year=event_date["year"], month=event_date["month"], day=event_date["day"]
+        event_date = settings.TIMEZONE.localize(
+            datetime(
+                year=event_date["year"],
+                month=event_date["month"],
+                day=event_date["day"],
+            )
         )
         logging.info(f"--- Event date is : {event_date} ---")
 
@@ -167,7 +172,7 @@ def setup(import_file):
                 )
 
             for happy_hour in product.get("happy_hours", []):
-                h = models.HappyHour(
+                hap = models.HappyHour(
                     start=datetime_helper(
                         event_date,
                         happy_hour["start"]["hour"],
@@ -181,7 +186,7 @@ def setup(import_file):
                     price=happy_hour["price"],
                     product_id=p.id,
                 )
-                db.add(h)
+                db.add(hap)
             db.commit()
 
     db.commit()

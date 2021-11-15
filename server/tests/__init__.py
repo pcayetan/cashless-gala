@@ -65,7 +65,7 @@ class PaymentProtocolTestCase(unittest.TestCase):
     def request(self, endpoint: str, request, invocation_metadata={}, timeout=1):
         from cashless_server.settings import TIMEZONE
 
-        start_time = datetime.now(TIMEZONE)
+        start_time = TIMEZONE.localize(datetime.now())
         response, _, code, _ = self.test_server.invoke_unary_unary(
             cashless_server.com_pb2.DESCRIPTOR.services_by_name[
                 "PaymentProtocol"

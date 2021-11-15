@@ -17,12 +17,10 @@ def pb_now() -> com_pb2.Time:
 
 def date_to_pb(date: datetime) -> com_pb2.Time:
     """
-    Ensure datetime is in utc and remove timezone
+    Only works if the date comes from the database
     """
     timestamp = Timestamp()
-    timestamp.FromDatetime(
-        TIMEZONE.localize(date).astimezone(pytz.utc).replace(tzinfo=None)
-    )
+    timestamp.FromDatetime(date)
     return com_pb2.Time(time=timestamp, timezone=TIMEZONE.zone)
 
 
