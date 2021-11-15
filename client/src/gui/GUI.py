@@ -64,7 +64,7 @@ class QMainMenu(QMainWindow):
         self.setWindowTitle("Gala.Manager.Core")
         self.resize(1600, 1000)
         uim = QUIManager()
-        self.setWindowIcon(uim.getWindowIcon("icon"))
+        self.setWindowIcon(uim.getWindowIcon("gala"))
 
         center(self)
         self.MainTab = QMainTab()

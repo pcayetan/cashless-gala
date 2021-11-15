@@ -114,7 +114,10 @@ class Atom:
         return self.id
 
     def __eq__(self, key):
-        raise NotImplementedError("__eq__ not implemented for this class.")
+        if type(self) == type(key):
+            return self.getId() == key.getId()
+        else:
+            return False
 
 
 class HappyHours(Atom):
@@ -123,6 +126,7 @@ class HappyHours(Atom):
         self.start = None  # QTime
         self.end = None  # QTime
         self.price = None  # Eur
+        self.active = False  # For triggering system
 
     def setStart(self, start):
         self.start = start
@@ -136,6 +140,10 @@ class HappyHours(Atom):
         self.price = price
         return self
 
+    def setActive(self, active: bool):
+        self.active = active
+        return self
+
     def getStart(self):
         return self.start
 
@@ -144,6 +152,12 @@ class HappyHours(Atom):
 
     def getPrice(self):
         return self.price
+
+    def isActive(self):
+        return self.active
+
+    def __str__(self):
+        return "{} @ [{},{}]".format(self.price, self.start, self.end)
 
 
 class User(Atom):

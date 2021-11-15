@@ -12,7 +12,7 @@ from src.managers.QUIManager import QUIManager
 from src.managers.Client import Client
 from src.gui.QUtils import center
 from src.gui.QNFCInfo import QNFCInfo
-from src.gui.widgets.QDialogs import QNFCDialog
+from src.gui.widgets.QDialogs import QNFCDialog, QWarningDialog
 
 from src.utils.Euro import Eur
 from src.trees.QItemTree import (

@@ -142,11 +142,14 @@ class QSimpleNumberInputDialog(QAbstractInputDialog):
 
 
 class QIpInputDialog(QInputDialog):
-    def __init__(self, defaultAddr="localhost:50051"):
+    def __init__(self, defaultAddr="127.0.0.1:50051"):
         super().__init__()
         self.setInputMode(QInputDialog.TextInput)
         self.setLabelText("Veuillez entrer l'adresse du serveur")
         self.setTextValue(defaultAddr)
+        uim = QUIManager()
+        self.setWindowIcon(uim.getWindowIcon("server"))
+        self.setWindowTitle("Adresse serveur")
 
     def textValue(self):
         return super().textValue().replace(" ", "")

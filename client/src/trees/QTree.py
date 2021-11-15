@@ -398,11 +398,13 @@ class QTreeModel(QAbstractItemModel):
         self, qAtom: QAtom, parent=QModelIndex()
     ) -> (QModelIndex, TreeItem, QAtom):
         n_row = self.rowCount(parent)
+        n_col = self.columnCount(parent)
         for i in range(n_row):
-            item = self.getItem(self.index(i, 0, parent))
-            data = item.getData()
-            if data == qAtom:  # == means same id
-                return self.index(i, 0, parent), item, data
+            for j in range(n_col):
+                item = self.getItem(self.index(i, j, parent))
+                data = item.getData()
+                if data == qAtom:  # == means same id
+                    return self.index(i, j, parent), item, data
         return None
 
     def getQAtomList(self, parent=QModelIndex()):

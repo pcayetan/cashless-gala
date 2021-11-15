@@ -95,6 +95,7 @@ class Client(metaclass=ClientSingleton):
         else:
             # Ask user
             if inputDialog.exec() != 1:
+                # NOTE: This exit produces undesired behavior when used from the menu
                 exit(0)
             address = inputDialog.textValue()
 
@@ -156,6 +157,12 @@ class Client(metaclass=ClientSingleton):
                 buying = unpackBuying(transaction)
             elif buyingReply.status == com_pb2.BuyingReply.NOT_ENOUGH_MONEY:
                 log.warning("Not enough money")
+                return None
+            elif buyingReply.status == com_pb2.BuyingReply.MISSING_AMOUNT_IN_PAYMENT:
+                log.error("Incorrect item price")
+                return None
+            else:
+                log.error("Bad buying request")
                 return None
 
             return buying

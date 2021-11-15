@@ -47,8 +47,25 @@ class QProductSelectorModel(QTreeModel):
         # explicit is better that implicit ...
         # So the manager will explicity send update signals to Widgets...
         qProduct = QProduct(product)
-        index = self.qProductList.index(qProduct)
-        # ???
+        # index = self.qProductList.index(qProduct)
+        index = self.searchQAtom(qProduct)
+        if index:
+            print(qProduct.price)
+            self.setData(index, qProduct)
+
+    def data(self, index: QModelIndex, role):
+
+        if role == Qt.ForegroundRole:
+            # index (QModelIndex), index.internalPointer (TreeItem), --.getData (QAtom)
+            qAtom = index.internalPointer().getData()
+            if isinstance(qAtom, QProduct):
+                qProduct: QProduct = qAtom
+                happyHours = qProduct.getHappyHours()
+                for happyHour in happyHours:
+                    if happyHour.isActive():
+                        return QColor(26, 123, 203)
+
+        return super().data(index, role)
 
 
 class QBasketModel(QTreeModel):
@@ -149,12 +166,14 @@ class QBuyingHistoryModel(QTreeModel):
         if role == Qt.ForegroundRole:
             nfcm = QNFCManager()
             # index (QModelIndex), index.internalPointer (TreeItem), --.getData (QAtom)
-            qBuying: QBuying = index.internalPointer().getData()
-            # check if the card on the nfc reader belongs to the transaction
-            userList = qBuying.getDistribution().getUserList()
-            if nfcm.getCardUID() in userList:
-                # TODO: Do not hardcode themes...
-                return QColor(88, 231, 167)
+            qAtom = index.internalPointer().getData()
+            if isinstance(qAtom, QBuying):
+                qBuying: QBuying = qAtom
+                # check if the card on the nfc reader belongs to the transaction
+                userList = qBuying.getDistribution().getUserList()
+                if nfcm.getCardUID() in userList:
+                    # TODO: Do not hardcode themes...
+                    return QColor(88, 231, 167)
 
         return super().data(index, role)
 

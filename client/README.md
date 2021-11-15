@@ -14,7 +14,10 @@ On Windows don't forget to add python/pip in your PATH environment variable if y
 - Restart your machine
 - clone the repository
 - Create a virtual environment with system package (**virtualenv --system-site-packages venv**)
-
+- Source the environment (**source ./venv/bin/activate**)
+- Install dependencies (**pip install -r requirements-min-rpi.txt**)
+- Generate python grpc API (**./scripts/generate_from_proto.sh**)
+- launch program (**./gmc.py**)
 
 ## Linux systems
 - Install swig (**sudo apt install swig** on debian like, **sudo pacman -S swig** on Arch)
@@ -26,7 +29,8 @@ On Windows don't forget to add python/pip in your PATH environment variable if y
 - Create a virtual environment (**virtualenv venv**)
 - Source the environment (**source ./venv/bin/activate**)
 - Install dependencies (**pip install -r requirements.txt**)
-- launch program (**./scripts/gmc**)
+- Generate python grpc API (**./scripts/generate_from_proto.sh**)
+- launch program (**./gmc.py**)
 
 
 

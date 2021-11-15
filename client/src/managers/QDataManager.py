@@ -207,15 +207,20 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
                     happyHour.getStart() < currentTime
                     and currentTime < happyHour.getEnd()
                 ):
-                    log.info(
-                        "Happy hour sur {0}, {1} au lieu de {2}".format(
-                            product, happyHour.getPrice(), product.getDefaultPrice()
+                    if happyHour.isActive() is False:
+                        happyHour.setActive(True)
+                        log.info(
+                            "Happy hour sur {0}: {1} au lieu de {2}".format(
+                                product.name,
+                                happyHour.getPrice(),
+                                product.getDefaultPrice(),
+                            )
                         )
-                    )
-                    product.setPrice(happyHour.getPrice())
-                    self.priceUpdated.emit(product)
+                        product.setPrice(happyHour.getPrice())
+                        self.priceUpdated.emit(product)
                 else:
-                    if product.getPrice() != product.getDefaultPrice():
+                    if happyHour.isActive():
+                        happyHour.setActive(False)
                         log.info("Happy hour sur {0} terminée.".format(product))
                         self.priceUpdated.emit(product)
-                    product.setPrice(product.getDefaultPrice())
+                        product.setPrice(product.getDefaultPrice())
