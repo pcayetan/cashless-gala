@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*
+from datetime import tzinfo
 import os
 import sys
 
 import click
 import logging
+
+import pytz
 
 
 @click.group()
@@ -65,12 +68,17 @@ def setup(import_file):
 
     def datetime_helper(event_date, hour, minute):
         # Does not handle midnight and after
-        return datetime(
-            year=event_date.year,
-            month=event_date.month,
-            day=event_date.day,
-            hour=hour,
-            minute=minute,
+        return (
+            datetime(
+                year=event_date.year,
+                month=event_date.month,
+                day=event_date.day,
+                hour=hour,
+                minute=minute,
+                tzinfo=settings.TIMEZONE,
+            )
+            .astimezone(pytz.utc)
+            .replace(tzinfo=None)
         )
 
     def generate_code(generated_codes, name):

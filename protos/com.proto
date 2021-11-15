@@ -27,8 +27,8 @@ enum PaymentMethod {
 
 // Timezone aware time
 message Time {
-  google.protobuf.Timestamp time = 1;
-  string timezone = 2;
+  google.protobuf.Timestamp time = 1; // Always in UTC format
+  string timezone = 2; // Timezone used by the server
 }
 
 // This is based on the DecimalTuple format available on Python
@@ -40,15 +40,16 @@ message Money {
 
 message Product {
   message HappyHour {
-    Time start = 1;
-    Time end = 2;
+    Time start = 1; // Start for today
+    Time end = 2; // End for today (can be the next day)
     Money price = 3;
   }
   uint64 id = 1;
-  string name = 2; //pretty print in trees
-  string code = 3; //code for fast search, not necessarily unique
+  string name = 2; // pretty print in trees
+  string code = 3; // code for fast search, not necessarily unique
   Money default_price = 4;
   string category = 5; // Dot separated category string (ex: drinks.beer)
+  // Happy hours calculated for the day, you may need to ask them again if prices doesn't match or you changed day
   repeated HappyHour happy_hours = 6;
 }
 
@@ -69,7 +70,7 @@ message Refilling {
   Time date = 8;
 }
 
-message Payment { //Allow us to handle multiple user buyings, describe who pays and how much.
+message Payment { // Allow us to handle multiple user buyings, describe who pays and how much.
   string customer_id = 1;
   Money amount = 2;
 }
@@ -89,7 +90,7 @@ message BuyingRequest {
   uint64 counter_id = 1;
   string device_uuid = 2;
   repeated Payment payments = 3; // Payment repartition between users
-  repeated BasketItem basket = 4; //List of all products,their qty, their unit price when it's a reply...
+  repeated BasketItem basket = 4; // List of all products,their qty, their unit price when it's a reply...
 }
 
 message BuyingReply {
@@ -112,7 +113,7 @@ message BuyingReply {
   Status status = 1;
   Time now = 2;
   Buying transaction = 3;
-  repeated string customer_ids = 4; //Severeal
+  repeated string customer_ids = 4; // Severeal
   repeated Money customer_balances = 5;
 }
 
@@ -164,7 +165,7 @@ message RefoundBuyingReply {
   Status status = 1;
   Time now = 2;
   repeated string customer_ids = 3; // Multiple customer could be refounded at the same time since multi-payment exist
-  repeated Money customer_balances = 4; //So we can have multiple new balances...
+  repeated Money customer_balances = 4; // So we can have multiple new balances...
 }
 
 message CancelRefillingRequest {
