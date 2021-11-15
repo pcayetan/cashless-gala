@@ -2,13 +2,15 @@
 # -*- coding:utf-8 -*
 
 import typing
+import pytz
 import itertools
 from decimal import Decimal
 from cashless_server import models, com_pb2, pbutils
+from cashless_server.settings import TIMEZONE
 
 from . import PaymentProtocolTestCase, fake_db
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, tzinfo
 
 
 class TestRefilling(PaymentProtocolTestCase):
@@ -240,7 +242,9 @@ class TestRefilling(PaymentProtocolTestCase):
 
         # Creation date
         self.assertAlmostEqual(
-            refilling.date, datetime.utcnow(), delta=timedelta(seconds=1)
+            pytz.utc.localize(refilling.date),
+            datetime.now(TIMEZONE),
+            delta=timedelta(seconds=1),
         )
         self.assertEqual(resp.refilling.date, pbutils.date_to_pb(refilling.date))
 

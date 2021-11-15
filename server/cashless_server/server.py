@@ -98,7 +98,7 @@ class PaymentServicer(com_pb2_grpc.PaymentProtocolServicer):
         # Or surely did not take happy hours into account
         if total_payment != real_price_sum:
             return com_pb2.BuyingReply(
-                now=pb_now(), status=com_pb2.BuyingReply.MISSING_AMOUNT_IN_PAYMENT
+                now=pb_now(), status=com_pb2.BuyingReply.MISMATCHING_BUYING_AMOUNTS
             )
 
         # Here, we know that every product exists and that prices matches

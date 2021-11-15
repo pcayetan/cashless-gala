@@ -25,6 +25,12 @@ enum PaymentMethod {
   OTHER = 7;
 }
 
+// Timezone aware time
+message Time {
+  google.protobuf.Timestamp time = 1;
+  string timezone = 2;
+}
+
 // This is based on the DecimalTuple format available on Python
 message Money {
   // String in format +/-xx.xx
@@ -34,8 +40,8 @@ message Money {
 
 message Product {
   message HappyHour {
-    google.protobuf.Timestamp start = 1;
-    google.protobuf.Timestamp end = 2;
+    Time start = 1;
+    Time end = 2;
     Money price = 3;
   }
   uint64 id = 1;
@@ -60,7 +66,7 @@ message Refilling {
   PaymentMethod payment_method = 5;
   Money amount = 6;
   bool cancelled = 7;
-  google.protobuf.Timestamp date = 8;
+  Time date = 8;
 }
 
 message Payment { //Allow us to handle multiple user buyings, describe who pays and how much.
@@ -74,7 +80,7 @@ message Buying {
   Money price = 3; // price the customer(s) actually paid at 'date', sum of Payments
   bool refounded = 4;
   uint64 counter_id = 5;
-  google.protobuf.Timestamp date = 6;
+  Time date = 6;
   repeated Payment payments = 7; // Several users can pay the same thing during multi-payments
   repeated BasketItem items = 8;
 }
@@ -92,11 +98,11 @@ message BuyingReply {
     INTERNAL_SERVER_ERROR = 1;
 
     MISSING_CUSTOMER_IN_PAYMENT = 2;
-    MISSING_AMOUNT_IN_PAYMENT = 3;
-    MISSING_COUNTER = 4;
-    MISSING_DEVICE_UUID = 5;
-    MISSING_BASKET = 6;
+    MISSING_COUNTER = 3;
+    MISSING_DEVICE_UUID = 4;
+    MISSING_BASKET = 5;
 
+    MISMATCHING_BUYING_AMOUNTS = 6;
     COUNTER_NOT_FOUND = 7;
     ITEM_NOT_FOUND = 8;
 
@@ -104,7 +110,7 @@ message BuyingReply {
   }
 
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   Buying transaction = 3;
   repeated string customer_ids = 4; //Severeal
   repeated Money customer_balances = 5;
@@ -135,7 +141,7 @@ message RefillingReply {
   }
 
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   Money customer_balance = 3;
   Refilling refilling = 4;
 }
@@ -156,7 +162,7 @@ message RefoundBuyingReply {
   }
 
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   repeated string customer_ids = 3; // Multiple customer could be refounded at the same time since multi-payment exist
   repeated Money customer_balances = 4; //So we can have multiple new balances...
 }
@@ -177,7 +183,7 @@ message CancelRefillingReply {
   }
 
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   string customer_id = 3;
   Money customer_balance = 4;
 }
@@ -206,7 +212,7 @@ message TransfertReply {
     NOT_ENOUGH_MONEY = 8;
   }
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   Refilling origin_refilling = 3;
   Refilling destination_refilling = 4;
   Money origin_balance = 5;
@@ -225,7 +231,7 @@ message BalanceReply {
     MISSING_CUSTOMER = 2;
   }
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   Money balance = 3;
 }
 
@@ -258,7 +264,7 @@ message HistoryReply {
   }
 
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   repeated Buying buyings = 3;
   repeated Refilling refillings = 4;
 }
@@ -276,7 +282,7 @@ message CounterListReply {
   }
 
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   repeated Counter counters = 3;
 }
 
@@ -296,6 +302,6 @@ message ProductsReply {
   }
 
   Status status = 1;
-  google.protobuf.Timestamp now = 2;
+  Time now = 2;
   repeated Product products = 3;
 }

@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*
-from datetime import datetime
+from datetime import datetime, tzinfo
 import decimal
+import pytz
 
 from sqlalchemy import (
     Column,
@@ -15,6 +16,7 @@ from sqlalchemy.ext.declarative import declarative_base
 import sqlalchemy.types as types
 
 from . import get_db
+from .settings import TIMEZONE
 
 Model = declarative_base()
 Model.query = get_db().query_property()
@@ -86,9 +88,11 @@ class Product(Model):
         Takes happy hours into account
         If multiple happy hours matches, it gets the first found one
         """
-        now = datetime.now()
+        now = datetime.now(TIMEZONE)
         for hap in self.happy_hours:
-            if now >= hap.start and now <= hap.end:
+            if now >= pytz.utc.localize(
+                hap.start
+            ) and now <= pytz.utc.localize.localize(hap.end):
                 return hap.price
         return self.default_price
 
@@ -105,8 +109,8 @@ class HappyHour(Model):
         "Product", backref=backref("happy_hours", lazy=True), lazy=True
     )
     price = Column(Money)
-    start = Column(DateTime(timezone=True))
-    end = Column(DateTime(timezone=True))
+    start = Column(DateTime())
+    end = Column(DateTime())
 
 
 class ProductAvailableInCounter(Model):
@@ -167,7 +171,7 @@ class Refilling(Model):
     )
 
     amount = Column(Money)
-    date = Column(DateTime(timezone=True), default=datetime.utcnow)
+    date = Column(DateTime(), default=datetime.utcnow)
     cancelled = Column(Boolean, default=False)
 
     def __str__(self):
@@ -199,7 +203,7 @@ class Buying(Model):
     machine = relationship("Machine", backref=backref("buyings", lazy=True), lazy=True)
 
     label = Column(String)
-    date = Column(DateTime(timezone=True), default=datetime.utcnow)
+    date = Column(DateTime(), default=datetime.utcnow)
     refounded = Column(Boolean, default=False)
 
     def generate_label(self):

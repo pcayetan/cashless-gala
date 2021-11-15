@@ -5,6 +5,7 @@ from grpc import StatusCode
 
 import os
 import unittest
+import pytz
 import pytest
 import pathlib
 import importlib
@@ -15,6 +16,8 @@ import cashless_server.com_pb2_grpc
 import cashless_server.settings
 import cashless_server.pbutils
 
+from pytz import timezone
+from datetime import datetime
 from grpc_testing import server_from_dictionary, strict_real_time
 
 
@@ -40,6 +43,10 @@ def fake_db(tmpdir):
     os.remove(db_file)
 
 
+def pb_time_to_date(date: "com_pb2.Time") -> "datetime":
+    return pytz.utc.localize(date.time.ToDatetime())
+
+
 @pytest.mark.usefixtures("fake_db")
 class PaymentProtocolTestCase(unittest.TestCase):
     def __init__(self, method_name):
@@ -56,7 +63,9 @@ class PaymentProtocolTestCase(unittest.TestCase):
         self.db = db
 
     def request(self, endpoint: str, request, invocation_metadata={}, timeout=1):
-        start_time = cashless_server.pbutils.pb_now()
+        from cashless_server.settings import TIMEZONE
+
+        start_time = datetime.now(TIMEZONE)
         response, _, code, _ = self.test_server.invoke_unary_unary(
             cashless_server.com_pb2.DESCRIPTOR.services_by_name[
                 "PaymentProtocol"
@@ -67,8 +76,9 @@ class PaymentProtocolTestCase(unittest.TestCase):
         ).termination()
         self.assertEqual(code, StatusCode.OK, msg="Internal server error")
         self.assertAlmostEqual(
-            response.now.ToDatetime(),
-            start_time.ToDatetime(),
+            pb_time_to_date(response.now),
+            start_time,
             delta=timedelta(seconds=timeout),
         )
+        self.assertEqual(response.now.timezone, TIMEZONE.zone)
         return response

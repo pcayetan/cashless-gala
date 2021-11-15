@@ -1,21 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*
 from google.protobuf.timestamp_pb2 import Timestamp
+from datetime import datetime
 import decimal
+import pytz
 
 from . import models, com_pb2
+from .settings import TIMEZONE
 
 
-def pb_now() -> Timestamp:
+def pb_now() -> com_pb2.Time:
     timestamp = Timestamp()
-    timestamp.GetCurrentTime()
-    return timestamp
+    timestamp.FromDatetime(datetime.utcnow())
+    return com_pb2.Time(time=timestamp, timezone=TIMEZONE.zone)
 
 
-def date_to_pb(date) -> Timestamp:
+def date_to_pb(date: datetime) -> com_pb2.Time:
+    """
+    Ensure datetime is in utc and remove timezone
+    """
     timestamp = Timestamp()
-    timestamp.FromDatetime(date)
-    return timestamp
+    timestamp.FromDatetime(
+        TIMEZONE.localize(date).astimezone(pytz.utc).replace(tzinfo=None)
+    )
+    return com_pb2.Time(time=timestamp, timezone=TIMEZONE.zone)
 
 
 def decimal_to_pb_money(dec: decimal.Decimal) -> com_pb2.Money:
