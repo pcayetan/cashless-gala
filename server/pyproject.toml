@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cashless_server"
-version = "0.1.2"
+version = "0.1.3"
 description = "Server for centralizing cashless system"
 authors = ["Sli <antoine@bartuccio.fr>"]
 license = "GPL-3.0-only"
