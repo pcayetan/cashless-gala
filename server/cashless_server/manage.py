@@ -66,14 +66,14 @@ def setup(import_file):
 
     from . import settings, get_db, get_engine, com_pb2, models
 
-    def datetime_helper(event_date, hour, minute):
+    def datetime_helper(event_date, hour, minute, day_offset=0):
         # Does not handle midnight and after
         return (
             settings.TIMEZONE.localize(
                 datetime(
                     year=event_date.year,
                     month=event_date.month,
-                    day=event_date.day,
+                    day=event_date.day + day_offset,
                     hour=hour,
                     minute=minute,
                 )
@@ -172,17 +172,26 @@ def setup(import_file):
                 )
 
             for happy_hour in product.get("happy_hours", []):
-                hap = models.HappyHour(
-                    start=datetime_helper(
-                        event_date,
-                        happy_hour["start"]["hour"],
-                        happy_hour["start"]["minute"],
-                    ),
-                    end=datetime_helper(
+                start = datetime_helper(
+                    event_date,
+                    happy_hour["start"]["hour"],
+                    happy_hour["start"]["minute"],
+                )
+                end = datetime_helper(
+                    event_date,
+                    happy_hour["end"]["hour"],
+                    happy_hour["end"]["minute"],
+                )
+                if start > end:
+                    end = datetime_helper(
                         event_date,
                         happy_hour["end"]["hour"],
                         happy_hour["end"]["minute"],
-                    ),
+                        day_offset=1,
+                    )
+                hap = models.HappyHour(
+                    start=start,
+                    end=end,
                     price=happy_hour["price"],
                     product_id=p.id,
                 )
