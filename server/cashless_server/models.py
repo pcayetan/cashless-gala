@@ -13,6 +13,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql.schema import CheckConstraint
 import sqlalchemy.types as types
 
 from . import get_db
@@ -109,12 +110,78 @@ class HappyHour(Model):
         "Product", backref=backref("happy_hours", lazy=True), lazy=True
     )
     price = Column(Money)
-    # start_hour = Column(
-    #     Integer,
-    # )
 
-    start = Column(DateTime())
-    end = Column(DateTime())
+    start_hour = Column(Integer)
+    end_hour = Column(Integer)
+
+    start_minute = Column(Integer)
+    end_minute = Column(Integer)
+
+    @classmethod
+    def generate(
+        cls,
+        product_id: int,
+        price: Money,
+        start_hour: int,
+        start_minute: int,
+        end_hour: int,
+        end_minute: int,
+    ) -> typing.List[HappyHour]:
+        hap = cls(
+            product_id=product_id,
+            price=price,
+            start_hour=start_hour,
+            start_minute=start_minute,
+        )
+        if not cls._check_end_after_start(
+            start_hour, start_minute, end_hour, end_minute
+        ):
+            hap.end_hour = end_hour
+            hap.end_minute = end_minute
+            return [hap]
+
+        hap.end_hour = 23
+        return [hap]
+
+    @staticmethod
+    def _make_date(hour: int, minute: int) -> datetime:
+        now = TIMEZONE.localize(datetime.now())
+        return TIMEZONE.localize(
+            datetime(
+                year=now.year,
+                month=now.month,
+                day=now.day,
+                hour=hour,
+                minute=minute,
+            )
+        )
+
+    @staticmethod
+    def _check_end_after_start(
+        start_hour: int, start_minute: int, end_hour: int, end_minute: int
+    ) -> bool:
+        return HappyHour._make_date(end_hour, end_minute) >= HappyHour._make_date(
+            start_hour, start_minute
+        )
+
+    __table_args__ = (
+        CheckConstraint(start_hour >= 0 and start_hour <= 23, "check_start_hour"),
+        CheckConstraint(end_hour >= 0 and end_hour <= 23, "check_end_hour"),
+        CheckConstraint(start_minute >= 0 and start_minute <= 23, "check_start_minute"),
+        CheckConstraint(end_minute >= 0 and end_minute <= 23, "check_end_minute"),
+        CheckConstraint(
+            _check_end_after_start(start_hour, start_minute, end_hour, end_minute),
+            "check_end_after_start",
+        ),
+    )
+
+    @property
+    def start(self):
+        return self._make_date(self.start_hour, self.start_minute).astimezone(pytz.utc)
+
+    @property
+    def end(self):
+        return self._make_date(self.end_hour, self.end_minute).astimezone(pytz.utc)
 
 
 class ProductAvailableInCounter(Model):
