@@ -88,7 +88,7 @@ class Product(Model):
         Takes happy hours into account
         If multiple happy hours matches, it gets the first found one
         """
-        now = TIMEZONE.localize(datetime.now())
+        now = pytz.utc.localize(datetime.utcnow())
         for hap in self.happy_hours:
             if now >= pytz.utc.localize(hap.start) and now <= pytz.utc.localize(
                 hap.end

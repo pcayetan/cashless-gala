@@ -43,8 +43,10 @@ def fake_db(tmpdir):
     os.remove(db_file)
 
 
-def pb_time_to_date(date: "com_pb2.Time") -> "datetime":
-    return pytz.utc.localize(date.time.ToDatetime())
+def pb_time_to_date(pbt: "com_pb2.Time") -> datetime:
+    return pytz.utc.localize(pbt.time.ToDatetime()).astimezone(
+        pytz.timezone(pbt.timezone)
+    )
 
 
 @pytest.mark.usefixtures("fake_db")
@@ -65,7 +67,7 @@ class PaymentProtocolTestCase(unittest.TestCase):
     def request(self, endpoint: str, request, invocation_metadata={}, timeout=1):
         from cashless_server.settings import TIMEZONE
 
-        start_time = TIMEZONE.localize(datetime.now())
+        start_time = pytz.utc.localize(datetime.utcnow()).astimezone(TIMEZONE)
         response, _, code, _ = self.test_server.invoke_unary_unary(
             cashless_server.com_pb2.DESCRIPTOR.services_by_name[
                 "PaymentProtocol"
