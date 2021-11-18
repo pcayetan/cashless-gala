@@ -69,8 +69,10 @@ class Client(metaclass=ClientSingleton):
         # Default timezone, this will be override from requests
         self.timezone = pytz.utc
         # This will be updated from requests
-        self.timestamp = datetime(1970, 1, 1, tzinfo=self.timezone)
-        self.t0 = self.timezone.localize(datetime.now())
+        self.timestamp = datetime(
+            1970, 1, 1, tzinfo=self.timezone
+        )  # Works because pytz.utc is compatible
+        self.t0 = pytz.utc.localize(datetime.utcnow()).astimezone(self.timezone)
 
     def connectToServer(self, loadFromSettings=False):
         def _establishConnection(ip, timeout=1) -> Optional[grpc.Channel]:
@@ -121,11 +123,11 @@ class Client(metaclass=ClientSingleton):
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
 
     def getTime(self) -> datetime:
-        return self.timestamp + (datetime.now(self.timezone) - self.t0)
+        return self.timestamp + pytz.utc.localize(datetime.utcnow).astimezone(self.timezone) - self.t0)
 
     def updateTime(self, protoTime: com_pb2.Time):
         self.timezone = pytz.timezone(protoTime.timezone)
-        self.t0 = self.timezone.localize(datetime.now())
+        self.t0 = pytz.utc.localize(datetime.utcnow()).astimezone(self.timezone)
         self.timestamp = unpackTime(protoTime)
 
     def setServerAddress(self, address):
