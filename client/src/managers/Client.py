@@ -123,7 +123,9 @@ class Client(metaclass=ClientSingleton):
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
 
     def getTime(self) -> datetime:
-        return self.timestamp + pytz.utc.localize(datetime.utcnow).astimezone(self.timezone) - self.t0)
+        return self.timestamp + (
+            pytz.utc.localize(datetime.utcnow()).astimezone(self.timezone) - self.t0
+        )
 
     def updateTime(self, protoTime: com_pb2.Time):
         self.timezone = pytz.timezone(protoTime.timezone)
