@@ -204,8 +204,8 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
         for product in self.productList:
             for happyHour in product.getHappyHours():
                 if (
-                    happyHour.getStart() < currentTime
-                    and currentTime < happyHour.getEnd()
+                    happyHour.getStart() <= currentTime
+                    and currentTime <= happyHour.getEnd()
                 ):
                     if happyHour.isActive() is False:
                         happyHour.setActive(True)
@@ -222,5 +222,5 @@ class QDataManager(QObject, metaclass=QDataManagerSingleton):
                     if happyHour.isActive():
                         happyHour.setActive(False)
                         log.info("Happy hour sur {0} terminée.".format(product))
-                        self.priceUpdated.emit(product)
                         product.setPrice(product.getDefaultPrice())
+                        self.priceUpdated.emit(product)

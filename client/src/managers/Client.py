@@ -13,6 +13,7 @@ import platform  # For getting the operating system name
 import subprocess  # For executing a shell command
 
 import time
+import pytz
 from datetime import datetime, timedelta
 
 # Project specific imports
@@ -64,8 +65,12 @@ class Client(metaclass=ClientSingleton):
 
         self.connectToServer(loadFromSettings=True)
 
-        self.timestamp = datetime(1970, 1, 1)
-        self.t0 = time.time()
+        # Time management
+        # Default timezone, this will be override from requests
+        self.timezone = pytz.utc
+        # This will be updated from requests
+        self.timestamp = datetime(1970, 1, 1, tzinfo=self.timezone)
+        self.t0 = self.timezone.localize(datetime.now())
 
     def connectToServer(self, loadFromSettings=False):
         def _establishConnection(ip, timeout=1) -> Optional[grpc.Channel]:
@@ -116,11 +121,12 @@ class Client(metaclass=ClientSingleton):
         self.stub = com_pb2_grpc.PaymentProtocolStub(self.channel)
 
     def getTime(self) -> datetime:
-        return self.timestamp + timedelta(seconds=time.time() - self.t0)
+        return self.timestamp + (datetime.now(self.timezone) - self.t0)
 
-    def updateTime(self, datetime: datetime):
-        self.t0 = time.time()
-        self.timestamp = datetime
+    def updateTime(self, protoTime: com_pb2.Time):
+        self.timezone = pytz.timezone(protoTime.timezone)
+        self.t0 = self.timezone.localize(datetime.now())
+        self.timestamp = unpackTime(protoTime)
 
     def setServerAddress(self, address):
         self.serverAddress = address
@@ -151,7 +157,7 @@ class Client(metaclass=ClientSingleton):
 
             buyingRequest = com_pb2.BuyingRequest(**kwargs)
             buyingReply = self.stub.Buy(buyingRequest)
-            self.updateTime(unpackTime(buyingReply.now))
+            self.updateTime(buyingReply.now)
             if buyingReply.status == com_pb2.BuyingReply.SUCCESS:
                 transaction = buyingReply.transaction
                 buying = unpackBuying(transaction)
@@ -194,7 +200,7 @@ class Client(metaclass=ClientSingleton):
             refillingRequest = com_pb2.RefillingRequest(**kwargs)
             refillingReply = self.stub.Refill(refillingRequest)
             if refillingReply.status == com_pb2.RefillingReply.SUCCESS:
-                self.updateTime(unpackTime(refillingReply.now))
+                self.updateTime(refillingReply.now)
                 newBalance = unpackMoney(refillingReply.customer_balance)
                 refilling = unpackRefilling(refillingReply.refilling)
                 refilling.setNewBalance(newBalance)
@@ -232,7 +238,7 @@ class Client(metaclass=ClientSingleton):
             historyRequest = com_pb2.HistoryRequest(**kwargs)
             historyReply = self.stub.History(historyRequest)
             if historyReply.status == com_pb2.HistoryReply.SUCCESS:
-                self.updateTime(unpackTime(historyReply.now))
+                self.updateTime(historyReply.now)
                 for buying in historyReply.buyings:
                     buyings.append(unpackBuying(buying))
                 for refilling in historyReply.refillings:
@@ -252,7 +258,7 @@ class Client(metaclass=ClientSingleton):
             refoundBuyingRequest = com_pb2.RefoundBuyingRequest(**kwargs)
             refoundBuyingReply = self.stub.RefoundBuying(refoundBuyingRequest)
             if refoundBuyingReply.status == com_pb2.RefoundBuyingReply.SUCCESS:
-                self.updateTime(unpackTime(refoundBuyingReply.now))
+                self.updateTime(refoundBuyingReply.now)
                 return True
             else:
                 log.error("Unable to refound: {}".format(refoundBuyingReply.status))
@@ -271,7 +277,7 @@ class Client(metaclass=ClientSingleton):
             productsRequest = com_pb2.ProductsRequest(**kwargs)
             productsReply = self.stub.Products(productsRequest)
             if productsReply.status == com_pb2.ProductsReply.SUCCESS:
-                self.updateTime(unpackTime(productsReply.now))
+                self.updateTime(productsReply.now)
                 # Fill product List
                 pbProductList = productsReply.products  # get protobuff products
                 for pb_product in pbProductList:
@@ -295,7 +301,7 @@ class Client(metaclass=ClientSingleton):
         try:
             balanceRequest = com_pb2.BalanceRequest(customer_id=kwargs["customer_id"])
             balanceReply = self.stub.Balance(balanceRequest)
-            self.updateTime(unpackTime(balanceReply.now))
+            self.updateTime(balanceReply.now)
             return unpackMoney(balanceReply.balance)
         except RpcError:
             log.error("Unable to get customer balance")
@@ -310,7 +316,7 @@ class Client(metaclass=ClientSingleton):
             counterListRequest = com_pb2.CounterListRequest()
             counterListReply = self.stub.CounterList(counterListRequest)
             pbCounterList = counterListReply.counters  # get the payload
-            self.updateTime(unpackTime(counterListReply.now))  # update the time
+            self.updateTime(counterListReply.now)  # update the time
 
             for pb_counter in pbCounterList:
                 newCounter = unpackCounter(pb_counter)
@@ -337,7 +343,7 @@ class Client(metaclass=ClientSingleton):
             transfertReply = self.stub.Transfert(transfertRequest)
 
             if transfertReply.status == com_pb2.TransfertReply.SUCCESS:
-                self.updateTime(unpackTime(transfertReply.now))
+                self.updateTime(transfertReply.now)
                 return True
             else:
                 log.error("Unable to transfer: {}".format(transfertReply.status))
@@ -355,7 +361,7 @@ class Client(metaclass=ClientSingleton):
             cancelRefillingRequest = com_pb2.CancelRefillingRequest(**kwargs)
             cancelRefillingReply = self.stub.CancelRefilling(cancelRefillingRequest)
             if cancelRefillingReply.status == com_pb2.CancelRefillingReply.SUCCESS:
-                self.updateTime(unpackTime(cancelRefillingReply.now))
+                self.updateTime(cancelRefillingReply.now)
                 return True
             else:
                 log.error("Unable to refound: {}".format(cancelRefillingReply.status))

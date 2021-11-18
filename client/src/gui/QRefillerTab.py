@@ -181,6 +181,8 @@ class QAEPayment(QCreditCardPayment):
 
 
 class QTransferPayment(QGroupBox):
+    credited = pyqtSignal(Eur)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.paymentMethod = PaymentMethod.TRANSFER
@@ -238,8 +240,8 @@ class QTransferPayment(QGroupBox):
         self.receiverGroupBox.setLayout(self.receiverLayout)
 
         self.mainLayout.addWidget(self.emitterGroupBox)
-        self.mainLayout.addLayout(self.amountLayout)
         self.mainLayout.addWidget(self.receiverGroupBox)
+        self.mainLayout.addLayout(self.amountLayout)
         self.mainLayout.addWidget(self.okButton)
         self.mainLayout.addStretch(1)
         self.setLayout(self.mainLayout)
@@ -298,6 +300,7 @@ class QTransferPayment(QGroupBox):
                         amount, self.emitterID, self.receiverID
                     )
                 )
+                self.credited.emit(amount)
                 self.clear()
             else:
                 log.debug("Transfer failed")

@@ -113,12 +113,6 @@ class Atom:
     def getId(self):
         return self.id
 
-    def __eq__(self, key):
-        if type(self) == type(key):
-            return self.getId() == key.getId()
-        else:
-            return False
-
 
 class HappyHours(Atom):
     def __init__(self):

@@ -217,6 +217,7 @@ class QTreeModel(QAbstractItemModel):
     def __init__(self, headers, data=None, parent=None):
         super().__init__(parent)
         self.rootItem = TreeItem(headers)
+        self._qAtomList = []
 
     def data(self, index, role):
         """A model don't store only the text to display, it can also store the colors,
@@ -397,24 +398,48 @@ class QTreeModel(QAbstractItemModel):
     def searchQAtom(
         self, qAtom: QAtom, parent=QModelIndex()
     ) -> (QModelIndex, TreeItem, QAtom):
+
         n_row = self.rowCount(parent)
         n_col = self.columnCount(parent)
         for i in range(n_row):
             for j in range(n_col):
-                item = self.getItem(self.index(i, j, parent))
+                index = self.index(i, j, parent)
+                item = self.getItem(index)
                 data = item.getData()
                 if data == qAtom:  # == means same id
-                    return self.index(i, j, parent), item, data
-        return None
+                    return index, item, data
+                elif self.hasChildren(index):
+                    result = self.searchQAtom(qAtom, index)
+                    if result:
+                        return result
 
     def getQAtomList(self, parent=QModelIndex()):
-        qAtomList = []
-        n_row = self.rowCount(parent)
-        for i in range(n_row):
-            item = self.getItem(self.index(i, 0, parent))
-            data = item.getData()
-            qAtomList.append(data)
-        return qAtomList
+        self._qAtomList = []
+        self._walk(parent)
+        return self._qAtomList
+
+        # qAtomList = []
+        # n_row = self.rowCount(parent)
+        # for i in range(n_row):
+        #    item = self.getItem(self.index(i, 0, parent))
+        #    data = item.getData()
+        #    qAtomList.append(data)
+        # return qAtomList
+
+    def _walk(self, index=QModelIndex()):
+
+        if index.isValid():
+            item: TreeItem = index.internalPointer()
+            qAtom = item.getData()
+            if qAtom not in self._qAtomList:
+                self._qAtomList.append(qAtom)
+
+        if self.hasChildren(index):
+            n_row = self.rowCount(index)
+            n_col = self.columnCount(index)
+            for i in range(n_row):
+                for j in range(n_col):
+                    self._walk(self.index(i, j, index))
 
 
 class QTree(QWidget):

@@ -8,6 +8,7 @@ import src.managers.com.com_pb2_grpc as com_pb2_grpc
 from google.protobuf.timestamp_pb2 import Timestamp
 
 # Help to convert google timestamp into QTime ...
+import pytz
 from datetime import datetime
 
 from src.utils.Euro import *
@@ -116,5 +117,7 @@ def unpackBuying(pb_buying: com_pb2.Buying) -> Buying:
     return buying
 
 
-def unpackTime(timestamp: Timestamp) -> datetime:
-    return Timestamp.ToDatetime(timestamp)
+def unpackTime(protoTime: com_pb2.Time) -> datetime:
+    time = Timestamp.ToDatetime(protoTime.time)
+    timezone = pytz.timezone(protoTime.timezone)
+    return pytz.utc.localize(time).astimezone(timezone)

@@ -42,16 +42,20 @@ class QProductSelectorModel(QTreeModel):
 
         exploreDict(dm.productDict, self.rootItem)
 
-    def updatePrice(self, product):
+    def updatePrice(self, product: Product):
         # We could play with memory tricks so that when it's updated in the manager it's updated here but Master Foo's Zen says:
         # explicit is better that implicit ...
         # So the manager will explicity send update signals to Widgets...
         qProduct = QProduct(product)
-        # index = self.qProductList.index(qProduct)
-        index = self.searchQAtom(qProduct)
-        if index:
-            print(qProduct.price)
-            self.setData(index, qProduct)
+        index, item, qAtom = self.searchQAtom(qProduct)
+
+        newPrice = product.getPrice()
+        qAtom.setText(str(newPrice), 1)
+        qAtom.setPrice(newPrice)
+
+        index0 = self.index(index.row(), 0, index.parent())
+        indexN = self.index(index.row(), self.columnCount(), index.parent())
+        self.dataChanged.emit(index0, indexN)
 
     def data(self, index: QModelIndex, role):
 
@@ -69,11 +73,12 @@ class QProductSelectorModel(QTreeModel):
 
 
 class QBasketModel(QTreeModel):
-    modelChanged = pyqtSignal()
     newProductInserted = pyqtSignal(int, Product)  # row product
 
     def __init__(self, headers, data=None, parent=None):
         super().__init__(headers, data=data, parent=parent)
+        dm = QDataManager()
+        dm.priceUpdated[Product].connect(self.updatePrice)
 
     def addProduct(self, product: Product, treeView, parent=QModelIndex()):
 
@@ -112,11 +117,21 @@ class QBasketModel(QTreeModel):
             newIndex = self.index(0, 0)
             self.setData(newIndex, qProduct)
 
-            qProduct.updated.connect(self.update)
+            qProduct.updated.connect(self.updatePrice)
             qProduct.deleted.connect(self.removeProduct)
 
-    def update(self):
-        pass
+    def updatePrice(self, product: Product = None):
+        if product:
+            qProduct = QProduct(product)
+        else:
+            qProduct = self.sender()
+        result = self.searchQAtom(qProduct)
+        if result:
+            index, item, data = result
+            data.setPrice(qProduct.getPrice())
+            index0 = self.index(index.row(), 0)
+            indexN = self.index(index.row(), self.columnCount())
+            self.dataChanged.emit(index0, indexN, [Qt.DisplayRole, Qt.EditRole])
         # self.modelChanged.emit()
 
     def removeProduct(self, qProduct=None):
