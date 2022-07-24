@@ -179,15 +179,18 @@ class Refilling(Model):
     cancelled = Column(Boolean, default=False)
 
     def __str__(self):
-        return "id: %d, cancelled: %d, customer: %s, payment_method: %s, counter: %s, machine: %s, amount: %s, date: %s" % (
-            self.id,
-            self.cancelled,
-            self.customer_id,
-            self.payment_method,
-            self.counter.name,
-            self.machine_id,
-            self.amount,
-            self.date,
+        return (
+            "id: %d, cancelled: %d, customer: %s, payment_method: %s, counter: %s, machine: %s, amount: %s, date: %s"
+            % (
+                self.id,
+                self.cancelled,
+                self.customer_id,
+                self.payment_method,
+                self.counter.name,
+                self.machine_id,
+                self.amount,
+                self.date,
+            )
         )
 
 
@@ -219,14 +222,17 @@ class Buying(Model):
         )
 
     def __str__(self):
-        return "id: %d, refounded: %d, counter: %s, machine: %s, label: %s, payments: %s, date: %s" % (
-            self.id,
-            self.refounded,
-            self.counter.name,
-            self.machine_id,
-            self.label,
-            [str(payment) for payment in self.payments],
-            self.date,
+        return (
+            "id: %d, refounded: %d, counter: %s, machine: %s, label: %s, payments: %s, date: %s"
+            % (
+                self.id,
+                self.refounded,
+                self.counter.name,
+                self.machine_id,
+                self.label,
+                [str(payment) for payment in self.payments],
+                self.date,
+            )
         )
 
 
