@@ -1,6 +1,5 @@
 settings_custom.py
 setup.py
-poetry.lock
 *.sqlite
 *.pyc
 .pytest_cache

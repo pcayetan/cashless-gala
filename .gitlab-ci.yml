@@ -28,7 +28,7 @@ before_script:
   - python -V  # Print out python version for debugging
   - pip install poetry
   - python -m poetry config virtualenvs.path "$CI_PROJECT_DIR/.config/pypoetry"
-  - python -m poetry config repositories.ae-cashless https://ae-dev.utbm.fr/api/v4/projects/86/packages/pypi
+  - python -m poetry config repositories.ae-cashless https://ae-dev.utbm.fr/api/v4/projects/105/packages/pypi
 
 server:
   stage: parallel
@@ -52,7 +52,7 @@ server_version_check:
   stage: parallel
   script:
     - cd server
-    - (! pip install -i https://ae-dev.utbm.fr/api/v4/projects/86/packages/pypi/simple $(cat pyproject.toml | grep --color=never ^name | grep --color=never -oE '".+"' | grep --color=never -oE '[A-z0-9_]+')==$(cat pyproject.toml | grep --color=never ^version | grep --color=never -oE '[0-9]([0-9.a-z]+)'))
+    - (! pip install -i https://ae-dev.utbm.fr/api/v4/projects/105/packages/pypi/simple $(cat pyproject.toml | grep --color=never ^name | grep --color=never -oE '".+"' | grep --color=never -oE '[A-z0-9_]+')==$(cat pyproject.toml | grep --color=never ^version | grep --color=never -oE '[0-9]([0-9.a-z]+)'))
   only:
     - merge_requests
 
