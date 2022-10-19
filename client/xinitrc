@@ -1,4 +1,5 @@
 matchbox-window-manager -use_titlebar no &
 pid=$!
-/home/gala2022/
+cd $HOME/cashless-gala/client
+$HOME/cashless-gala/client/gmc.py
 kill pid

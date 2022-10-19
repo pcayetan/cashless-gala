@@ -1,9 +1,0 @@
-sudo apt install swig pyqt5-dev pcscd libpcsclite-dev python3-virtualenv
-sudo nano /usr/lib/systemd/system/pcscd.service
-git clone https://github.com/ae-utbm/cashless-gala.git
-cd cashless-gala/client
-virtualenv --system-site-packages venv
-source ./venv/bin/activate
-pip install -r requirements-min-rpi.txt
-./scripts/generate_from_proto.sh
-./gmc.py
