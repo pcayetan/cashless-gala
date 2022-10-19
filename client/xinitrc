@@ -1,0 +1,4 @@
+matchbox-window-manager -use_titlebar no &
+pid=$!
+/home/gala2022/
+kill pid

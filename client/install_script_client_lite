@@ -1,0 +1,7 @@
+sudo apt install xinit matchbox-window-manager swig libpcsclite-dev pcscd pyqt5-dev
+sudo nano /usr/lib/systemd/system/pcscd.service
+cd cashless-gala/client
+pip install -r requirements-min-rpi.txt
+./scripts/generate_from_proto.sh
+sudo cp ./xinitrc /etc/X11/xinit/xinitrc
+
